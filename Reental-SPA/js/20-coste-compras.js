@@ -199,10 +199,15 @@ function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   const usd = cbRedondearCentimos(ccLeerImporte(t)); // a céntimos: lo mismo que se guarda
   if (!ccEsNumeroPositivo(usd)) return { error: ccAvisoImporte(t) };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""))) return { error: "Pon el día del pago." };
-  // Hoy, o pasado lo descargado (un pago de ayer), el último tipo guardado
-  // no vale: el del día aún no se ha pedido (o no está publicado).
-  const cob = cache && cache.bce_cobertura, hoy = fecha === hoyEspana();
-  if ((hoy || (cob && esFechaBce(cob.fin) && fecha > cob.fin)) && !ccEsNumeroPositivo(Number((tiposBce || {})[fecha]))) {
+  // Un sábado o un domingo no tiene tipo propio: vale el del viernes.
+  // ponytail: los festivos del BCE no se miran (un pago de hoy en festivo
+  // dice «Vuelve mañana»); se pone el día anterior a mano.
+  const dia = new Date(fecha + "T12:00:00Z").getUTCDay();
+  const habil = dia === 6 ? sumarDias(fecha, -1) : dia === 0 ? sumarDias(fecha, -2) : fecha;
+  // Hoy (día hábil), o pasado lo descargado (un pago de ayer), el último
+  // tipo guardado no vale: el del día aún no se ha pedido (o no está publicado).
+  const cob = cache && cache.bce_cobertura, hoy = fecha === hoyEspana() && habil === fecha;
+  if ((hoy || (cob && esFechaBce(cob.fin) && habil > cob.fin)) && !ccEsNumeroPositivo(Number((tiposBce || {})[habil]))) {
     return { error: hoy ? CB_SIN_TIPO_HOY : CB_SIN_TIPO };
   }
   const r = ccEurOrientativo(usd, fecha, tiposBce, cache);
@@ -380,6 +385,8 @@ let cbBorrador = {};
 /* «En USD…» abierto: { clave: { usd, fecha, antes } } (antes = la
    casilla de € al abrirlo). */
 let cbUsdt = {};
+/* La cache de lo escrito: con otra (una copia abierta), se olvida. */
+let cbCacheBorrador = null;
 
 function cbAjustesSesion() {
   return (state.cache && state.cache.ajustes_usuario) || {};
@@ -396,10 +403,11 @@ function renderCosteCompras() {
   const cont = $("cbCuerpo");
   if (!cont) return;
   cbInyectarEstilos();
+  if (state.cache !== cbCacheBorrador) { cbBorrador = {}; cbUsdt = {}; cbCacheBorrador = state.cache; }
   const registros = ccRegistrosSesion();
   const ajustes = cbAjustesSesion();
   const filas = cbFilas(registros, ajustes, cbPrecioSesion());
-  /* Lo escrito de una compra que ya no está (otra cache) se olvida. */
+  /* Lo escrito de una compra que ya no está se olvida. */
   const vivas = new Set(filas.map(f => f.reg.clave));
   for (const c of Object.keys(cbBorrador)) if (!vivas.has(c)) delete cbBorrador[c];
   for (const c of Object.keys(cbUsdt)) if (!cbEscrito(cbBorrador, c)) delete cbUsdt[c];
@@ -442,6 +450,10 @@ function cbAbrir(clave) {
 /* Desde «Compra externa…» de 🔍 (js/15): despliega 💶 y abre la fila de
    esa compra, con el cursor en lo pagado. */
 function cbIrACompra(clave) {
+  // Guardar tarda: si mientras tanto te fuiste de 🔍 o escribes en otra
+  // casilla, no se te lleva (la fila queda en 💶).
+  const a = document.activeElement;
+  if (location.hash !== "#revision" || (a && a !== document.body && a.matches("input, textarea, select"))) return;
   const reg = cbComprasBancarias(ccRegistrosSesion()).find(r => r.clave === clave);
   if (!reg) return;
   cbIrACompras();
@@ -464,7 +476,9 @@ function cbAbrirCalculadora(clave, trigger) {
   const usd = !!cbUsdt[clave];
   const moneda = usd ? "USD" : "€";
   let modal = null;
-  const cerrar = () => { if (modal) { ccQuitarModal(modal); modal = null; } };
+  // Cambiar de pestaña la cierra (si no, se quedaría encima de otra).
+  const cerrar = () => { if (modal) { ccQuitarModal(modal); modal = null; window.removeEventListener("hashchange", cerrar); } };
+  window.addEventListener("hashchange", cerrar);
   modal = ccCrearModal("Calcular el precio por token", cbHtmlCalculadora(moneda), cerrar, trigger);
   const caja = modal.overlay;
   const tokens = caja.querySelector(".cb-calc-tokens"), total = caja.querySelector(".cb-calc-total");
@@ -540,7 +554,11 @@ async function cbGuardar(clave) {
   catch (e) {
     // Con «En USD…» abierto y algo mal allí (sin tipo del BCE, sin día…), ese es el aviso.
     const u = cbUsdt[clave], deUsd = u && cbEurDeUsd(u.usd, u.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache).error;
-    return toast(deUsd || (Number.isNaN(cambios[0].valor) ? ccAvisoImporte(String(cbBorrador[clave])) : e.message), "error");
+    // Un precio por token con un punto que no es de miles («0.03») vacía
+    // lo pagado: el aviso es el de la coma.
+    const coma = [...document.querySelectorAll('#cbCuerpo input[data-clave="' + CSS.escape(clave) + '"]')]
+      .some(i => ccAvisoImporte(i.value) === CC_AVISO_COMA);
+    return toast(coma ? CC_AVISO_COMA : deUsd || (Number.isNaN(cambios[0].valor) ? ccAvisoImporte(String(cbBorrador[clave])) : e.message), "error");
   }
   delete cbBorrador[clave];
   delete cbUsdt[clave];

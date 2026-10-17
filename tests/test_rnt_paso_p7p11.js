@@ -153,9 +153,18 @@ assert("la ventana: en la moneda de la fila, «Usar» empieza desactivado",
 
 console.log("== 6. «En USD…» con el pago de hoy (D8) ==");
 const hoy = vm.runInContext("hoyEspana()", S);
-assert("hoy sin tipo: «El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.»",
-  S.cbEurDeUsd("100", hoy, {}, {}).error === "El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.");
+// Entre semana, el aviso de hoy; en sábado o domingo (A5), el de siempre (no hay tipo del viernes en la prueba).
+const finde = [0, 6].includes(new Date(hoy + "T12:00:00Z").getUTCDay());
+assert("hoy sin tipo: «El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.» (en fin de semana, no)",
+  S.cbEurDeUsd("100", hoy, {}, {}).error === (finde ? "Sin tipo del BCE para ese día." : "El BCE aún no ha publicado el cambio de hoy. Vuelve mañana."),
+  S.cbEurDeUsd("100", hoy, {}, {}));
 assert("hoy con el tipo ya publicado: vale", S.cbEurDeUsd("110", hoy, { [hoy]: 1.1 }, {}).eur === 100);
+// COMPRA-EXTERNA A5: un sábado o un domingo, el tipo del viernes (aunque lo descargado acabe el viernes).
+const cobV = { bce_cobertura: { inicio: "2024-01-01", fin: "2024-03-01" } };
+assert("A5: pago del sábado 02/03/2024 y del domingo 03/03 con el tipo del viernes 01/03",
+  S.cbEurDeUsd("110", "2024-03-02", { "2024-03-01": 1.1 }, cobV).eur === 100 && S.cbEurDeUsd("110", "2024-03-03", { "2024-03-01": 1.1 }, cobV).eur === 100,
+  [S.cbEurDeUsd("110", "2024-03-02", { "2024-03-01": 1.1 }, cobV), S.cbEurDeUsd("110", "2024-03-03", { "2024-03-01": 1.1 }, cobV)]);
+assert("A5: un lunes pasado lo descargado sigue sin tipo", S.cbEurDeUsd("110", "2024-03-04", { "2024-03-01": 1.1 }, cobV).error === "Sin tipo del BCE para ese día.");
 assert("otro día sin tipo: el aviso de siempre", S.cbEurDeUsd("100", "2001-01-01", {}, {}).error === "Sin tipo del BCE para ese día.");
 
 console.log("== 7. Precios pequeños ==");

@@ -222,7 +222,52 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("R6 -> doble clic: se guarda una vez y sin el aviso rojo falso", (await escrituras()) === w6 + 1 &&
     (await reg(7)).sub === "GPP_REGALO" && !avisos6.some(t => t.includes("Ya tiene un ajuste manual")), avisos6);
 
-  await page.evaluate(() => document.body.classList.add("dark"));
+  /* ============ R7) auditoría (COMPRA-EXTERNA A2, A3, A7, A8, A9) ============ */
+  await sinToasts();
+  await page.click('#cbCuerpo [data-cb="editar"][data-clave="' + claves[4] + '"]');
+  await esperar(100);
+  await escribir("#cbCuerpo .cb-precio", "0.03");
+  const w7 = await escrituras();
+  await page.keyboard.press("Enter");
+  await esperar(300);
+  const aviso7 = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent).join(" | "));
+  assert("R7 -> A2: «0.03» en el precio por token pide la coma y no guarda", aviso7.includes("Usa la coma para los decimales (1.234,56).") &&
+    (await escrituras()) === w7, aviso7);
+  await page.click('#cbCuerpo [data-cb="calcular"][data-clave="' + claves[4] + '"]');
+  await esperar(150);
+  await page.evaluate(() => { location.hash = "#transacciones"; });
+  await esperar(300);
+  const sigue8 = await page.evaluate(() => document.querySelectorAll(".cc-dlg-overlay").length);
+  await page.evaluate(() => { location.hash = "#revision"; });
+  await esperar(400);
+  assert("R7 -> A8: la calculadora se cierra al cambiar de pestaña", sigue8 === 0, sigue8);
+  const a3 = await page.evaluate(async c => {
+    location.hash = "#transacciones";
+    await new Promise(r => setTimeout(r, 300));
+    cbIrACompra(c);
+    const enTx = location.hash;
+    location.hash = "#revision";
+    await new Promise(r => setTimeout(r, 400));
+    const otro = document.createElement("input");
+    document.body.appendChild(otro);
+    otro.focus();
+    cbIrACompra(c);
+    const foco = document.activeElement === otro;
+    otro.remove();
+    return { enTx, foco };
+  }, claves[4]);
+  assert("R7 -> A3: si te fuiste de 🔍 mientras se guardaba, no te devuelve; A7: no te quita el cursor de otra casilla",
+    a3.enTx === "#transacciones" && a3.foco, a3);
+  // La fila sigue abierta desde A2 (lo escrito sin guardar).
+  await escribir("#cbCuerpo .cb-valor", "123");
+  await page.evaluate(() => { state.cache = structuredClone(state.cache); renderCosteCompras(); });
+  await esperar(100);
+  assert("R7 -> A9: con otra cache, lo escrito sin guardar se olvida (la fila sale cerrada)", (await fila(4)).pagado === null, await fila(4));
+
+  // Volver a 🔍 deja 💶 plegado (como la lista de tareas): se abre otra vez.
+  await page.evaluate(() => { document.body.classList.add("dark"); document.getElementById("cbCoste").open = true; });
+  await esperar(800); // se despliega en 0,6 s
+  await sinToasts();   // el aviso de A2 tapa el enlace de la derecha
   await page.click('#cbCuerpo [data-cb="editar"][data-clave="' + claves[4] + '"]');
   await esperar(100);
   await page.click('#cbCuerpo [data-cb="calcular"][data-clave="' + claves[4] + '"]');
