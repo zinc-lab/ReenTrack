@@ -1,6 +1,6 @@
 /* =====================================================================
    REENTAL SPA · js/20-coste-compras.js
-   Coste de las compras por transferencia bancaria: plegable «💶 Coste de las compras bancarias
+   Coste de las compras externas: plegable «💶 Coste de las compras externas
    (n)» en 🔍 Revisión, cerrado por defecto.
 
    Qué hace:
@@ -20,13 +20,13 @@
      token) también lo guarda: lo confirma como tuyo y el informe deja de
      marcarlo con «**». Sin coste
      tuyo, la fila dice «por defecto».
-   - Una compra con una decisión de Revisión («Compra bancaria…» o «Dejar
+   - Una compra con una decisión de Revisión («Compra externa…» o «Dejar
      como Compra») también se edita aquí: solo se le pone coste_eur y sigue
      deshaciéndose en «Movimientos ya decididos». Lo mismo una mandada a
      revisar por ti.
    - Un ajuste de otro origen (p. ej. uno escrito a mano) nunca
      se pisa: su coste se enseña sin «Editar», con una ⓘ.
-   - «En USDT…» (P15), con la casilla abierta: lo pagado en USD y el día
+   - «En USD…» (P15), con la casilla abierta: lo pagado en USD y el día
      del pago (una compra pagada en USDT a Reental y entregada después);
      al escribir, la casilla de € se rellena con el BCE de ese día. Al
      guardar, el ajuste lleva también pagado_usd y fecha_pago_usd: la fila
@@ -110,7 +110,7 @@ function cbCosteVisto(reg, ajustes, precio) {
   return ccEsNumeroPositivo(defecto) && cbEstadoCoste(reg, ajustes) !== "ajeno" ? defecto : Number(reg.coste_eur);
 }
 
-/* Lo pagado en USD de una compra («En USDT…»): { importe, fecha } o null. */
+/* Lo pagado en USD de una compra («En USD…»): { importe, fecha } o null. */
 function cbPagadoUsd(reg, ajustes) {
   const h = ccBuscarAjuste(ajustes, reg && reg.clave);
   return h ? ccPagadoUsd(h.ajuste, (state.cache && state.cache.tipos_bce) || {}, state.cache) : null;
@@ -161,7 +161,7 @@ function cbAjustesConCostes(ajustes, cambios, registros, precio, fechaISO) {
     const h = ccBuscarAjuste(copia, clave);
     const estado = cbEstadoCoste(reg, copia);
     if (estado === "ajeno") throw new Error("Ya tiene un ajuste manual: se cambia en «✏️ Ajustes en JSON».");
-    // Lo pagado en USD va con él («En USDT…»); guardar solo € lo quita.
+    // Lo pagado en USD va con él («En USD…»); guardar solo € lo quita.
     const conUsd = a => {
       for (const c of CC_CAMPOS_USD) delete a[c];
       if (usd && ccEsNumeroPositivo(usd.importe)) Object.assign(a, { pagado_usd: usd.importe, fecha_pago_usd: usd.fecha });
@@ -179,7 +179,7 @@ function cbAjustesConCostes(ajustes, cambios, registros, precio, fechaISO) {
   return copia;
 }
 
-/* «En USDT…»: lo pagado en USD el día del pago, en € con el tipo del BCE
+/* «En USD…»: lo pagado en USD el día del pago, en € con el tipo del BCE
    de ese día (o el último anterior, como el motor): { eur, fecha } (la del
    tipo usado) o { error } (vacío mientras no hay nada escrito). */
 const CB_SIN_TIPO = "Sin tipo del BCE para ese día.";
@@ -226,7 +226,7 @@ async function cbBajarTipoBce(fecha) {
   return cache === state.cache; // otra cache abierta mientras llegaba: nada que recalcular
 }
 /* Lo pagado en USD que se guardaría con lo escrito ({ importe, fecha }):
-   con «En USDT…» abierto (u), su cuenta (calc) bien y la casilla de € con
+   con «En USD…» abierto (u), su cuenta (calc) bien y la casilla de € con
    esos €; si no, null. Lo usan «Guardar» y si se activa su botón. */
 function cbUsdEscrito(u, calc, valor) {
   return u && calc && calc.eur && cbMismoImporte(valor, calc.eur) ? { importe: cbRedondearCentimos(ccLeerImporte(u.usd)), fecha: u.fecha } : null;
@@ -247,9 +247,10 @@ function cbTextoPorToken(coste, tokens) {
 /* ----------------------------- HTML (puro) ----------------------------- */
 
 /* Un botón de la fila: data-cb = editar, guardar o cancelar. */
-function cbBoton(accion, clave, texto, desactivado) {
+function cbBoton(accion, clave, texto, desactivado, ayuda) {
   return '<button type="button" class="cb-accion' + (accion === "guardar" ? " primary" : "") + '" data-cb="' + accion +
-    '" data-clave="' + ccEsc(clave) + '"' + (desactivado ? " disabled" : "") + ">" + texto + "</button>";
+    '" data-clave="' + ccEsc(clave) + '"' + (desactivado ? " disabled" : "") + (ayuda ? ' title="' + ccEsc(ayuda) + '"' : "") +
+    ">" + texto + "</button>";
 }
 
 function cbHtmlFila(f, borrador) {
@@ -274,7 +275,7 @@ function cbHtmlFila(f, borrador) {
     pagado = '<input type="text" inputmode="decimal" class="cb-valor" data-clave="' + ccEsc(r.clave) + '" value="' +
       ccEsc(texto) + '" aria-label="' + ccEsc("Pagado en € · " + nombre + " · " + (fecha || "")) + '"> €';
     acciones = cbBoton("guardar", r.clave, "Guardar", !cambia && !f.supuesto) + cbBoton("cancelar", r.clave, "Cancelar") +
-      cbBoton("usdt", r.clave, "En USDT…");
+      cbBoton("usdt", r.clave, "En USD…", false, "Pagado en USD, USDT o USDC.");
   } else {
     // El de por defecto ya no lo dice la fila (lo dice la explicación de arriba; en el informe lleva «**»).
     pagado = fijo;
@@ -304,8 +305,8 @@ function cbHtmlUsdt(r, u) {
 /* El contenido del plegable. Lo de «100 €/token por defecto» lo dice la
    explicación del apartado, en index.html (aquí no se repite). */
 function cbHtmlEditor(filas, borrador) {
-  if (!filas.length) return '<p class="help">Sin compras por transferencia bancaria.</p>';
-  return '<div class="cb-caja"><table class="cb-tabla"><thead><tr><th>Fecha</th><th>Inmueble</th><th>Tx</th><th class="num">Tokens</th>' +
+  if (!filas.length) return '<p class="help">Sin compras externas.</p>';
+  return '<div class="cb-caja"><table class="cb-tabla"><thead><tr><th>Fecha</th><th>Inmueble / <br>Token</th><th>Tx</th><th class="num">Tokens</th>' +
     '<th class="num">Pagado</th><th class="num">€ por token</th><th></th></tr></thead><tbody>' +
     filas.map(f => cbHtmlFila(f, borrador)).join("") +
     "</tbody></table></div>";
@@ -315,7 +316,7 @@ function cbHtmlEditor(filas, borrador) {
 
 /* Lo escrito y sin guardar: { clave: texto }. */
 let cbBorrador = {};
-/* «En USDT…» abierto: { clave: { usd, fecha, antes } } (antes = la
+/* «En USD…» abierto: { clave: { usd, fecha, antes } } (antes = la
    casilla de € al abrirlo). */
 let cbUsdt = {};
 
@@ -369,7 +370,7 @@ function cbAbrir(clave) {
   const reg = ccRegistrosSesion().find(r => r.clave === clave);
   if (!reg) return;
   cbBorrador[clave] = numEs(cbCosteVisto(reg, cbAjustesSesion(), cbPrecioSesion()), 2);
-  // Pagada en USD: «En USDT…» abierto con lo que pusiste.
+  // Pagada en USD: «En USD…» abierto con lo que pusiste.
   const usd = cbPagadoUsd(reg, cbAjustesSesion());
   if (usd) cbUsdt[clave] = { usd: numEs(usd.importe, 2), fecha: usd.fecha, antes: cbBorrador[clave] };
   renderCosteCompras();
@@ -385,7 +386,7 @@ function cbFocoEditar(clave) {
   const btn = document.querySelector('#cbCuerpo [data-cb="editar"][data-clave="' + CSS.escape(clave) + '"]');
   if (btn) btn.focus();
 }
-/* «En USDT…»: abre debajo lo pagado en USD y el día (de entrada, el de la
+/* «En USD…»: abre debajo lo pagado en USD y el día (de entrada, el de la
    compra), con el cursor en el importe; otra pulsación lo cierra. */
 function cbAbrirUsdt(clave) {
   if (cbUsdt[clave]) { delete cbUsdt[clave]; renderCosteCompras(); return; }
@@ -412,7 +413,7 @@ async function cbGuardar(clave) {
   const registros = ccRegistrosSesion();
   const ajustes = cbAjustesSesion();
   const cambios = cbCambios(registros, ajustes, cbBorrador, clave, cbPrecioSesion());
-  // Con «En USDT…» abierto y la casilla en sus €: se guarda también lo pagado en USD.
+  // Con «En USD…» abierto y la casilla en sus €: se guarda también lo pagado en USD.
   const u = cbUsdt[clave], calc = u && cbEurDeUsd(u.usd, u.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache);
   const usd = cbUsdEscrito(u, calc, cbValorEscrito(cbBorrador[clave]));
   const reg = registros.find(r => r.clave === clave), antes = reg && cbPagadoUsd(reg, ajustes);
@@ -422,7 +423,7 @@ async function cbGuardar(clave) {
   let nuevos;
   try { nuevos = cbAjustesConCostes(ajustes, cambios, registros, cbPrecioSesion(), ahoraLocalISO()); }
   catch (e) {
-    // Con «En USDT…» abierto y algo mal allí (sin tipo del BCE, sin día…), ese es el aviso.
+    // Con «En USD…» abierto y algo mal allí (sin tipo del BCE, sin día…), ese es el aviso.
     const u = cbUsdt[clave], deUsd = u && cbEurDeUsd(u.usd, u.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache).error;
     return toast(deUsd || (Number.isNaN(cambios[0].valor) ? ccAvisoImporte(String(cbBorrador[clave])) : e.message), "error");
   }
@@ -454,7 +455,7 @@ function cbMontarEventos() {
         cbMismoUsd(cbUsdEscrito(u, calc, cbValorEscrito(input.value)), reg && cbPagadoUsd(reg, cbAjustesSesion()));
     }
   };
-  // «En USDT…»: lo pagado y el día → la casilla de €.
+  // «En USD…»: lo pagado y el día → la casilla de €.
   const alEscribirUsd = input => {
     const clave = input.getAttribute("data-clave");
     const sub = input.closest("tr");
@@ -464,7 +465,7 @@ function cbMontarEventos() {
     sub.querySelector(".cb-usd-eur").textContent = cbTextoEurDeUsd(calc);
     // La casilla sigue a los USD: con un importe, sus €; con uno que no
     // vale, vacía (si no, se quedaría lo de una tecla antes: «1000» de
-    // «1000.5»); sin nada escrito, lo que tenía al abrir «En USDT…».
+    // «1000.5»); sin nada escrito, lo que tenía al abrir «En USD…».
     const casilla = cbCasilla(clave);
     if (!casilla) return;
     casilla.value = calc.eur ? numEs(calc.eur, 2) : calc.error ? "" : u.antes;
@@ -487,7 +488,7 @@ function cbMontarEventos() {
   cont.addEventListener("input", e => {
     if (esDe(e.target, "cb-valor")) {
       alEscribir(e.target);
-      // Escrita a mano: la cuenta de «En USDT…» ya no es lo que se guarda.
+      // Escrita a mano: la cuenta de «En USD…» ya no es lo que se guarda.
       const sub = e.target.closest("tr").nextElementSibling;
       if (sub && sub.classList.contains("cb-usdt")) sub.querySelector(".cb-usd-eur").textContent = "";
     }

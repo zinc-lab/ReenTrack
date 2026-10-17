@@ -152,7 +152,7 @@ module.exports = async function comprobarTx1g(page, assert, opts = {}) {
   });
   assert(pref + "G7 -> la nota de compras bancarias, corta y sin ⓘ" + (datos.bancarias ? "" : " (no hay: oculta)"),
     datos.bancarias ? g7.visible && !g7.info &&
-      /^💶 Compras por transferencia bancaria: [\d.,]+ € por token \(se ajusta en 🔍 Revisión\)\.$/.test(g7.texto)
+      /^💶 Compras externas de inmuebles: [\d.,]+ € por token por defecto \(se edita en 🔍 Revisión\)\.$/.test(g7.texto)
       : !g7.visible, g7);
 
   /* ============ G8) nada cambia por dentro ============ */

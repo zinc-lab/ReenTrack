@@ -92,7 +92,7 @@ assert("el selector sigue contando el spam (para «Ver spam (n)»)",
 console.log("== 4. D12 · nota de compras bancarias ==");
 const banc = reg("b", "COMPRA", "COSTE_BASE", { via_compra: "BANCARIA", coste_eur: 200 });
 assert("el texto del usuario, sin ⓘ ni negritas",
-  S.txHtmlNotaCoste([banc], 100) === "💶 Compras por transferencia bancaria: 100 € por token (se ajusta en 🔍 Revisión).",
+  S.txHtmlNotaCoste([banc], 100) === "💶 Compras externas de inmuebles: 100 € por token por defecto (se edita en 🔍 Revisión).",
   S.txHtmlNotaCoste([banc], 100));
 assert("con el precio de la config y, si no vale, 100 €",
   S.txHtmlNotaCoste([banc], 120).includes(": 120 € por token") && S.txHtmlNotaCoste([banc], "x").includes(": 100 € por token"));

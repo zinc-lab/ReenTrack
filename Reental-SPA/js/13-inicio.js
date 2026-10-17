@@ -2,7 +2,7 @@
    REENTAL SPA · js/13-inicio.js
    Arranque de la aplicación: routing hash-based, montaje de todos los
    eventos e inicialización. Este archivo SIEMPRE debe cargarse el último.
-   La config se guarda sola al escribirla. El coste de compra bancaria es
+   La config se guarda sola al escribirla. El coste de compra externa es
    fijo: se aplica también a la copia del navegador al arrancar.
    Abrir la cache y «✨ Es mi primera vez» viven en js/19, que tras abrir
    la cache descarga lo nuevo y clasifica en el mismo clic; aplicar los

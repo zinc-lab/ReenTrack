@@ -117,7 +117,7 @@ console.log("== A3 y A4: compras del mismo día, una fila con «**» si alguna p
   const ventas = r.inf.detalle.ventas_inmuebles.filas;
   assert("A4: una sola fila, 5 tokens a 560 €, marcada",
     ventas.length === 1 && ventas[0].cantidad === 5 && ventas[0].valor_adquisicion_eur === 560 && ventas[0].coste_supuesto === true, ventas);
-  assert("A3: la nota dice «Incluye…»", r.pdf.includes('"560,00 **"') && r.pdf.includes("** Incluye compras por transferencia"));
+  assert("A3: la nota dice «Incluye…»", r.pdf.includes('"560,00 **"') && r.pdf.includes("** Incluye compras externas de inmuebles"));
 }
 {
   // II con las dos sin vender: la fila marcada y la nota con «Incluye».

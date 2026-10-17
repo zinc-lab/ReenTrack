@@ -64,6 +64,7 @@ const FUERA = [
   [/\bCSV de\b/, "«archivo de rendimientos de Reental»"],
   [/(?<!\bA )\bREVISAR\b/, "«a revisar», no el código REVISAR"],
   [/pendientes? de (revis|vincular)|cobros? pendientes?/i, "«a revisar» / «por vincular»: «pendiente» es solo para rendimientos"],
+  [/compras? bancarias?|compras? por (banco|transferencia)/i, "«compra externa», no «compra bancaria / por banco / por transferencia»"],
 ];
 /* Solo los textos para personas: con algún espacio y alguna palabra. */
 const esProsa = t => /\s/.test(t) && /[a-záéíóúñ]{3}/i.test(t);

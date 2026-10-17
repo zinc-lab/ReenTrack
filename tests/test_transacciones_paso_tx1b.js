@@ -150,7 +150,7 @@ assert("sin compras bancarias no hay nota", S.txHtmlNotaCoste([onch, reg({})], 1
 /* La nota es corta y neutra, sin número ni ⓘ. */
 const n1 = S.txHtmlNotaCoste([banc, onch], 100);
 assert("con compras bancarias: la nota con 100 € por token y sin ⓘ",
-  n1 === "💶 Compras por transferencia bancaria: 100 € por token (se ajusta en 🔍 Revisión)." && !n1.includes('class="cc-info"'));
+  n1 === "💶 Compras externas de inmuebles: 100 € por token por defecto (se edita en 🔍 Revisión)." && !n1.includes('class="cc-info"'));
 assert("usa el precio de la config si es válido", S.txHtmlNotaCoste([banc], 120).includes("120 € por token"));
 assert("precio inválido o ausente → 100 € (el valor fijo)",
   S.txHtmlNotaCoste([banc], undefined).includes("100 € por token") && S.txHtmlNotaCoste([banc], "x").includes("100 € por token") &&

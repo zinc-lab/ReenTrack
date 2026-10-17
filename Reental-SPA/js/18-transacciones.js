@@ -62,7 +62,7 @@
      una fila justo debajo de la suya (Intro guarda, Esc cancela); entera
      también en la burbuja del ✏️, y la búsqueda la encuentra. El editor
      (txEditorNota) es el mismo que usa 💰 Rendimientos (js/17).
-   - Nota del coste por token de las compras por transferencia bancaria
+   - Nota del coste por token de las compras externas de inmuebles
      (100 € por defecto), solo si las hay, y barra lateral plegable.
    - Textos cortos y de solo datos: las burbujas dicen el dato;
      la explicación, como mucho, en la de la cabecera.
@@ -1128,7 +1128,7 @@ function txEtiquetaCategoriaConteo(categoria, n) {
   return categoriaAMostrar(categoria) + " (" + numEs(Number(n) || 0, 0) + ")";
 }
 
-/* Nota del coste por token de las compras por transferencia bancaria
+/* Nota del coste por token de las compras externas de inmuebles
    (corta, neutra y sin ⓘ). Solo si hay alguna de un inmueble en el libro
    (las de RNT no tienen coste por defecto; si no, vacío). `precio` es el de la config; si no es un número válido se dice
    100 € (el valor fijo). */
@@ -1136,7 +1136,7 @@ function txHtmlNotaCoste(registros, precio) {
   if (!(registros || []).some(r => txEsCompraBancaria(r) && normalizarDireccion(r.contrato || "") !== RNT)) return "";
   const p = Number(precio);
   const eur = ccCantidad(Number.isFinite(p) && p > 0 ? p : 100) + " €";
-  return "💶 Compras por transferencia bancaria: " + ccEsc(eur) + " por token (se ajusta en 🔍 Revisión).";
+  return "💶 Compras externas de inmuebles: " + ccEsc(eur) + " por token por defecto (se edita en 🔍 Revisión).";
 }
 
 /* Fila del libro. opts:{ estadoRevisar, pendiente ("salida"|"cobro"|null),

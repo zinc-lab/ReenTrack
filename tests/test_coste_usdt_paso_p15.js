@@ -1,4 +1,4 @@
-/* P15 (A): «En USDT…» en 💶 Coste de las compras bancarias. Una compra
+/* P15 (A): «En USD…» en 💶 Coste de las compras bancarias. Una compra
  * pagada en USDT a una wallet de Reental y entregada después sale como
  * compra bancaria: lo pagado en USD y el día del pago se pasan a € con el
  * BCE de ese día y quedan como su coste.
@@ -7,7 +7,7 @@
  * - cbEurDeUsd / cbTextoEurDeUsd: USD ÷ tipo del BCE del día (o el último
  *   anterior, como el motor), a céntimos; los errores (coma, sin día, sin
  *   tipo) y nada mientras no hay nada escrito.
- * - cbHtmlFila / cbHtmlUsdt: «En USDT…» solo con la casilla abierta; la
+ * - cbHtmlFila / cbHtmlUsdt: «En USD…» solo con la casilla abierta; la
  *   subfila con lo pagado, el día y el resultado.
  *
  * DATOS 100% SINTÉTICOS. Ejecución (desde la raíz): node tests/test_coste_usdt_paso_p15.js
@@ -56,12 +56,12 @@ const INM = "0x" + "a1".repeat(20), W = "0x" + "11".repeat(20);
 const reg = { clave: "c1", fecha: "2024-03-05 10:00:00", hash: "0x" + "ab".repeat(32), contrato: INM, simbolo: "RALC1", inmueble: "Prueba Alcazaba 1",
   cantidad: 9, categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", coste_eur: 900, origen: "0x" + "77".repeat(20), destino: W };
 const [f] = S.cbFilas([reg], {}, 100);
-assert("cerrada: sin «En USDT…»", !S.cbHtmlFila(f, {}).includes('data-cb="usdt"'));
+assert("cerrada: sin «En USD…»", !S.cbHtmlFila(f, {}).includes('data-cb="usdt"'));
 const abierta = S.cbHtmlFila(f, { c1: "900,00" });
-assert("abierta: «En USDT…» junto a Guardar y Cancelar, sin subfila", abierta.includes('data-cb="usdt"') && abierta.includes("En USDT…") &&
+assert("abierta: «En USD…» junto a Guardar y Cancelar, sin subfila", abierta.includes('data-cb="usdt"') && abierta.includes("En USD…") && abierta.includes('title="Pagado en USD, USDT o USDC."') &&
   !abierta.includes("cb-usdt"), abierta);
 const conUsdt = S.cbHtmlFila(Object.assign({}, f, { usdt: { usd: "1.000", fecha: "2024-03-01", calc: C("1.000", "2024-03-01") } }), { c1: "909,09" });
-assert("con «En USDT…» abierto: la subfila con lo pagado, el día y el resultado",
+assert("con «En USD…» abierto: la subfila con lo pagado, el día y el resultado",
   conUsdt.includes('class="cb-usdt"') && conUsdt.includes('class="cb-usd" data-clave="c1" value="1.000"') &&
   conUsdt.includes('type="date" class="cb-usd-fecha" data-clave="c1" value="2024-03-01"') &&
   conUsdt.includes("= 909,09 € (BCE del 01/03/2024)") && conUsdt.includes('colspan="7"'), conUsdt);
@@ -78,7 +78,7 @@ console.log("== 2b. Auditoría de la 1.2 ==");
     !boton(S.cbHtmlFila(Object.assign({}, g, { usdt: { usd: "1.000", fecha: "2024-03-01", calc } }), { c1: "909,09" })).includes("disabled"));
   assert("O3: sin tocar nada: «Guardar» desactivado", boton(S.cbHtmlFila(g, { c1: "909,09" })).includes("disabled"));
   const conUsd = Object.assign({}, g, { usd: { importe: 1000, fecha: "2024-03-01" } });
-  assert("O3: guardada en USD y cerrado «En USDT…» (se quita el USD): «Guardar» activo",
+  assert("O3: guardada en USD y cerrado «En USD…» (se quita el USD): «Guardar» activo",
     !boton(S.cbHtmlFila(conUsd, { c1: "909,09" })).includes("disabled"));
   assert("O3: guardada en USD y abierto con lo mismo: «Guardar» desactivado",
     boton(S.cbHtmlFila(Object.assign({}, conUsd, { usdt: { usd: "1.000,00", fecha: "2024-03-01", calc } }), { c1: "909,09" })).includes("disabled"));

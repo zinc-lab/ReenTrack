@@ -40,7 +40,7 @@
      de una venta», que lleva a su vínculo.
    - Decisiones: cada tarjeta a revisar lleva «✔ Dejar como
      …» (Sugerida) y solo las alternativas que encajan con el movimiento
-     (venta, compra bancaria, dinero recibido, neutro, spam). Cada una es un
+     (venta, compra externa, dinero recibido, neutro, spam). Cada una es un
      ajuste en ajustes_usuario con su marca; «Movimientos ya decididos» las enseña con
      «↩ Deshacer».
 
@@ -499,7 +499,7 @@ function ccColaRevision(registros, ctx) {
    nombre de 📒 y la etiqueta «Sugerida») y después solo las alternativas que
    tienen sentido para ese movimiento:
    - «Es una venta…» (importe cobrado en USD): salidas de un inmueble.
-   - «Compra bancaria…» (coste real en €): entradas de un inmueble.
+   - «Compra externa…» (coste real en €): entradas de un inmueble.
    - «Ingreso de dinero…» (USDT o USDC recibido): entradas de una stablecoin.
    - «Movimiento neutro»: siempre.
    - «🚫 Es spam»: movimientos de la blockchain (el mismo ajuste que el 🚫
@@ -553,7 +553,7 @@ function ccNotaMandarRevisar(motivo, fechaISO) {
 function ccAjusteCoste(coste, fechaISO) {
   return { coste_eur: coste, nota: CC_MARCA_COSTE + ccDiaNota(fechaISO) };
 }
-/* Lo pagado en USD de una compra por transferencia («En USDT…» de 💶):
+/* Lo pagado en USD de una compra externa («En USD…» de 💶):
    puede ir con su coste_eur en cualquier ajuste que lo lleve. */
 const CC_CAMPOS_USD = ["pagado_usd", "fecha_pago_usd"];
 /* Lo pagado en USD va con su coste: quien copia el coste de un ajuste a
@@ -629,7 +629,7 @@ function ccSoloCampos(ajuste, permitidos) {
 }
 /* ¿Es un ajuste de js/18 que solo pide revisión? "revisar" | "sacado" | null.
    El «Mandado a revisar» puede llevar el coste_eur de una
-   compra bancaria (lo devuelve deshacer un «✔ Dejar como compra» con coste,
+   compra externa (lo devuelve deshacer un «✔ Dejar como compra» con coste,
    o lo pone «💶 Coste…»); sigue siendo tuyo y la decisión siguiente lo
    conserva. */
 function ccAjusteQuePideRevision(ajuste) {
@@ -677,10 +677,8 @@ const CC_AYUDA_SPAM = "Falso o sin valor: la app no lo cuenta.";
 const CC_AYUDA_INMUEBLE = "Lo confirma en el catálogo: cambia todos sus movimientos.";
 const CC_AYUDA_REGALO = "Te llega gratis (p. ej. un reparto gratis o airdrop). Tiene efecto fiscal." + CC_MAS_QUE_ES;
 const CC_AYUDA_RECOMPENSA = "Premio del staking o farming de RNT." + CC_MAS_QUE_ES;
-const CC_AYUDA_COMPRA_RNT = "RNT que pagaste en € (p. ej. una preventa): cada entrega es una compra. " +
-  "Si pagaste en USD, pásalo antes a €." + CC_MAS_QUE_ES;
-const CC_AYUDA_COMPRA = "Lo pagaste por transferencia o desde otra wallet. Te pide lo que pagaste en € " +
-  "(si fue en USD, ponlo en 💶 Coste con «En USDT…»)." + CC_MAS_QUE_ES;
+const CC_AYUDA_COMPRA = "La app no encuentra el pago: por banco, en un exchange, desde otra wallet, " +
+  "o pagado antes y enviado después. Lo pagado se edita en «💶 Coste de las compras externas», justo debajo." + CC_MAS_QUE_ES;
 
 /* «ⓘ Qué es cada cosa», arriba en 🔍 y 📒 (en su hueco [data-que-es]): al
    pulsarlo, una ventana con una línea por tipo de movimiento, de lo que hace
@@ -688,7 +686,7 @@ const CC_AYUDA_COMPRA = "Lo pagaste por transferencia o desde otra wallet. Te pi
 const CC_QUE_ES_CADA_COSA = [
   ["Compra / Venta", "tokens de inmuebles que compras o vendes, y RNT que compras. La venta tiene efecto fiscal."],
   ["Permuta", "el token que das al cambiarlo por otro (p. ej. das USDT y recibes RNT). Cuenta como una venta."],
-  ["Compra bancaria", "tokens que pagaste por transferencia o desde otra wallet. En la blockchain solo se ve que los tokens llegan a tu wallet, no el pago."],
+  ["Compra externa", "tokens que compraste y cuyo pago la app no encuentra: por banco, en un exchange, desde otra wallet, o pagados antes y enviados después (p. ej. una preventa). Lo pagado se edita en «💶 Coste de las compras externas». Si pagaste con USDT o USDC de esta wallet, deja esa salida como «Salida de dinero»."],
   ["Canje de contrato", "Reental cambia el token de un inmueble por otro nuevo del mismo inmueble. No es una venta: sin efecto fiscal."],
   ["Rendimiento", "lo que te reparte Reental de los inmuebles (alquileres u otros beneficios). Tiene efecto fiscal."],
   ["Recompensa DeFi", "tokens extra por tener tus RNT en staking o farming (como los intereses de una cuenta de ahorro). Tiene efecto fiscal."],
@@ -765,7 +763,7 @@ function ccOpcionesDecision(reg, ctx) {
     ops.push({ id: "venta", etiqueta: "Es una venta…", sugerida: cat === "VENTA", pide: "usd" });
   }
   if (onchain && sentido === "entrada" && esInmueble && !(dejar && cat === "COMPRA")) {
-    ops.push({ id: "compra", etiqueta: "Compra bancaria…", sugerida: false, pide: "eur", ayuda: CC_AYUDA_COMPRA });
+    ops.push({ id: "compra", etiqueta: "Compra externa…", sugerida: false, pide: "eur", ayuda: CC_AYUDA_COMPRA });
   }
   if (onchain && sentido === "entrada" && esEstable && !(dejar && cat === "DEPOSITO")) {
     ops.push({ id: "dinero", etiqueta: "Ingreso de dinero…", sugerida: false, pide: "usd" });
@@ -778,8 +776,8 @@ function ccOpcionesDecision(reg, ctx) {
       ayuda: CC_AYUDA_REGALO });
     if (!yaEs("RCM_REWARD")) ops.push({ id: "recompensa", etiqueta: "Recompensa DeFi", sugerida: false, pide: null, dialogo: true,
       ayuda: CC_AYUDA_RECOMPENSA });
-    if (cat === "REVISAR" || cat === "MOVIMIENTO") ops.push({ id: "compra-rnt", etiqueta: "Compra bancaria…", sugerida: false,
-      pide: null, dialogo: true, ayuda: CC_AYUDA_COMPRA_RNT });
+    if (cat === "REVISAR" || cat === "MOVIMIENTO") ops.push({ id: "compra-rnt", etiqueta: "Compra externa…", sugerida: false,
+      pide: null, dialogo: true, ayuda: CC_AYUDA_COMPRA });
   }
   if (!(dejar && cat === "MOVIMIENTO")) ops.push({ id: "neutro", etiqueta: "Movimiento neutro", sugerida: false, pide: null,
     ayuda: sentido === "entrada" ? CC_AYUDA_NEUTRO_ENTRADA : CC_AYUDA_NEUTRO });
@@ -847,7 +845,7 @@ function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo) {
                nota: nota("venta cobrada aparte") };
     case "compra":
       return { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", coste_eur: pideValor(), revisar: false,
-               nota: nota("compra bancaria con su coste real") };
+               nota: nota("compra externa") };
     case "dinero":
       return { categoria: "DEPOSITO", subcategoria: "COSTE_BASE", importe_usdt: pideValor(), revisar: false,
                nota: nota("dinero recibido, valorado al cambio del día") };
@@ -874,7 +872,7 @@ function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo) {
 /* Ajustes NUEVOS con la decisión (no muta los recibidos). Sustituye un
    ajuste que solo pedía revisión; lanza si hay otro. Si ese ajuste llevaba
    un coste y la decisión es «✔ Dejar como …», el coste sigue (las
-   demás decisiones cambian la categoría, y «Compra bancaria…» trae el
+   demás decisiones cambian la categoría, y «Compra externa…» trae el
    suyo). */
 function ccAjustesConDecision(ajustes, reg, id, valor, fechaISO) {
   const base = pdEsObjeto(ajustes) ? ajustes : {};
@@ -923,7 +921,7 @@ function ccAjustesSinDecision(ajustes, clave, fechaISO) {
 }
 
 /* ----------------------------- RNT que te llega (P7 y P11) -----------------------------
-   «Regalo (airdrop)», «Recompensa DeFi» y «Compra bancaria…» (RNT pagado
+   «Regalo (airdrop)», «Recompensa DeFi» y «Compra externa…» (RNT pagado
    en €, p. ej. una preventa entregada poco a poco) valen también para el
    resto del RNT llegado desde esa dirección: una decisión por movimiento,
    cada una se deshace en «Ya decididos». Nunca se guarda la dirección (un
@@ -1074,7 +1072,7 @@ function ccPropuestaCompraRnt(lista, cache, propias) {
 function ccResumenDecision(ajuste, reg) {
   if (!pdEsObjeto(ajuste)) return "";
   if (ajuste.categoria === "VENTA") return "Venta · " + numEs(ajuste.importe_usdt, 2) + " USD";
-  if (ajuste.categoria === "COMPRA") return "Compra bancaria · " + numEs(ajuste.coste_eur, 2) + " €";
+  if (ajuste.categoria === "COMPRA") return "Compra externa · " + numEs(ajuste.coste_eur, 2) + " €";
   if (ajuste.categoria === "DEPOSITO") return "Ingreso de dinero · " + numEs(ajuste.importe_usdt, 2) + " USD";
   if (ajuste.categoria === "MOVIMIENTO") return "Movimiento neutro";
   // Con el nombre de 📒 (txOperacion).
@@ -1819,7 +1817,7 @@ function ccHtmlDialogoRnt(reg, id, lista, propuesta) {
   const cambia = x => CC_RNT_CUENTA.includes(x.estado);
   const fuera = x => !cambia(x) && !(compra && x.estado === "compra");
   const otros = lista.filter(x => x.reg.clave !== reg.clave && cambia(x)).length;
-  const titulo = compra ? "Compra bancaria de RNT"
+  const titulo = compra ? "Compra externa de RNT"
     : otros === 1 ? "¿También el otro movimiento de RNT de esta dirección?"
     : "¿También los otros " + otros + " movimientos de RNT de esta dirección?";
   const filas = lista.map(x => '<tr class="' + (x.reg.clave === reg.clave ? "cc-rnt-este" : "") + (fuera(x) ? " cc-rnt-fuera" : "") + '"' +
@@ -3004,7 +3002,7 @@ function ccPulsarDecision(clave, id, trigger) {
 
 /* «Regalo (airdrop)» y «Recompensa DeFi» sin más RNT desde esa dirección
    se guardan al momento; si hay más, el diálogo pregunta. «Compra
-   bancaria…» de RNT siempre lo abre (pide lo pagado y el total). Uno solo
+   externa…» de RNT siempre lo abre (pide lo pagado y el total). Uno solo
    a la vez, y al guardar la lista tiene que seguir como al abrirlo (si no,
    decidiría sobre lo que ya cambiaste en otro sitio). */
 function ccAbrirDialogoRnt(reg, id, trigger, ctx) {
@@ -3020,7 +3018,7 @@ function ccAbrirDialogoRnt(reg, id, trigger, ctx) {
   // Cambiar de pestaña lo cierra (si no, se quedaría encima de otra).
   const cerrar = () => { if (modal) { ccQuitarModal(modal); modal = null; window.removeEventListener("hashchange", cerrar); } };
   window.addEventListener("hashchange", cerrar);
-  modal = ccCrearModal(id === "compra-rnt" ? "Compra bancaria de RNT" : "Decidir también los otros movimientos de RNT",
+  modal = ccCrearModal(id === "compra-rnt" ? "Compra externa de RNT" : "Decidir también los otros movimientos de RNT",
     ccHtmlDialogoRnt(reg, id, lista, propuesta), cerrar, trigger);
   const caja = modal.overlay;
   const error = caja.querySelector(".cc-rnt-error");

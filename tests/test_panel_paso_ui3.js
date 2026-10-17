@@ -158,7 +158,7 @@ assert("ccResueltos sin explicación debajo del título",
   !/<details id="ccResueltos"[^>]*>\s*<summary>(?:(?!<details)[\s\S])*?<\/summary>\s*<p class="help rv-explica">/.test(pagina));
 assert("cada apartado de 🔍 Revisión lleva su explicación breve, justo debajo del título",
   ["cbCoste", "rvCatalogo", "rvPreciosRnt", "rvPreciosPol", "rvContratos"].every(id =>
-    new RegExp('<details id="' + id + '"[^>]*>\\s*<summary>(?:(?!<details)[\\s\\S])*?</summary>\\s*<p class="help rv-explica">[^<]{20,130}</p>').test(pagina)) &&
+    new RegExp('<details id="' + id + '"[^>]*>\\s*<summary>(?:(?!<details)[\\s\\S])*?</summary>\\s*<p class="help rv-explica">[^<]{20,140}</p>').test(pagina)) &&
   /Correcciones a mano de movimientos concretos\. ⚠ Un error cambia lo que sale en todas las pestañas\./.test(pagina));
 assert("las fechas sin precio, ocultas hasta que haya alguna",
   /<div id="rvRntFaltantes" hidden>/.test(pagina));
@@ -170,7 +170,7 @@ assert("precios de RNT sin formulario libre y con el enlace a CoinGecko a la vis
   !pagina.includes('id="btnAddPrecioRnt"') && !pagina.includes('id="inpPrecioRntFecha"') &&
   /<a href="https:\/\/www\.coingecko\.com\/en\/coins\/reental" target="_blank" rel="noopener">CoinGecko ↗<\/a>/.test(pagina));
 assert("Revisión sin filtros", !pagina.includes('id="ccFiltros"') && !pagina.includes("ccFiltroCategoria"));
-assert("«💶 Coste de las compras por transferencia bancaria»", pagina.includes("💶 Coste de las compras por transferencia bancaria ("));
+assert("«💶 Coste de las compras externas»", pagina.includes("💶 Coste de las compras externas ("));
 assert("el título de cada pestaña, más grande", /\.view>\.card:first-of-type>h2:first-child[^{]*\{font-size:28px/.test(pagina));
 const js15 = fs.readFileSync(path.join(BASE, "js", "15-correcciones.js"), "utf8");
 assert("js/15 pinta el contador con la misma lista de «por decidir»",

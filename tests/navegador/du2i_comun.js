@@ -79,7 +79,7 @@ module.exports = async function comprobarDu2i(page, assert, opts = {}) {
   await esperar(150);
   const v1 = await vista();
   assert("C1 -> abierto: una fila por compra, sin cabeceras de grupo y con la columna «Inmueble»",
-    v1.filas === v1.bancarias && v1.grupos === 0 && v1.cabecera[1] === "Inmueble", v1);
+    v1.filas === v1.bancarias && v1.grupos === 0 && v1.cabecera[1] === "Inmueble / Token", v1);
   assert("C1 -> las más recientes primero", v1.fechas.every((f, i) => i === 0 || v1.fechas[i - 1] >= f), v1.fechas);
   assert("C1 -> ninguna casilla abierta: «✏️ Editar» en las editables y " + ajenas + " con ajuste manual sin él, con su ⓘ",
     v1.casillas === 0 && v1.editar === v1.filas - ajenas && v1.info === ajenas && !v1.guardarGeneral, v1);

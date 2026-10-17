@@ -1,7 +1,7 @@
 /* P13 (a): compras de inmuebles que llegan sin pago en la blockchain, con
  * datos inventados. Lo que contó el probador:
  * - Varios inmuebles que llegan el MISMO día (un reparto masivo), sin USDT
- *   que salga: se pagaron en dólares → en 💶, «En USDT…» con lo pagado en USD
+ *   que salga: se pagaron en dólares → en 💶, «En USD…» con lo pagado en USD
  *   y el día del pago (€ con el BCE de ese día).
  * - Los que llegan sueltos, sin USDT que salga: compras por transferencia en
  *   € → en 💶, lo pagado en €.
@@ -67,19 +67,19 @@ const delDia = bancarias().filter(r => r.fecha.startsWith(MASIVO));
 const sueltas = bancarias().filter(r => !r.fecha.startsWith(MASIVO));
 assert("el reparto masivo: 3 inmuebles el mismo día; sueltas, 2", delDia.length === 3 && sueltas.length === 2);
 
-console.log("== 2. 💶: las del reparto, «En USDT…»; las sueltas, en € ==");
+console.log("== 2. 💶: las del reparto, «En USD…»; las sueltas, en € ==");
 const USD = { [P1]: "500", [P2]: "300", [P3]: "800" };   // lo pagado en USD el 03/07/2023 (BCE 1,09)
 const EUR = { [P4]: "210", [P1]: "420" };
 const borrador = {};
 for (const r of delDia) {
   const calc = sb.cbEurDeUsd(USD[r.contrato], "2023-07-03", cache.tipos_bce, cache);
-  assert("«En USDT…» " + r.inmueble + ": " + USD[r.contrato] + " USD el 03/07/2023 → " + sb.cbTextoEurDeUsd(calc), calc.eur > 0 && calc.fecha === "2023-07-03", calc);
+  assert("«En USD…» " + r.inmueble + ": " + USD[r.contrato] + " USD el 03/07/2023 → " + sb.cbTextoEurDeUsd(calc), calc.eur > 0 && calc.fecha === "2023-07-03", calc);
   borrador[r.clave] = sb.numEs(calc.eur, 2);   // lo que escribe en la casilla de €
 }
 for (const r of sueltas) borrador[r.clave] = EUR[r.contrato];
 for (const r of bancarias()) {
   const cambios = sb.cbCambios(STATE.registros, cache.ajustes_usuario, borrador, r.clave, 100);
-  // Las del reparto, guardadas con «En USDT…» abierto: van con lo pagado en USD (como cbGuardar).
+  // Las del reparto, guardadas con «En USD…» abierto: van con lo pagado en USD (como cbGuardar).
   if (USD[r.contrato] && r.fecha.startsWith(MASIVO)) for (const c of cambios) c.usd = { importe: Number(USD[r.contrato]), fecha: "2023-07-03" };
   cache.ajustes_usuario = sb.cbAjustesConCostes(cache.ajustes_usuario, cambios, STATE.registros, 100, FECHA);
 }
@@ -109,7 +109,7 @@ console.log("== 2b. Las pagadas en USD: en $ en 💶 y en 📊 (solo pantalla) =
   const r3 = regs.find(r => r.contrato === P3 && r.via_compra === "BANCARIA");
   const soloEur = sb.cbAjustesConCostes(cache.ajustes_usuario, [{ clave: r3.clave, valor: 700 }], regs, 100, FECHA);
   const a3 = sb.ccBuscarAjuste(soloEur, r3.clave).ajuste;
-  assert("corregida en € sin «En USDT…»: ya no lleva lo pagado en USD", a3.coste_eur === 700 && !("pagado_usd" in a3) && !("fecha_pago_usd" in a3), a3);
+  assert("corregida en € sin «En USD…»: ya no lleva lo pagado en USD", a3.coste_eur === 700 && !("pagado_usd" in a3) && !("fecha_pago_usd" in a3), a3);
   // En una decisión de 🔍 (o un «mandado a revisar») también vale y sigue siendo suya.
   const dec = { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", coste_eur: 10, revisar: false,
     nota: "Decidido por ti en Revisión (2026-10-15): compra bancaria con su coste real", pagado_usd: 11, fecha_pago_usd: "2023-07-03" };

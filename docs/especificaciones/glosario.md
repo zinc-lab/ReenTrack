@@ -24,6 +24,7 @@ La columna «Fuera» son las que ya no se usan.
 | Lo que Reental ingresa en Hacienda | **Retención** | impuesto retenido, retención IRPF |
 | Íntegro menos retención | **Neto** | recibido, lo que llegó |
 | Lo que dan los contratos DeFi | **Recompensa DeFi** | reward |
+| Tokens comprados cuyo pago la app no encuentra (banco, exchange, otra wallet, o pagados antes y enviados después) | **Compra externa**; su apartado, «💶 Coste de las compras externas» | compra bancaria, compra por banco, compra por transferencia (bancaria) |
 | Lo que se compra en Reental | **Inmueble** (su parte, «token del inmueble») | propiedad |
 | Año de la declaración | **Ejercicio** | año fiscal |
 | Mes al que corresponde un rendimiento | **Periodo** (sin tilde) | período |

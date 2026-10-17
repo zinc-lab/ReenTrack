@@ -1,14 +1,14 @@
-/* Arnés de «En USDT…» en 💶 Coste de las compras bancarias (P15, A), con
+/* Arnés de «En USD…» en 💶 Coste de las compras bancarias (P15, A), con
  * datos inventados: una compra bancaria de un inmueble pagada en USDT a
  * Reental antes de que llegaran los tokens.
  *
- *  U1) «En USDT…» solo sale con la casilla abierta; abre debajo lo pagado
+ *  U1) «En USD…» solo sale con la casilla abierta; abre debajo lo pagado
  *      y el día (de entrada, el de la compra), con el cursor en el importe.
  *  U2) al escribir 1.000 USD y el día del pago, la casilla de € dice
  *      909,09 (BCE 1,1), el € por token se recalcula y «Guardar» se activa;
  *      «1000.5» pide la coma y vacía la casilla.
  *  U3) «Guardar» guarda 909,09 € como su coste (una escritura) y cierra.
- *  U4) Esc en el importe cierra sin guardar; otra pulsación de «En USDT…»
+ *  U4) Esc en el importe cierra sin guardar; otra pulsación de «En USD…»
  *      cierra la subfila; oscuro y 0 errores.
  *  U7) un día sin tipo guardado: lo pide al BCE en el momento (simulado,
  *      sin red), lo calcula y lo guarda con la cache; una vez por día.
@@ -94,10 +94,10 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   /* U1 */
   await page.evaluate(() => { const d = document.getElementById("cbCoste"); d.open = true; d.scrollIntoView({ block: "start" }); });
   await esperar(150);
-  assert("U1 -> cerrada, sin «En USDT…»", !(await vista()).usdt);
+  assert("U1 -> cerrada, sin «En USD…»", !(await vista()).usdt);
   await page.click(sel('#cbCuerpo [data-cb="editar"]'));
   await esperar(100);
-  assert("U1 -> abierta, con «En USDT…»", (await vista()).usdt);
+  assert("U1 -> abierta, con «En USD…»", (await vista()).usdt);
   await page.click(sel('#cbCuerpo [data-cb="usdt"]'));
   await esperar(150);
   const u1 = await vista();
@@ -115,7 +115,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     u2.casilla === "909,09" && u2.texto === "= 909,09 € (BCE del 01/03/2024)", u2);
   assert("U2 -> € por token recalculado (101,01 €) y «Guardar» activo", u2.porToken === "101,01 €" && u2.guardar === false, u2);
   const cabe = await page.evaluate(() => { const c = document.querySelector("#cbCuerpo .cb-caja"); return [c.scrollWidth, c.clientWidth]; });
-  assert("U2 -> editando con «En USDT…» abierto, la tabla cabe sin barra de desplazamiento (1366 px)", cabe[0] <= cabe[1], cabe);
+  assert("U2 -> editando con «En USD…» abierto, la tabla cabe sin barra de desplazamiento (1366 px)", cabe[0] <= cabe[1], cabe);
   await page.screenshot({ path: path.join(OUT, "cap_usdt1_editor.png") });
 
   /* U3 */
@@ -138,12 +138,12 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await page.click(sel('#cbCuerpo [data-cb="editar"]'));
   await esperar(150);
   const u4o = await vista();
-  assert("U4 -> al editarla, «En USDT…» se abre con lo que pusiste (1.000,00 USD el 01/03/2024)",
+  assert("U4 -> al editarla, «En USD…» se abre con lo que pusiste (1.000,00 USD el 01/03/2024)",
     u4o.sub && u4o.usd === "1.000,00" && u4o.fecha === "2024-03-01" && u4o.casilla === "909,09", u4o);
   await page.click(sel('#cbCuerpo [data-cb="usdt"]'));
   await esperar(150);
   const u4a = await vista();
-  assert("U4 -> otra pulsación de «En USDT…» cierra la subfila (la casilla sigue abierta)", !u4a.sub && u4a.casilla !== null, u4a);
+  assert("U4 -> otra pulsación de «En USD…» cierra la subfila (la casilla sigue abierta)", !u4a.sub && u4a.casilla !== null, u4a);
   await page.click(sel('#cbCuerpo [data-cb="usdt"]'));
   await esperar(150);
   await escribirUsd("2.000");
@@ -154,7 +154,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("U4 -> Esc cierra sin guardar", u4b.casilla === null && !u4b.sub && (await escrituras()) === w1 &&
     (await page.evaluate(c => state.cache.ajustes_usuario[c].coste_eur, clave)) === 909.09, u4b);
   /* U5) auditoría: borrar los USD, escribir los € a mano y el aviso sin tipo del BCE. */
-  await page.click(sel('#cbCuerpo [data-cb="editar"]'));   // pagada en USD: «En USDT…» ya abierto
+  await page.click(sel('#cbCuerpo [data-cb="editar"]'));   // pagada en USD: «En USD…» ya abierto
   await esperar(150);
   await escribirUsd("1");
   await page.focus("#cbCuerpo .cb-usd");

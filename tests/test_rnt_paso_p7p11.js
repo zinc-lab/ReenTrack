@@ -159,7 +159,7 @@ assert("la nota se vuelve a leer", JSON.stringify(S.ccLeerCompraRnt(dec.nota)) =
 assert("con decimales («27.431,58 RNT»)", S.ccLeerCompraRnt(S.ccTextoCompraRnt(1200, 27431.58)).total === 27431.58);
 assert("el precio a la vista", S.ccTextoPrecioRnt(1200, 40000) === "1.200,00 € ÷ 40.000 RNT = 0,0300 €/RNT", S.ccTextoPrecioRnt(1200, 40000));
 assert("estado «compra» para la ya comprada (P7 no la toca)", S.ccEstadoRnt(S.ccBuscarAjuste({ e1: dec }, "e1")) === "compra");
-assert("«Ya decididos»: Compra bancaria con su coste", S.ccResumenDecision(dec) === "Compra bancaria · 150,00 €");
+assert("«Ya decididos»: Compra externa con su coste", S.ccResumenDecision(dec) === "Compra externa · 150,00 €");
 
 // La reclamación: claim(index, cuenta, asignación, prueba) desde tu wallet al contrato.
 const pal = h => h.padStart(64, "0");

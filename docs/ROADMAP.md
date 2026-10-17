@@ -11,7 +11,7 @@
 - **Clasificación** de cada movimiento (compras, ventas, rendimientos, DeFi del
   RNT, spam…) y 🔍 Revisión para lo que no se puede decidir solo: vínculos
   venta↔cobro, inmuebles, precios que faltan, direcciones y el coste de las
-  compras por transferencia bancaria.
+  compras externas.
 - **Pestañas:** 🚀 Puesta en marcha, 🔍 Revisión, 📒 Transacciones, 📊 Dashboard,
   💰 Rendimientos, 🧾 Fiscal, 📤 Exportar y 📖 Ayuda.
 - **Motor fiscal** (FIFO, retenciones, base del ahorro), informe para la Renta,
@@ -39,8 +39,8 @@
   medias no avanza el último bloque, cambiar la wallet o el vault ya lo pide
   todo y el cuadre avisaría de un hueco).
 - **Vincular el pago de una compra:** un inmueble pagado en USDT a una wallet
-  de Reental y entregado después sale como compra bancaria. Hoy se pone lo
-  pagado en 💶 («En USDT…», con el BCE del día del pago). Si se repite mucho:
+  de Reental y entregado después sale como compra externa. Hoy se pone lo
+  pagado en 💶 («En USD…», con el BCE del día del pago). Si se repite mucho:
   «🔗 Vincular pago…» en la compra, como el vínculo venta ↔ cobro, para que
   quede igual que una compra pagada en la blockchain (coste, fecha y permuta
   del USDT). Toca la clasificación, el motor y 🔍.

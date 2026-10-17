@@ -570,12 +570,12 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <summary>Por decidir<span id="ccPorDecidirAviso" class="rv-aviso"></span></summary>
       <div id="ccLista" class="cc-lista" aria-live="polite"></div>
     </details>
-    <!-- Coste de las compras por transferencia bancaria, por compra
+    <!-- Coste de las compras externas, por compra
          (js/20-coste-compras.js). -->
     <details id="cbCoste" class="rv-tarea">
-      <summary>💶 Coste de las compras por transferencia bancaria (<span id="cbCount">0</span>)<span id="cbCosteAviso" class="rv-aviso"></span></summary>
-      <p class="help rv-explica">Coste de tokens pagado por transferencia (€ o $), la compra no se registra en la blockchain. Por defecto 1 token: 100 €.</p>
-      <div id="cbCuerpo"><p class="help">Sin compras por transferencia bancaria.</p></div>
+      <summary>💶 Coste de las compras externas (<span id="cbCount">0</span>)<span id="cbCosteAviso" class="rv-aviso"></span></summary>
+      <p class="help rv-explica">Lo que pagaste, en € o $, por tokens cuyo pago la app no encuentra. 1 token de inmueble = 100 € por defecto. RNT sin precio por defecto.</p>
+      <div id="cbCuerpo"><p class="help">Sin compras externas.</p></div>
     </details>
     <details id="rvPreciosRnt" class="rv-tarea">
       <summary>🪙 Precios de RNT (USD) (<span id="nPreciosRnt">0</span>)<span id="rvPreciosRntAviso" class="rv-aviso"></span></summary>
@@ -648,7 +648,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
     <ul id="txMotivosSpam" class="tx-motivos help" aria-label="Spam por motivo" hidden></ul>
     <div class="tx-tablawrap">
       <table id="txTabla" class="tabla-libro" aria-label="Libro diario">
-        <thead><tr><th class="tx-centro">Fecha</th><th class="tx-centro tx-th-cat">Categoría</th><th class="tx-th-tok">Inmueble / <br>Token</th><th class="tx-th-op">Operación</th><th class="num tx-th-cant">Cantidad</th><th class="num tx-th-partida tx-th-imp"><span class="tx-ayuda" tabindex="0" aria-label="Importe (retención): Importes en USD (USDT y USDC, 1 a 1) o en € en una compra por transferencia bancaria. Entre paréntesis () si se aplicó retención.">Importe<span class="tx-ret">(retención)</span><span class="tx-burbuja" aria-hidden="true"><b>Importe (retención)</b> Importes en USD (USDT y USDC, 1 a 1) o en € en una compra por transferencia bancaria. Entre paréntesis () si se aplicó retención.</span></span></th><th class="tx-th-cp">Contraparte</th><th>Tx</th><th class="tx-centro">Acciones</th></tr></thead>
+        <thead><tr><th class="tx-centro">Fecha</th><th class="tx-centro tx-th-cat">Categoría</th><th class="tx-th-tok">Inmueble / <br>Token</th><th class="tx-th-op">Operación</th><th class="num tx-th-cant">Cantidad</th><th class="num tx-th-partida tx-th-imp"><span class="tx-ayuda" tabindex="0" aria-label="Importe (retención): Importes en USD (USDT y USDC, 1 a 1) o en € en una compra externa. Entre paréntesis () si se aplicó retención.">Importe<span class="tx-ret">(retención)</span><span class="tx-burbuja" aria-hidden="true"><b>Importe (retención)</b> Importes en USD (USDT y USDC, 1 a 1) o en € en una compra externa. Entre paréntesis () si se aplicó retención.</span></span></th><th class="tx-th-cp">Contraparte</th><th>Tx</th><th class="tx-centro">Acciones</th></tr></thead>
         <tbody id="txCuerpo"><tr><td colspan="9" class="tx-vacio">Sin movimientos todavía: completa 🚀 Puesta en marcha.</td></tr></tbody>
       </table>
     </div>
@@ -838,7 +838,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <li><a href="#fiscal">🧾 Fiscal</a>: lo que hay que declarar, por ejercicio.</li>
       <li><a href="#exportar">📤 Exportar</a>: el Excel con todos tus años (movimientos, cobros, cartera y lo que declarar de cada año), el informe fiscal de un año en PDF e imprimir 📊, 📒, 💰 o 🧾.</li>
       <li><a href="#inicio">🚀 Puesta en marcha</a>: tus datos, el archivo de Reental y tus copias.</li>
-      <li><a href="#revision">🔍 Revisión</a>: lo que la app no puede decidir sola (movimientos, inmuebles, precios que faltan, direcciones y el coste de las compras por transferencia bancaria).</li>
+      <li><a href="#revision">🔍 Revisión</a>: lo que la app no puede decidir sola (movimientos, inmuebles, precios que faltan, direcciones y el coste de las compras externas).</li>
     </ul>
     <h3>Tus datos</h3>
     <p>Todo se guarda solo en este navegador: lo descargado, lo que decides en 🔍 Revisión, tus correcciones y tus notas. De vez en cuando, pulsa «🗂️ Guardar copia» en 🚀: si el navegador se borra o cambias de ordenador, la abres con «📂 Abrir copia». Las fechas van en hora peninsular española. A internet solo salen tus direcciones y tu API key (a Etherscan) y las consultas de tipos de cambio (al BCE) y de precios (a CoinGecko).</p>

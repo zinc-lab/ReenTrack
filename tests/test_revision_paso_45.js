@@ -70,7 +70,7 @@ const ventaSinPrecio = Object.assign({}, salidaInm, { categoria: "VENTA" });
 assert("venta sin precio: no se ofrece «Dejar»; «Es una venta…» es la Sugerida",
   JSON.stringify(ids(ventaSinPrecio)) === JSON.stringify(["venta*", "neutro", "spam"]), ids(ventaSinPrecio));
 const entradaInm = reg("e", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", simbolo: "RCAC8", importe_usdt: null });
-assert("entrada de un inmueble: Compra bancaria, Neutro y Spam",
+assert("entrada de un inmueble: Compra externa, Neutro y Spam",
   JSON.stringify(ids(entradaInm)) === JSON.stringify(["compra", "neutro", "spam"]), ids(entradaInm));
 const rend = reg("rd", "RENDIMIENTO", { fuente: "CSV_REENTAL" });
 assert("rendimiento del archivo: Dejar como Rendimiento y Neutro (sin spam: no es de la blockchain)",
@@ -161,7 +161,7 @@ assert("A13: «Ya decididos» por el día de la decisión, no por el texto (spam
 assert("el 🚫 de Transacciones no sale en Resueltos de Revisión",
   S.ccDecisionesTomadas({ r: S.txAjustesConSpam({}, "r", "spam", FECHA).r }, [rarUsdt]).length === 0);
 assert("resumen: «Venta · 1.234,50 USD»", S.ccResumenDecision(venta) === "Venta · 1.234,50 USD", S.ccResumenDecision(venta));
-assert("resumen: «Compra bancaria · 3.000,00 €»", S.ccResumenDecision(compra) === "Compra bancaria · 3.000,00 €");
+assert("resumen: «Compra externa · 3.000,00 €»", S.ccResumenDecision(compra) === "Compra externa · 3.000,00 €");
 // «Dejar como…» nombra la categoría del movimiento (sin ella, el texto genérico).
 assert("resumen: «Se deja como Compra»", S.ccResumenDecision({ revisar: false }, { categoria: "COMPRA" }) === "Se deja como Compra" &&
   S.ccResumenDecision({ revisar: false }) === "Se deja como lo dice la app");
@@ -197,8 +197,8 @@ assert("spam: «Falso o sin valor: la app no lo cuenta.»", ayuda(rarUsdt, "spam
 assert("sin «Renta» y con «Más en ⓘ Qué es cada cosa.» (salvo el spam)",
   AY.every(t => !/Renta/.test(t)) && /Sin efecto fiscal\. Más en ⓘ Qué es cada cosa\.$/.test(AY[0]) &&
   /primera vez/.test(AY[1]) && /Más en ⓘ Qué es cada cosa\.$/.test(AY[1]) && !/Más en/.test(AY[2]));
-assert("«Compra bancaria…» de un inmueble con su burbuja (€, y el USD en 💶)",
-  /^Lo pagaste por transferencia o desde otra wallet\. .*En USDT…/.test(vm.runInContext("CC_AYUDA_COMPRA", S)));
+assert("«Compra externa…» de un inmueble con su burbuja (lo pagado, en 💶)",
+  /^La app no encuentra el pago: .*«💶 Coste de las compras externas», justo debajo\./.test(vm.runInContext("CC_AYUDA_COMPRA", S)));
 const htmlAy = S.ccHtmlDecisiones(rarUsdt, { estado: "libre", opciones: S.ccOpcionesDecision(rarUsdt, ctx), abierta: null });
 assert("HTML: el texto va en el title de su botón, y no en los demás",
   htmlAy.includes('data-opcion="neutro" title="' + AY[1] + '"') && htmlAy.includes('data-opcion="spam" title="' + AY[2] + '"') &&
@@ -207,8 +207,8 @@ assert("HTML: el texto va en el title de su botón, y no en los demás",
 console.log("== P3. «ⓘ Qué es cada cosa» en 🔍 y 📒 ==");
 const queEs = S.ccHtmlDialogoQueEs();
 const nombresQueEs = (queEs.match(/<p><b>[^<]+<\/b>/g) || []).map(x => x.slice(6, -4));
-assert("11 líneas en la ventana, con permuta, compra bancaria, canje y gas", nombresQueEs.length === 11 &&
-  ["Permuta", "Compra bancaria", "Canje de contrato", "Comisión de red (gas)", "Movimiento neutro", "Spam"].every(n => nombresQueEs.includes(n)), nombresQueEs);
+assert("11 líneas en la ventana, con permuta, compra externa, canje y gas", nombresQueEs.length === 11 &&
+  ["Permuta", "Compra externa", "Canje de contrato", "Comisión de red (gas)", "Movimiento neutro", "Spam"].every(n => nombresQueEs.includes(n)), nombresQueEs);
 assert("sin «Renta»: dice «efecto fiscal»", !/Renta/.test(queEs) && /Tiene efecto fiscal/.test(queEs) && /sin efecto fiscal/.test(queEs));
 assert("un botón (teclado) que abre la ventana, sin burbuja",
   /^<button type="button" class="cc-que-es">/.test(S.ccHtmlQueEs()) && !/cc-burbuja/.test(S.ccHtmlQueEs()));

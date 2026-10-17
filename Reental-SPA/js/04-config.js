@@ -3,7 +3,7 @@
    Configuración del usuario: lectura/escritura del formulario (tarjeta 1
    de 🚀 Puesta en marcha), config.json y localStorage como respaldo.
    No hay apartado de «Parámetros fiscales» en la interfaz. El coste de las
-   compras pagadas por transferencia bancaria es una REGLA FIJA de 100 € por
+   compras externas de inmuebles es una REGLA FIJA de 100 € por
    token, que se aplica en los TRES caminos por los que entra la config
    (formulario, config.json del disco y copia del navegador al arrancar,
    js/13) y se escribe al exportar config.json.

@@ -781,7 +781,7 @@ function correlacionarCompras(h, txs, consumidos, diario, contexto, config) {
         via_compra: "BANCARIA",
         coste_eur: (cantidad !== null && cantidad !== undefined) ? cantidad * precio : null,
         /* El precio a la espanola ("100"). */
-        nota: "compra bancaria detectada (sin stablecoin en el hash): " +
+        nota: "compra externa detectada (sin stablecoin en el hash): " +
               cantidadNota(config.compra_bancaria_coste_eur_por_token) + " EUR/token, verificar",
       }));
     } else if (ambiguo) {
@@ -2387,7 +2387,7 @@ function ejecutarClasificacion(opciones) {
       log("  " + categoriaAMostrar(categoria) + ": " + resumen.conteo[categoria]);
     }
     if (resumen.bancarias.length) {
-      log("Compras bancarias detectadas (" + resumen.bancarias.length + "), verificar:", "warn");
+      log("Compras externas detectadas (" + resumen.bancarias.length + "), verificar:", "warn");
       for (const r of resumen.bancarias) {
         log("  " + fechaEs(r.fecha, true) + " " + (r.inmueble || r.simbolo || r.contrato) + ": " + r.cantidad +
             " tokens -> " + r.coste_eur + " EUR", "warn");

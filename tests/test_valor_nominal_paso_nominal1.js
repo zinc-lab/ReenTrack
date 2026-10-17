@@ -51,7 +51,7 @@ const regs = [
   compra(USD, "2024-03-01", "ONCHAIN", 4, { importe_usdt: 400 }),          // proyecto en $
   compra(BANCO, "2024-03-01", "BANCARIA", 10, { coste_eur: 1000 }),       // transferencia, coste por defecto
   compra(AJUSTE, "2024-03-01", "BANCARIA", 10, { coste_eur: 500 }),       // tu ajuste: 50 €/token
-  compra(EN_USDT, "2024-06-03", "BANCARIA", 2, { coste_eur: 200 }),       // «En USDT…»: 216 $ el 01/03 (1,08 → 200 €)
+  compra(EN_USDT, "2024-06-03", "BANCARIA", 2, { coste_eur: 200 }),       // «En USD…»: 216 $ el 01/03 (1,08 → 200 €)
   compra(VIEJO, "2024-03-01", "VAULT", 3, { importe_usdt: 300 }),         // canjeado después
   compra(FALTAN, "2024-03-01", "ONCHAIN", 2, { importe_usdt: 216 }),      // tiene 3: 1 sin compra
   compra(SIN_CANT, "2024-03-01", "ONCHAIN", null, { importe_usdt: 50 }),  // pago conjunto sin cantidad
@@ -84,7 +84,7 @@ assert("transferencia con el coste por defecto: no vota, € por pagarla en €,
   fila(nom, BANCO).moneda === "EUR" && !fila(nom, BANCO).ajuste && cerca(fila(nom, BANCO).costeEur, 1000), fila(nom, BANCO));
 assert("tu ajuste a 50 €/token: €, 1.000,00 € nominal, 500 € de coste y «tu ajuste»",
   fila(nom, AJUSTE).moneda === "EUR" && fila(nom, AJUSTE).nominal === 1000 && fila(nom, AJUSTE).ajuste && cerca(fila(nom, AJUSTE).costeEur, 500), fila(nom, AJUSTE));
-assert("«En USDT…» (108 $/token): vota € con el BCE de su fecha de pago, sin marca; coste en $",
+assert("«En USD…» (108 $/token): vota € con el BCE de su fecha de pago, sin marca; coste en $",
   fila(nom, EN_USDT).moneda === "EUR" && !fila(nom, EN_USDT).ajuste && cerca(fila(nom, EN_USDT).costeUsd, 216), fila(nom, EN_USDT));
 assert("canje: el token nuevo hereda la moneda del viejo ($) y su coste", fila(nom, NUEVO).moneda === "USD" && cerca(fila(nom, NUEVO).costeUsd, 300), fila(nom, NUEVO));
 assert("3 tokens y compras de 2: cuenta los 3 en el nominal y marca 1 sin compra",

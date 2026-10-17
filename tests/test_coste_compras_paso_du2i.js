@@ -1,4 +1,4 @@
-/* Test del coste de las compras por transferencia bancaria, por compra
+/* Test del coste de las compras externas, por compra
  * (🔍 Revisión).
  *
  * Bajo prueba (Reental-SPA/js/20-coste-compras.js):
@@ -39,7 +39,7 @@ function assert(nombre, cond, extra) {
   else { fallos++; console.error("  FALLO " + nombre + (extra !== undefined ? " -> " + JSON.stringify(extra) : "")); }
 }
 const FECHA = "2026-10-02T10:00:00.000Z";
-const NOTA_MOTOR = "compra bancaria detectada (sin stablecoin en el hash): 100 EUR/token, verificar";
+const NOTA_MOTOR = "compra externa detectada (sin stablecoin en el hash): 100 EUR/token, verificar";
 function compra(clave, inmueble, fecha, cantidad, extra = {}) {
   return Object.assign({ clave, fecha, hash: "0x" + clave.padEnd(64, "0"), contrato: "0x" + "a1".repeat(20),
     simbolo: "RTK", cantidad, categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA",
@@ -150,7 +150,7 @@ assert("abierta (algo en el borrador): su casilla con «Guardar» y «Cancelar»
 assert("lo escrito se conserva y su € por token se recalcula (300 / 4 = 75,00 €)",
   html.includes('value="300"') && html.includes("75,00 €"));
 assert("todo en una fila: el inmueble en su columna, sin cabeceras de grupo",
-  html.includes("<th>Inmueble</th>") && html.includes("<td>Fondo 1</td>") && !html.includes("cb-grupo") &&
+  html.includes("<th>Inmueble / <br>Token</th>") && html.includes("<td>Fondo 1</td>") && !html.includes("cb-grupo") &&
   (html.match(/<tr class="cb-fila/g) || []).length === 3 && html.includes('<tr class="cb-fila abierta" data-clave="b">'));
 // «100 €/token por defecto» lo dice la explicación del apartado (index.html), no se repite aquí.
 assert("sin «Por defecto…» repetido, sin «Guardar» general", !html.includes("Por defecto") &&
@@ -163,8 +163,8 @@ assert("SUPUESTO-1 A1: sin coste tuyo, «Guardar» activo aunque no cambie (lo c
 assert("SUPUESTO-1 A2: la fila solo con el importe (sin «por defecto»); la marca sigue en la fila (supuesto)",
   cerrado.includes('400,00 €</span>') && !cerrado.includes("por defecto") && S.cbFilas([B], {}, 100)[0].supuesto === true &&
   !S.cbHtmlEditor(S.cbFilas([D], { d: propio }), {}, 100).includes("por defecto"));
-assert("sin compras: «Sin compras por transferencia bancaria.»",
-  S.cbHtmlEditor([], {}, 100) === '<p class="help">Sin compras por transferencia bancaria.</p>');
+assert("sin compras: «Sin compras externas.»",
+  S.cbHtmlEditor([], {}, 100) === '<p class="help">Sin compras externas.</p>');
 assert("€ por token sin tokens o sin coste: «—»", S.cbTextoPorToken(100, 0) === "—" && S.cbTextoPorToken(NaN, 5) === "—");
 assert("escapa el nombre del inmueble", S.cbHtmlEditor(S.cbFilas([compra("z", "<b>x</b>", "2024-01-01", 1)], {}), {}, 100).includes("&lt;b&gt;x&lt;/b&gt;"));
 

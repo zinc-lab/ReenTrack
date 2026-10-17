@@ -42,17 +42,17 @@ const NOTA_GAS = "El de cada compra va en su coste y el de cada venta se resta d
 const NOTA_SIN_TRANSMISION = "Airdrops, regalos y referidos. Se integran en la base general.";
 const NOTA_EJERCICIO_EN_CURSO = "Ejercicio en curso: posición a la fecha de los últimos datos disponibles.";
 const NOTA_CENTIMOS = "Cada total se suma con todos los decimales y se redondea al final. El neto (íntegro − retención), la ganancia o pérdida (transmisión − adquisición) y el desinvertido (capital inicial + invertido − capital final) se obtienen de importes ya redondeados, para que cada cuenta salga al céntimo. La suma a mano de una columna larga puede diferir unos céntimos del total.";
-const NOTA_INVERSIONES_ACTIVAS = "Activos valorados a su coste de compra, no a su valor de mercado (los tokens de inmuebles no cotizan). El coste figura en dólares cuando la compra se pagó en dólares, y en euros al tipo de cambio del día de cada compra. Las compras por banco y los costes puestos a mano en euros no tienen importe en dólares (—).";
-const NOTA_USD_PARCIAL = "* Importe de la parte comprada en dólares; el resto tiene su coste en euros (compra por banco o coste puesto a mano). El coste en euros corresponde al total.";
+const NOTA_INVERSIONES_ACTIVAS = "Activos valorados a su coste de compra, no a su valor de mercado (los tokens de inmuebles no cotizan). El coste figura en dólares cuando la compra se pagó en dólares, y en euros al tipo de cambio del día de cada compra. Las compras externas y los costes puestos a mano en euros no tienen importe en dólares (—).";
+const NOTA_USD_PARCIAL = "* Importe de la parte comprada en dólares; el resto tiene su coste en euros (compra externa o coste puesto a mano). El coste en euros corresponde al total.";
 const DIVISA_INFORME_EUR = "Euro (EUR). En el detalle, también en dólares (USD).";
 // La hora de las fechas, tras el periodo del informe (PDF y Excel).
 const HORA_INFORME = ", en hora peninsular española";
 const NOTA_RESUMEN_INFORME = "Importes en euros. El detalle figura en el apartado III.";
 const NOTA_DETALLE_INFORME = "Importes en dólares (USD) y en euros (EUR).";
 const NOTA_CANJE_INFORME = "* Token recibido en un canje de contrato: se indica la fecha de la compra original.";
-// Compra bancaria sin coste tuyo. «Incluye»: la fila puede juntar otras
+// Compra externa de un inmueble sin coste tuyo. «Incluye»: la fila puede juntar otras
 // compras con su coste.
-const NOTA_COSTE_SUPUESTO = "** Incluye compras por transferencia bancaria sin coste indicado, a 100 € por token.";
+const NOTA_COSTE_SUPUESTO = "** Incluye compras externas de inmuebles sin coste indicado, a 100 € por token.";
 // Genérico, sin casillas ni países: la app facilita, no es una guía fiscal.
 const DESCARGO_RENTA = "Este informe es una ayuda para preparar la declaración: lo genera un programa con las operaciones de la wallet, el archivo de rendimientos de Reental y los tipos de cambio del Banco Central Europeo. No es un documento oficial ni lo emite Reental. Antes de presentar la declaración, confírmalo con un asesor.";
 const GLOSARIO_RENTA = [
@@ -95,7 +95,7 @@ const NOTA_METODOLOGICA_RENTA = [
   ["Año de cada rendimiento", "El de la fecha en que Reental lo pone a tu disposición (la fecha de su archivo), lo reinviertas, lo reclames o lo dejes pendiente. Cada rendimiento cuenta una sola vez."],
   ["Íntegro y retención", "Se toman del archivo de Reental y nunca se calculan ni se suponen. El íntegro y la retención se declaran por separado, sin restar; el neto es solo informativo. Retirar después dinero del vault a la wallet no es un ingreso nuevo."],
   ["Tipo de cambio", "Cada importe en dólares se pasa a euros con el tipo del BCE de su día (serie EXR/D.USD.EUR.SP00.A); en fines de semana y festivos, el último publicado."],
-  ["Coste y método FIFO", "El valor de adquisición es el coste de compra en euros del día de la compra. Al vender, salen primero las unidades más antiguas; una venta puede salir de varias compras y se enseña una fila por cada fecha de compra. La ganancia o pérdida se calcula en euros. Una compra por banco o un coste puesto a mano en euros no tiene importe en dólares (—). Una compra por transferencia bancaria lleva el coste en euros que indicaste o, si no, 100 € por token."],
+  ["Coste y método FIFO", "El valor de adquisición es el coste de compra en euros del día de la compra. Al vender, salen primero las unidades más antiguas; una venta puede salir de varias compras y se enseña una fila por cada fecha de compra. La ganancia o pérdida se calcula en euros. Una compra externa o un coste puesto a mano en euros no tiene importe en dólares (—). Una compra externa de un inmueble lleva el coste en euros que indicaste o, si no, 100 € por token."],
   ["Canjes de contrato", "Cuando Reental cambia un token por el de un contrato nuevo no entra ni sale dinero: no se trata como venta y el token nuevo conserva el coste y la fecha de cada compra original (si vino de varias, uno por cada compra)."],
   ["Ventas con cobro aparte", "Una venta cobrada en otra transacción, antes o después y en uno o varios cobros, se valora por la suma de los cobros vinculados, al tipo de cambio del día de la venta, y cuenta en el año de la venta. Mientras no esté cobrada entera, figura en el apartado IV."],
   ["Permutas", "Pagar un inmueble con USDT, cambiar una moneda virtual por otra o enviarla fuera se trata como una transmisión de lo entregado, con su ganancia o pérdida por la diferencia de cambio."],

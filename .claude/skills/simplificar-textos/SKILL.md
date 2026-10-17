@@ -27,10 +27,10 @@ Sin pestaña, pregunta cuál.
 - Las palabras, las del glosario (`docs/especificaciones/glosario.md`): las
   filas del libro son «movimientos»; números a la española.
 - Ejemplos del tono buscado: «Importes en USD (USDT y USDC, 1 a 1) o en € en
-  una compra por transferencia bancaria. Entre paréntesis () si se aplicó
+  una compra externa. Entre paréntesis () si se aplicó
   retención.» · «Rendimiento íntegro: 10,000000 USD / Retención: 1,900000 USD /
-  Neto: 8,100000 USD» · «💶 Compras por transferencia bancaria: 100 € por
-  token (se ajusta en 🔍 Revisión).» · «🔒 Datos solo en este navegador»
+  Neto: 8,100000 USD» · «💶 Compras externas de inmuebles: 100 € por
+  token por defecto (se edita en 🔍 Revisión).» · «🔒 Datos solo en este navegador»
 
 ## Pasos
 

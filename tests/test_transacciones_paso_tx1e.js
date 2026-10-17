@@ -135,7 +135,7 @@ assert("9 columnas (TX-1f, D1): fecha, categoría, token, operación, cantidad, 
   (tabla.match(/<col[ >]/g) || []).length === 0 && tabla.includes('colspan="9"'), ths);
 assert("la cabecera del importe lleva su burbuja corta: la unidad y la retención entre paréntesis",
   /<span class="tx-ayuda" tabindex="0" aria-label="Importe \(retención\): [^"]+">Importe<span class="tx-ret">\(retención\)<\/span><span class="tx-burbuja" aria-hidden="true">/.test(tabla) &&
-  /<b>Importe \(retención\)<\/b> Importes en USD \(USDT y USDC, 1 a 1\) o en € en una compra por transferencia bancaria\. Entre paréntesis \(\) si se aplicó retención\.<\/span>/.test(tabla) && !/declara/.test(tabla) && !/title="/.test(tabla.match(/<th class="num tx-th-partida[^"]*"[^>]*>/)[0]));
+  /<b>Importe \(retención\)<\/b> Importes en USD \(USDT y USDC, 1 a 1\) o en € en una compra externa\. Entre paréntesis \(\) si se aplicó retención\.<\/span>/.test(tabla) && !/declara/.test(tabla) && !/title="/.test(tabla.match(/<th class="num tx-th-partida[^"]*"[^>]*>/)[0]));
 
 console.log("\n" + ok + "/" + (ok + fallos) + " comprobaciones OK" + (fallos ? " -> " + fallos + " FALLOS" : " -> TODO VERDE"));
 process.exit(fallos ? 1 : 0);

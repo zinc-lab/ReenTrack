@@ -234,7 +234,7 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
     inm[1].lotes[1].fecha === "2024-01-01 10:00:00" && inm[1].lotes[1].porCanje && inm[1].lotes[0].canjeado && !inm[1].lotes[1].canjeado);
   const htmlLotes = S.fiHtmlLotes({ lotes, nombres });
   assert("HTML de lotes: los vivos con «Quedan», los gastados aparte y el origen en llano",
-    htmlLotes.includes("Gastados (1)") && htmlLotes.includes("Compra (canjeada)") && htmlLotes.includes("Compra por banco") &&
+    htmlLotes.includes("Gastados (1)") && htmlLotes.includes("Compra (canjeada)") && htmlLotes.includes("Compra externa") &&
     htmlLotes.includes("No te queda ningún token") && htmlLotes.includes("150,00 €") && htmlLotes.includes("01/01/2024 *"));
   assert("A16: la columna dice «Coste del lote»", htmlLotes.includes(">Coste del lote<") && !htmlLotes.includes(">Coste<"));
   const cartera = filas => ({ ejercicio: 2026, inversiones_activas: { inmuebles: { filas } } });

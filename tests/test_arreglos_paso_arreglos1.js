@@ -240,7 +240,7 @@ console.log("== M4. Deshacer «✔ Dejar como compra» conserva el coste puesto 
   const venta = { clave: "v", categoria: "REVISAR", cantidad: 2, origen: WALLET, destino: TERCERO,
     contrato: "0x" + "c1".repeat(20), inmueble: "Prueba", hash: h(11), fuente: "ONCHAIN", revisar: true };
   const aj = sb.ccAjustesConDecision({}, Object.assign({}, venta, { origen: TERCERO, destino: WALLET }), "compra", "300", HOY);
-  assert("deshacer «Compra bancaria…» sí quita su coste (lo puso la decisión)",
+  assert("deshacer «Compra externa…» sí quita su coste (lo puso la decisión)",
     JSON.stringify(sb.ccAjustesSinDecision(aj, "v", HOY)) === "{}");
 }
 

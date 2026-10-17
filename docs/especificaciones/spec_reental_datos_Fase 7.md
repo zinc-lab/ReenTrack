@@ -118,7 +118,7 @@ Array de registros clasificados. Cada registro representa un evento on-chain o C
 
 | Valor | Descripción |
 |---|---|
-| `BANCARIA` | Compra por transferencia bancaria (coste fijo por token) |
+| `BANCARIA` | Compra externa: la app no encuentra el pago (inmuebles: 100 € por token por defecto) |
 | `ONCHAIN` | Compra on-chain (DEX, etc.) |
 | `VAULT` | Adquisición vía reinversión en vault |
 | `CANJE` | Canje/swap de otro token |

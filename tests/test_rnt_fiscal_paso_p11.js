@@ -100,7 +100,7 @@ console.log("== 2. Venta de RNT después: la encuentra, mezcla con un premio =="
 
 console.log("== 3. Con los ajustes de 🔍 de verdad y un tipo del BCE distinto de 1 ==");
 {
-  // La compra, con el ajuste que escribe «Compra bancaria…» (1.000 RNT por 40 €); el premio, a 0,5 USD con 1,25 USD/EUR.
+  // La compra, con el ajuste que escribe «Compra externa…» (1.000 RNT por 40 €); el premio, a 0,5 USD con 1,25 USD/EUR.
   const e1 = entrega("e1", "2025-01-10 10:00:00", 1000);
   const aj = sb0.ccAjustesConDecision({}, e1, "compra-rnt", { coste: 40, pagado: 40, total: 1000 }, "2025-12-01T10:00:00.000Z");
   const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100);

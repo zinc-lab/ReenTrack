@@ -3,10 +3,10 @@
  * (con la reclamación de la wallet, que dice la asignación).
  *
  *  R1) la tarjeta de un RNT que llega ofrece «Regalo (airdrop)»,
- *      «Recompensa DeFi» y «Compra bancaria…», con su explicación.
+ *      «Recompensa DeFi» y «Compra externa…», con su explicación.
  *  R2) «Regalo (airdrop)» pregunta por el otro de esa dirección; Esc
  *      cierra sin escribir; «Todos (2)» decide los dos (una escritura).
- *  R3) «Compra bancaria…»: la lista de las tres entregas, el total leído de
+ *  R3) «Compra externa…»: la lista de las tres entregas, el total leído de
  *      la reclamación, el aviso de la coma, el precio al escribir y el
  *      total que no puede ser menos de lo llegado; «Guardar» las vuelve
  *      compras con su parte, y 💶 las enseña con «RNT» y 4 decimales.
@@ -109,7 +109,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("R1 -> el RNT del airdrop llega a revisar", r1 && r1.cat === "REVISAR" && r1.revisar, r1);
   const ops = await page.evaluate(async c => [...document.querySelectorAll('#ccLista [data-accion="decidir"][data-clave="' + c + '"]')]
     .map(b => [b.getAttribute("data-opcion"), b.title, b.getAttribute("aria-haspopup")]), await clave(1));
-  assert("R1 -> «Regalo (airdrop)», «Recompensa DeFi» y «Compra bancaria…», con su explicación y como diálogo",
+  assert("R1 -> «Regalo (airdrop)», «Recompensa DeFi» y «Compra externa…», con su explicación y como diálogo",
     ["regalo", "recompensa", "compra-rnt"].every(o => ops.some(([id, t, h]) => id === o && t && h === "dialog")), ops);
 
   /* ============ R2) regalo con el otro de esa dirección ============ */
@@ -136,7 +136,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await pulsar(4, "compra-rnt");
   const d3 = await dialogo();
   assert("R3 -> la lista de las tres entregas y el total leído de la reclamación (20.000)",
-    d3 && d3.titulo === "Compra bancaria de RNT" && d3.filas === 3 && d3.fuera === 0 && d3.total === "20.000" && d3.pagado === "" &&
+    d3 && d3.titulo === "Compra externa de RNT" && d3.filas === 3 && d3.fuera === 0 && d3.total === "20.000" && d3.pagado === "" &&
     d3.nota.includes("leídos de tu reclamación del 12/02/2024") && /cc-rnt-pagado/.test(d3.foco), d3);
   await escribir(".cc-rnt-pagado", "1200.5");
   await page.keyboard.press("Enter");

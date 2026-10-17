@@ -118,10 +118,10 @@ function arrEvaluar(e) {
   if (!tiene.wallet) faltanConfig.push(dir(cfg.wallet) ? "wallet bien escrita (0x y 40 caracteres)" : "dirección de wallet");
   if (vaultMal) faltanConfig.push(vaultIgualWallet(cfg) ? "vault distinto de tu wallet, o vacío" : "vault bien escrito (0x y 40 caracteres) o vacío");
   if (!tiene.key) faltanConfig.push("API key de Etherscan");
-  // El coste de compra bancaria no es un campo: js/04 lo fija en 100 € por
+  // El coste de compra externa no es un campo: js/04 lo fija en 100 € por
   // token. Se conserva la comprobación para no divergir de
   // requisitosClasificacionOk (js/14); en la práctica nunca falta.
-  if (!tiene.coste) faltanConfig.push("el precio fijo de 100 € por token de las compras bancarias");
+  if (!tiene.coste) faltanConfig.push("el precio fijo de 100 € por token de las compras externas de inmuebles");
   pasos.config = {
     estado: configSync ? "ok" : (configClasificar ? "warn" : "pendiente"),
     texto: configSync ? "Completa" : (configClasificar ? "Falta la API key (solo para sincronizar)" : "Falta: " + faltanConfig.join(", ")),

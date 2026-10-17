@@ -361,7 +361,7 @@ function fiHtmlVentas(informe, operaciones) {
 
 /* ----------------------------- (3) Lotes de cada inmueble ----------------------------- */
 const FI_ORIGEN_LOTE = {
-  COMPRA: "Compra", COMPRA_BANCO: "Compra por banco", CANJE: "Canje de contrato",
+  COMPRA: "Compra", COMPRA_BANCO: "Compra externa", CANJE: "Canje de contrato",
   DEPOSITO: "Depósito", REWARD: "Recompensa", SWAP: "Cambio", POOL: "Pool", RENDIMIENTO: "Rendimiento",
 };
 

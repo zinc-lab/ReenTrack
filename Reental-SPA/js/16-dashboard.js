@@ -156,7 +156,7 @@ function dashSerieMensual(movimientos) {
    compras, ventas, sinImporte, sinCambio, sinFecha } y lo que queda, en la
    moneda en que se pagó: eurBanco (por transferencia, en €) y usdStable (en USDT o USDC,
    también desde el vault, y las de transferencia pagadas en USD: el
-   pagado_usd de su ajuste, «En USDT…» de 💶, que cuenta tal cual).
+   pagado_usd de su ajuste, «En USD…» de 💶, que cuenta tal cual).
    Para el valor nominal, también lo que queda de cada compra: colas
    (Map contrato → lotes { cant, usd, eur, moneda, ajuste }) y sinCantidad
    (los lotes sin cantidad, con su contrato); moneda es lo que dice la

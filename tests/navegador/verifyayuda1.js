@@ -55,7 +55,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("A13: cada botón que cita la Ayuda («…») existe con ese nombre", v.citados.length >= 3 && v.faltan.length === 0, v.faltan);
   assert("A7: «Cada pestaña» va en el orden del menú", JSON.stringify(v.lista) === JSON.stringify(v.menu), v.lista);
   assert("A6, A8, A9: 🔍 con el coste de las compras por banco, «transacciones» para lo descargado e imprimir las 4 de 📤",
-    /el coste de las compras por transferencia bancaria/.test(v.texto) && /lee tus transacciones de Reental/.test(v.texto) &&
+    /el coste de las compras externas/.test(v.texto) && /lee tus transacciones de Reental/.test(v.texto) &&
     /trae tus transacciones nuevas/.test(v.texto) && /imprimir 📊, 📒, 💰 o 🧾/.test(v.texto), v.texto.slice(0, 200));
 
   await page.click('#view-ayuda a[href="#fiscal"]');

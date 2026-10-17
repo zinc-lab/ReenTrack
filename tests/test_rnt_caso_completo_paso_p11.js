@@ -4,7 +4,7 @@
  * asignación), un airdrop y casi todo el RNT metido en el staking.
  *
  * Recorre lo que hace el usuario: descarga (la cache), clasificación con el
- * archivo de Reental, «Compra bancaria…» y «Regalo (airdrop)» en 🔍, otra
+ * archivo de Reental, «Compra externa…» y «Regalo (airdrop)» en 🔍, otra
  * entrega que llega después con el precio guardado, y comprueba el motor
  * fiscal, 💶, 📊 y el informe para la Renta.
  *
@@ -75,10 +75,10 @@ assert("6 entregas del contrato de reparto, a revisar", entregas.length === 6 &&
   entregas.map(r => r.categoria));
 const alStaking = regs.find(r => r.contrato === RNT && sb.normalizarDireccion(r.destino) === STAKING);
 assert("lo que va al staking: movimiento neutro (sigue siendo tuyo)", alStaking && alStaking.categoria === "MOVIMIENTO" && !alStaking.revisar, alStaking);
-assert("la tarjeta ofrece «Compra bancaria…», «Regalo» y «Recompensa DeFi»",
+assert("la tarjeta ofrece «Compra externa…», «Regalo» y «Recompensa DeFi»",
   ["compra-rnt", "regalo", "recompensa"].every(i => sb.ccOpcionesDecision(entregas[0], ctx()).some(o => o.id === i)));
 
-console.log("== 2. «Compra bancaria…»: 1.000 € por la asignación de 25.000 RNT ==");
+console.log("== 2. «Compra externa…»: 1.000 € por la asignación de 25.000 RNT ==");
 let lista = sb.ccRntDesde(regs, entregas[0], cache.ajustes_usuario || {}, ctx());
 const prop = sb.ccPropuestaCompraRnt(lista, cache, ctx().propias);
 assert("el total viene de la reclamación (25.000) y lo llegado queda en la lista (6)",
