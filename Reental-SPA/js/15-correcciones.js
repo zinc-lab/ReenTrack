@@ -947,9 +947,9 @@ function ccResumenDecision(ajuste, reg) {
   if (!pdEsObjeto(ajuste)) return "";
   if (ajuste.categoria === "VENTA") return "Venta · " + numEs(ajuste.importe_usdt, 2) + " USD";
   if (ajuste.categoria === "COMPRA") {
-    // Sin tu precio: el RNT no tiene; un inmueble, el de por defecto (el del registro, como en 💶).
+    // Sin tu precio: un inmueble, el de por defecto (el del registro, como en 💶); el RNT no tiene.
     if (ccEsNumeroPositivo(ajuste.coste_eur)) return "Compra externa · " + numEs(ajuste.coste_eur, 2) + " €";
-    return reg && ccEsNumeroPositivo(reg.coste_eur) && normalizarDireccion(reg.contrato || "") !== RNT
+    return reg && ccEsNumeroPositivo(reg.coste_eur)
       ? "Compra externa · " + numEs(reg.coste_eur, 2) + " € (por defecto)" : "Compra externa · falta el precio";
   }
   if (ajuste.categoria === "DEPOSITO") return "Ingreso de dinero · " + numEs(ajuste.importe_usdt, 2) + " USD";
@@ -2811,7 +2811,7 @@ async function ccDeshacerDecision(clave) {
 /* Pulsar una opción: las que piden importe abren su formulario (otra
    pulsación lo cierra); las demás se guardan al momento (se deshacen en
    «Movimientos ya decididos»). */
-function ccPulsarDecision(clave, id, trigger) {
+function ccPulsarDecision(clave, id) {
   if (ccGuardandoAjustes) return;
   const registros = ccRegistrosSesion();
   const reg = registros.find(r => r.clave === clave);
@@ -3044,7 +3044,7 @@ function ccMontarEventos() {
       else if (accion === "editar-vinculo") ccAbrirFormularioEdicion(id, btn);
       else if (accion === "ver-vinculo") ccIrAVinculo(id);
       else if (accion === "ver-movimiento") ccIrAMovimiento(btn.getAttribute("data-clave"));
-      else if (accion === "decidir") ccPulsarDecision(btn.getAttribute("data-clave"), btn.getAttribute("data-opcion"), btn);
+      else if (accion === "decidir") ccPulsarDecision(btn.getAttribute("data-clave"), btn.getAttribute("data-opcion"));
       else if (accion === "decidir-aplicar" && ccDecisionAbierta) ccAplicarDecisionAbierta();
       else if (accion === "decidir-cerrar") ccCerrarDecisionAbierta();
       else if (accion === "deshacer-decision") ccDeshacerDecision(btn.getAttribute("data-clave"));

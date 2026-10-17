@@ -1450,7 +1450,7 @@ function txPintarCuerpo(registros) {
   const ed = txNota.actual();
   /* El contexto del motor (con lo apartado entero) para saber
      qué opciones tiene cada 🚫 y qué spam se quita con su ↩. */
-  const ctxMotor = state.cache ? construirContexto(state.cache) : null;
+  const ctxMotor = ctx.direcciones; // construirContexto(state.cache), ya hecho en ccContextoCandidatos
   let abiertoPintado = false;
   const html = visibles.length
     ? visibles.map(r => {

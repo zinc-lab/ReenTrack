@@ -199,11 +199,12 @@ function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   const usd = cbRedondearCentimos(ccLeerImporte(t)); // a céntimos: lo mismo que se guarda
   if (!ccEsNumeroPositivo(usd)) return { error: ccAvisoImporte(t) };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""))) return { error: "Pon el día del pago." };
-  if (fecha === hoyEspana() && !ccEsNumeroPositivo(Number((tiposBce || {})[fecha]))) return { error: CB_SIN_TIPO_HOY };
-  // Pasado lo descargado (un pago de ayer o de hoy), el último tipo
-  // guardado no vale: el del día aún no se ha pedido (o no está publicado).
-  const cob = cache && cache.bce_cobertura;
-  if (cob && esFechaBce(cob.fin) && fecha > cob.fin && !ccEsNumeroPositivo(Number((tiposBce || {})[fecha]))) return { error: CB_SIN_TIPO };
+  // Hoy, o pasado lo descargado (un pago de ayer), el último tipo guardado
+  // no vale: el del día aún no se ha pedido (o no está publicado).
+  const cob = cache && cache.bce_cobertura, hoy = fecha === hoyEspana();
+  if ((hoy || (cob && esFechaBce(cob.fin) && fecha > cob.fin)) && !ccEsNumeroPositivo(Number((tiposBce || {})[fecha]))) {
+    return { error: hoy ? CB_SIN_TIPO_HOY : CB_SIN_TIPO };
+  }
   const r = ccEurOrientativo(usd, fecha, tiposBce, cache);
   if (!r) return { error: CB_SIN_TIPO };
   const eur = cbRedondearCentimos(r.eur);
@@ -250,8 +251,8 @@ function cbTextoEurDeUsd(calc) {
 /* € por token de un coste y unos tokens («50,00 €»; por debajo de 1 €,
    con 4 decimales, como el RNT: «0,0300 €»), o «—». */
 function cbTextoPorToken(coste, tokens) {
-  const c = Number(coste), t = Number(tokens);
-  return ccEsNumeroPositivo(c) && ccEsNumeroPositivo(t) ? cbNumPrecio(c / t) + " €" : "—";
+  const p = cbPrecioDeTotal(coste, tokens);
+  return p ? p + " €" : "—";
 }
 /* Un precio por token a la española, con sus decimales (ccDecimalesPrecio). */
 function cbNumPrecio(p) {
@@ -620,16 +621,15 @@ function cbMontarEventos() {
   };
   const esDe = (el, ...clases) => !!el.classList && clases.some(c => el.classList.contains(c));
   cont.addEventListener("input", e => {
-    if (esDe(e.target, "cb-valor", "cb-precio")) {
-      if (esDe(e.target, "cb-valor")) alEscribir(e.target);
-      else alEscribirPrecio(e.target, e.cbPrecioExacto);
-      // Escrita a mano: la cuenta de «En USD…» ya no es lo que se guarda.
-      const sub = e.target.closest("tr").nextElementSibling;
-      const eur = sub && sub.querySelector(".cb-usd-eur");
+    const t = e.target;
+    if (esDe(t, "cb-valor")) alEscribir(t);
+    else if (esDe(t, "cb-precio", "cb-usd-precio")) alEscribirPrecio(t, e.cbPrecioExacto);
+    else if (esDe(t, "cb-usd", "cb-usd-fecha")) alEscribirUsd(t);
+    // Los € escritos a mano: la cuenta de «En USD…» ya no es lo que se guarda.
+    if (esDe(t, "cb-valor", "cb-precio")) {
+      const eur = t.closest("tr").nextElementSibling && t.closest("tr").nextElementSibling.querySelector(".cb-usd-eur");
       if (eur) eur.textContent = "";
     }
-    else if (esDe(e.target, "cb-usd-precio")) alEscribirPrecio(e.target, e.cbPrecioExacto);
-    else if (esDe(e.target, "cb-usd", "cb-usd-fecha")) alEscribirUsd(e.target);
   });
   cont.addEventListener("keydown", e => {
     const input = e.target;
