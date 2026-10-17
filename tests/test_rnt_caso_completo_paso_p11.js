@@ -4,9 +4,10 @@
  * asignación), un airdrop y casi todo el RNT metido en el staking.
  *
  * Recorre lo que hace el usuario: descarga (la cache), clasificación con el
- * archivo de Reental, «Compra externa…» y «Regalo (airdrop)» en 🔍, otra
- * entrega que llega después con el precio guardado, y comprueba el motor
- * fiscal, 💶, 📊 y el informe para la Renta.
+ * archivo de Reental, «Compra externa…» en cada entrega (sin precio) y
+ * «Regalo (airdrop)» en 🔍, el precio por token en 💶 (con la calculadora),
+ * otra entrega que llega después, y comprueba el motor fiscal, 💶, 📊 y el
+ * informe.
  *
  * DATOS 100% SINTÉTICOS. Ejecución (desde la raíz):
  *     node tests/test_rnt_caso_completo_paso_p11.js
@@ -76,45 +77,63 @@ assert("6 entregas del contrato de reparto, a revisar", entregas.length === 6 &&
 const alStaking = regs.find(r => r.contrato === RNT && sb.normalizarDireccion(r.destino) === STAKING);
 assert("lo que va al staking: movimiento neutro (sigue siendo tuyo)", alStaking && alStaking.categoria === "MOVIMIENTO" && !alStaking.revisar, alStaking);
 assert("la tarjeta ofrece «Compra externa…», «Regalo» y «Recompensa DeFi»",
-  ["compra-rnt", "regalo", "recompensa"].every(i => sb.ccOpcionesDecision(entregas[0], ctx()).some(o => o.id === i)));
+  ["compra", "regalo", "recompensa"].every(i => sb.ccOpcionesDecision(entregas[0], ctx()).some(o => o.id === i)));
 
-console.log("== 2. «Compra externa…»: 1.000 € por la asignación de 25.000 RNT ==");
-let lista = sb.ccRntDesde(regs, entregas[0], cache.ajustes_usuario || {}, ctx());
-const prop = sb.ccPropuestaCompraRnt(lista, cache, ctx().propias);
-assert("el total viene de la reclamación (25.000) y lo llegado queda en la lista (6)",
-  prop.de === "reclamacion" && prop.total === 25000 && lista.length === 6 && prop.fecha.startsWith("2024-02-10"), prop);
-assert("el precio a la vista: 0,0400 €/RNT", sb.ccTextoPrecioRnt(1000, 25000) === "1.000,00 € ÷ 25.000 RNT = 0,0400 €/RNT");
-const costes = sb.ccRepartoCompraRnt(lista, 1000, prop.total);
-assert("cada entrega, su parte (160 + 140 + 100 + 80 + 60 + 40 = 580 €; falta por llegar, sin resto)",
-  JSON.stringify(costes.map(([, c]) => c)) === "[160,140,100,80,60,40]", costes.map(([, c]) => c));
-cache.ajustes_usuario = sb.ccAjustesConDecisiones(cache.ajustes_usuario || {},
-  costes.map(([r, c]) => [r, "compra-rnt", { coste: c, pagado: 1000, total: prop.total }]), FECHA);
+console.log("== 2. «Compra externa…» en cada entrega: sin precio ==");
+for (const r of entregas) cache.ajustes_usuario = sb.ccAjustesConDecision(cache.ajustes_usuario || {}, r, "compra", null, FECHA);
+regs = clasificar();
+let compras = regs.filter(r => r.contrato === RNT && r.categoria === "COMPRA" && r.via_compra === "BANCARIA");
+assert("6 compras externas de RNT, fuera de «Por decidir» y sin coste", compras.length === 6 &&
+  compras.every(r => !r.revisar && r.coste_eur === null) && !sb.ccColaRevision(regs, ctx()).some(r => r.contrato === RNT && r.categoria === "COMPRA"),
+  compras.map(r => [r.revisar, r.coste_eur]));
+let filas = sb.cbFilas(regs, cache.ajustes_usuario, 100).filter(f => f.reg.contrato === RNT);
+assert("💶: las 6, «Falta el precio», sin 100 €/token y contadas como sin coste",
+  filas.length === 6 && filas.every(f => !(f.coste > 0) && f.supuesto) && filas.map(f => sb.cbHtmlFila(f, {})).every(h => h.includes("Falta el precio")));
+{
+  const copia = structuredClone(regs);
+  sb.__regs = copia; sb.__cache = cache;
+  sb.__op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
+  const colas = ev("motorFiscal(__regs, __cache, state.config, __op)");
+  assert("motor: sin lote de compra en el FIFO del RNT (no se inventa un precio)",
+    !(colas.get("RNT") || []).some(l => l.origen === "COMPRA_BANCO"), (colas.get("RNT") || []).map(l => l.origen));
+}
 
-console.log("== 3. «Regalo (airdrop)» ==");
+console.log("== 3. El precio en 💶: 1.000 € por la preventa de 25.000 RNT ==");
+const calc = sb.cbCalcularPrecio("25.000", "1.000");
+assert("la calculadora: 0,0400 € por token", sb.cbTextoCalculado(calc, "€") === "= 0,0400 € por token", calc);
+const ponerPrecio = rs => {
+  const cambios = rs.map(r => ({ clave: r.clave, valor: sb.ccLeerImporte(sb.cbTotalDePrecio(calc.precio, r.cantidad)) }));
+  cache.ajustes_usuario = sb.cbAjustesConCostes(cache.ajustes_usuario, cambios, regs, 100, FECHA);
+};
+ponerPrecio(compras);
+assert("cada entrega, lo suyo (160 + 140 + 100 + 80 + 60 + 40 = 580 €)",
+  JSON.stringify(compras.map(r => cache.ajustes_usuario[r.clave.toLowerCase()].coste_eur)) === "[160,140,100,80,60,40]");
+assert("«Ya decididos»: «Compra externa · 160,00 €»",
+  sb.ccResumenDecision(cache.ajustes_usuario[compras[0].clave.toLowerCase()], compras[0]) === "Compra externa · 160,00 €");
+
+console.log("== 4. «Regalo (airdrop)»: solo ese movimiento ==");
 regs = clasificar();
 const air = desde(regs, AIR);
-assert("el airdrop, solo uno desde su dirección: se guarda sin preguntar", air.length === 1 &&
-  sb.ccRntDesde(regs, air[0], cache.ajustes_usuario, ctx()).filter(x => x.estado === "libre").length === 1);
+assert("el airdrop, uno desde su dirección", air.length === 1);
 cache.ajustes_usuario = sb.ccAjustesConDecision(cache.ajustes_usuario, air[0], "regalo", null, FECHA);
 
-console.log("== 4. La última entrega llega después: viene con el precio ==");
+console.log("== 5. La última entrega llega después: se marca y lleva el mismo precio ==");
 const h7 = hash();
 cache.transacciones.wallet_tokens.push(tok(RNT, REP, W, 10500, "2025-03-01", h7));
 regs = clasificar();
 const nueva = desde(regs, REP).find(r => r.hash === h7);
-lista = sb.ccRntDesde(regs, nueva, cache.ajustes_usuario, ctx());
-const prop2 = sb.ccPropuestaCompraRnt(lista, cache, ctx().propias);
-assert("viene con el precio de las anteriores (1.000 € por 25.000)", prop2.de === "precio" && prop2.pagado === 1000 && prop2.total === 25000, prop2);
-const c2 = sb.ccRepartoCompraRnt(lista, prop2.pagado, prop2.total);
-assert("solo la nueva, y se lleva el resto (1.000 − 580 = 420 €)", c2.length === 1 && c2[0][0].hash === h7 && c2[0][1] === 420, c2);
+assert("la nueva sale a revisar", nueva && nueva.revisar && nueva.categoria === "REVISAR", nueva);
 const antes = JSON.stringify(cache.ajustes_usuario);
-cache.ajustes_usuario = sb.ccAjustesConDecisiones(cache.ajustes_usuario, c2.map(([r, c]) => [r, "compra-rnt", { coste: c, pagado: 1000, total: 25000 }]), FECHA);
+cache.ajustes_usuario = sb.ccAjustesConDecision(cache.ajustes_usuario, nueva, "compra", null, FECHA);
+regs = clasificar();
+ponerPrecio(regs.filter(r => r.hash === h7));
+assert("la nueva: 10.500 × 0,04 = 420 €", cache.ajustes_usuario[regs.find(r => r.hash === h7).clave.toLowerCase()].coste_eur === 420);
 assert("las anteriores no cambian", Object.entries(JSON.parse(antes)).every(([k, a]) => JSON.stringify(cache.ajustes_usuario[k]) === JSON.stringify(a)));
 
-console.log("== 5. Reclasificado, motor, 💶, 📊 e informe ==");
+console.log("== 6. Reclasificado, motor, 💶, 📊 e informe ==");
 regs = clasificar();
-const compras = regs.filter(r => r.contrato === RNT && r.categoria === "COMPRA" && r.via_compra === "BANCARIA");
-assert("7 compras bancarias de RNT, fuera de revisar y sin inmueble", compras.length === 7 && compras.every(r => !r.revisar && !r.inmueble));
+compras = regs.filter(r => r.contrato === RNT && r.categoria === "COMPRA" && r.via_compra === "BANCARIA");
+assert("7 compras externas de RNT, fuera de revisar y sin inmueble", compras.length === 7 && compras.every(r => !r.revisar && !r.inmueble));
 assert("suman lo pagado (1.000 €)", Math.abs(compras.reduce((s, r) => s + r.coste_eur, 0) - 1000) < 1e-9);
 const copia = structuredClone(regs);
 sb.__regs = copia; sb.__cache = cache;
@@ -130,10 +149,10 @@ assert("en la cola del RNT: 7 lotes de la compra a 0,04 € y el del regalo", lo
 const regalo = copia.find(r => r.contrato === RNT && r.subcategoria === "GPP_REGALO");
 assert("el airdrop: ganancia de la base general por su valor ese día (10 × 0,25 USD / 1,1 = 2,27 €)",
   regalo.codigo_concepto === "GP_BASE_GRAL" && Math.abs(regalo.gp_eur - 2.5 / 1.1) < 1e-9, regalo);
-const filas = sb.cbFilas(regs, cache.ajustes_usuario, 100).filter(f => f.reg.contrato === RNT);
+filas = sb.cbFilas(regs, cache.ajustes_usuario, 100).filter(f => f.reg.contrato === RNT);
 const html = filas.map(f => sb.cbHtmlFila(f, {})).join("");
-assert("💶: 7 filas «RNT» a 0,0400 € por token, sin «por defecto»", filas.length === 7 && (html.match(/<td>RNT<\/td>/g) || []).length === 7 &&
-  (html.match(/0,0400 €/g) || []).length === 7 && !html.includes("por defecto"));
+assert("💶: 7 filas «RNT» a 0,0400 € por token, sin «por defecto» ni «Falta el precio»", filas.length === 7 && (html.match(/<td>RNT<\/td>/g) || []).length === 7 &&
+  (html.match(/0,0400 €/g) || []).length === 7 && !html.includes("por defecto") && !html.includes("Falta el precio"));
 const dash = sb.dashDineroInvertido(regs, cache.tipos_bce);
 assert("📊: el dinero invertido no cuenta el RNT (solo el inmueble)", dash.eurBanco === 400 && dash.usdStable === 0, [dash.eurBanco, dash.usdStable]);
 const informes = sb.informesRentaAnuales(copia, sb.resumenFiscalAnual(copia), STATE.config, Object.assign({}, sb.__op, { cache, hoy: "2026-10-15" }));

@@ -147,8 +147,8 @@ assert("abierta (algo en el borrador): su casilla con «Guardar» y «Cancelar»
   (html.match(/class="cb-valor"/g) || []).length === 1 && /class="cb-valor" data-clave="b"/.test(html) &&
   /data-cb="guardar" data-clave="b">Guardar</.test(html) && /data-cb="cancelar" data-clave="b">Cancelar</.test(html) &&
   (html.match(/data-cb="editar"/g) || []).length === 1);
-assert("lo escrito se conserva y su € por token se recalcula (300 / 4 = 75,00 €)",
-  html.includes('value="300"') && html.includes("75,00 €"));
+assert("lo escrito se conserva y su € por token, en su casilla (300 / 4 = 75,00)",
+  html.includes('value="300"') && html.includes('class="cb-precio" data-clave="b" value="75,00"'));
 assert("todo en una fila: el inmueble en su columna, sin cabeceras de grupo",
   html.includes("<th>Inmueble / <br>Token</th>") && html.includes("<td>Fondo 1</td>") && !html.includes("cb-grupo") &&
   (html.match(/<tr class="cb-fila/g) || []).length === 3 && html.includes('<tr class="cb-fila abierta" data-clave="b">'));

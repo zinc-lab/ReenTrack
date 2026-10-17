@@ -73,9 +73,11 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   const sel = s => s + '[data-clave="' + clave + '"]';
   const vista = () => page.evaluate(c => {
     const fila = [...document.querySelectorAll("#cbCuerpo tr.cb-fila")].find(f => f.getAttribute("data-clave") === c);
-    const sub = document.querySelector("#cbCuerpo tr.cb-usdt");
+    // La subfila de «En USD…» (debajo de la fila abierta siempre está la de «Calcular…»).
+    const u = document.querySelector("#cbCuerpo .cb-usd"), sub = u && u.closest("tr");
+    const celda = fila.querySelector(".cb-por-token"), precio = celda.querySelector("input");
     return { usdt: !!fila.querySelector('[data-cb="usdt"]'), sub: !!sub, casilla: (fila.querySelector(".cb-valor") || {}).value ?? null,
-      porToken: fila.querySelector(".cb-por-token").textContent, guardar: (fila.querySelector('[data-cb="guardar"]') || {}).disabled ?? null,
+      porToken: precio ? precio.value + " €" : celda.textContent, guardar: (fila.querySelector('[data-cb="guardar"]') || {}).disabled ?? null,
       usd: sub ? sub.querySelector(".cb-usd").value : null, fecha: sub ? sub.querySelector(".cb-usd-fecha").value : null,
       texto: sub ? sub.querySelector(".cb-usd-eur").textContent : null,
       foco: document.activeElement && document.activeElement.className };

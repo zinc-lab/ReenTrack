@@ -54,7 +54,8 @@ module.exports = async function comprobarDu2i(page, assert, opts = {}) {
     return f ? {
       valor: inp ? inp.value : null, foco: !!inp && document.activeElement === inp,
       texto: (f.querySelector(".cb-fijo") || {}).textContent || null,
-      porToken: f.querySelector(".cb-por-token").textContent,
+      // Abierta, el € por token es una casilla (enlazada con lo pagado).
+      porToken: (c => c.querySelector("input") ? c.querySelector("input").value + " €" : c.textContent)(f.querySelector(".cb-por-token")),
       guardar: g ? g.disabled : null, editar: !!f.querySelector('[data-cb="editar"]'),
     } : null;
   }, clave);

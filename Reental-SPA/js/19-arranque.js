@@ -195,7 +195,7 @@ function arrDescuadres(registros) {
      walletMal, vaultMal,
      prep: {sincronizado, erroresSync, nuevas, total} | null, keyOk,
      vaultConfigurado, vaultEnCache, vault: {coincide, saldo_calculado_usdt,
-     saldo_onchain_usdt, diferencia_usdt} | null, fechasSinPrecio,
+     saldo_onchain_usdt, diferencia_usdt} | null, fechasSinPrecio, rntSinPrecio,
      candidatas, cacheOk, errorGuardar, hayDatos, copiaDias (null: ninguna),
      descuadres: {csvMasNuevo, sinArchivo} | null, csvFueraMasNuevo,
      cuadre: {filas, diferencias, sin_leer} | null (js/28) }.
@@ -300,6 +300,10 @@ function arrResumen(d) {
       " sin precio de RNT: ponlas a mano en 🔍 Revisión.",
       accion: { texto: "ir a las fechas", fn: "fechas" } });
   }
+  if (d.rntSinPrecio > 0) {
+    lineas.push({ tipo: "warn", texto: d.rntSinPrecio + (d.rntSinPrecio === 1 ? " compra" : " compras") +
+      " de RNT sin precio: ponlo en 🔍 Revisión.", accion: { texto: "ir a las compras", fn: "compras" } });
+  }
   if (d.clasificacion && d.clasificacion.inmuebles === 0) {
     lineas.push({ tipo: "warn", texto: "Ningún inmueble reconocido: casi todo queda a revisar. ¿Se descargaron tus transacciones?" });
   }
@@ -394,6 +398,9 @@ function arrDatosResumen() {
     direccionesCambiadas: cache ? direccionesCambiadas(cache, cfg.wallet, cfg.vault) : [],
     vault: (state.sync && state.sync.vault) || null,
     fechasSinPrecio, candidatas,
+    // Compras externas de RNT sin tu precio (no tienen el de por defecto).
+    rntSinPrecio: hayRegistros ? state.registros.filter(r => r.categoria === "COMPRA" && r.via_compra === "BANCARIA" &&
+      normalizarDireccion(r.contrato || "") === RNT && !(Number(r.coste_eur) > 0)).length : 0,
     errorGuardar: !!state.errorGuardar,
     hayDatos: arrHayDatos(),
     copiaDias: typeof exDiasUltimaCopia === "function" ? exDiasUltimaCopia(new Date()) : null,
@@ -1233,6 +1240,7 @@ function arrMontarEventos() {
         e.preventDefault();
         const que = acc.getAttribute("data-accion");
         if (que === "fechas" && typeof irAFechasSinPrecio === "function") irAFechasSinPrecio();
+        else if (que === "compras" && typeof cbIrACompras === "function") cbIrACompras();
         else if (que === "catalogo") arrIrAlCatalogo();
         else if (que === "revision") location.hash = "#revision";
         else if (que === "cuadre") cuadreIrAAvisos();

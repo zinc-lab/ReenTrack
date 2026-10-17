@@ -13,8 +13,8 @@
  *  D) Menú plegable: «« Plegar menú» → rail de iconos, aria-expanded,
  *     la tabla gana ancho, se recuerda al recargar y se deshace; en rail
  *     automático (≤ 1150 px) y en móvil el botón no aparece.
- *  E) Nota del coste: con una compra por transferencia bancaria dice
- *     «100 € por token» y que se ajusta en 🔍 Revisión (corta).
+ *  E) Nota del coste: con una compra externa de un inmueble dice
+ *     «100 € por token» y que se edita en 🔍 Revisión (corta).
  *  G) Íntegro y retención: un rendimiento reclamado con
  *     retención enseña su íntegro en «Importe (retención)» y
  *     la retención debajo y solo si la hay (nunca el neto); el panel da el
@@ -230,8 +230,8 @@ const rgb = hex => "rgb(" + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)
              nBanc: state.registros.filter(r => r.categoria === "COMPRA" && r.via_compra === "BANCARIA").length };
   });
   assert("hay una compra por transferencia bancaria en el libro sintético", nota.nBanc === 1, nota.nBanc);
-  assert("la nota se ve y dice «100 € por token» y dónde ajustarlo",
-    nota.visible && /100 € por token/.test(nota.texto) && /se ajusta en 🔍 Revisión/.test(nota.texto), nota);
+  assert("la nota se ve y dice «100 € por token» y dónde se edita",
+    nota.visible && /100 € por token/.test(nota.texto) && /se edita en 🔍 Revisión/.test(nota.texto), nota);
 
   /* ============ G) íntegro y retención ============ */
   console.log("\nG) Íntegro y retención");

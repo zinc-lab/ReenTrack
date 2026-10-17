@@ -1,19 +1,18 @@
-/* Arnés del RNT que te llega en 🔍 Revisión (P7 y P11), con datos
- * inventados: dos llegadas de un airdrop y tres entregas de una preventa
- * (con la reclamación de la wallet, que dice la asignación).
+/* Arnés del RNT que te llega en 🔍 Revisión y su precio en 💶, con datos
+ * inventados: dos llegadas de un airdrop y tres entregas de una preventa.
  *
  *  R1) la tarjeta de un RNT que llega ofrece «Regalo (airdrop)»,
- *      «Recompensa DeFi» y «Compra externa…», con su explicación.
- *  R2) «Regalo (airdrop)» pregunta por el otro de esa dirección; Esc
- *      cierra sin escribir; «Todos (2)» decide los dos (una escritura).
- *  R3) «Compra externa…»: la lista de las tres entregas, el total leído de
- *      la reclamación, el aviso de la coma, el precio al escribir y el
- *      total que no puede ser menos de lo llegado; «Guardar» las vuelve
- *      compras con su parte, y 💶 las enseña con «RNT» y 4 decimales.
- *  R4) una entrega posterior: viene con el precio puesto, completa el total
- *      con el resto y no cambia las anteriores.
- *  R5) deshacer una en «Ya decididos»; «Solo este» no toca a las demás;
- *      oscuro y 0 errores.
+ *      «Recompensa DeFi» y «Compra externa…», con su explicación, sin
+ *      ventana y ninguno sugerido.
+ *  R2) «Regalo (airdrop)» se guarda al momento, solo ese movimiento.
+ *  R3) «Compra externa…»: la compra sin precio, fuera de revisar; 💶 se
+ *      despliega con su fila abierta y el cursor en lo pagado; cerrada,
+ *      «Falta el precio» y «—»; «Ya decididos» y 🚀 lo dicen.
+ *  R4) las casillas enlazadas (lo pagado ↔ el precio por token) y
+ *      «Calcular el precio por token» (la coma, «Usar»); Intro guarda.
+ *  R5) otra entrega en USD: el precio en USD → lo pagado en USD y en €
+ *      (BCE); la calculadora, en USD.
+ *  R6) deshacer se lleva el precio; doble clic; oscuro y 0 errores.
  *
  * DATOS 100 % SINTÉTICOS. Ejecución (servidor en 8765 y NODE_PATH a
  * puppeteer-core):  node tests/navegador/verifyrnt1.js
@@ -64,6 +63,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     cache.transacciones.wallet_normales.push({ blockNumber: "103", timeStamp: ts(2024, 2, 12), hash: Hh(3), from: W, to: REP,
       value: "0", gasUsed: "0", gasPrice: "0", isError: "0", txreceipt_status: "1",
       input: "0x2e7ba6ef" + pal("7") + pal(W.slice(2)) + pal(BigInt(wei(20000)).toString(16)) + pal("80") + pal("0") });
+    cache.tipos_bce = { "2024-07-03": 1.1 };
     state.cache = cache;
     const cab = "dividend,date,reinvested,claimed,distributed,retained,reinvests,wallet";
     const fila = "\"Prueba Alcazaba 1#2026-T1\",2026-06-10,400,0,400,0,\"['0x" + "99".repeat(32) + "']\"," + W;
@@ -87,186 +87,150 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     sub: r.subcategoria, via: r.via_compra, coste: r.coste_eur, revisar: r.revisar }; }, n);
   const ajuste = n => page.evaluate(n => (state.cache.ajustes_usuario || {})[window.__clave(n)] || null, n);
   const escrituras = () => page.evaluate(() => window.__writes.length);
-  const pulsar = async (n, opcion) => { await page.click('#ccLista [data-accion="decidir"][data-clave="' + (await clave(n)) + '"][data-opcion="' + opcion + '"]'); await esperar(200); };
-  const dialogo = () => page.evaluate(() => {
-    const d = document.querySelector(".cc-dlg-overlay .cc-dlg-rnt");
-    if (!d) return null;
-    const v = s => (d.querySelector(s) || {}).value;
-    return { titulo: d.querySelector("h3").textContent, filas: d.querySelectorAll(".cc-rnt-tabla tbody tr").length,
-      fuera: d.querySelectorAll(".cc-rnt-fuera").length, pagado: v(".cc-rnt-pagado"), total: v(".cc-rnt-total"),
-      nota: (d.querySelector(".cc-rnt-nota") || {}).textContent, precio: (d.querySelector(".cc-rnt-precio") || {}).textContent,
-      error: d.querySelector(".cc-rnt-error").textContent, foco: document.activeElement && document.activeElement.className,
-      botones: [...d.querySelectorAll(".cc-dlg-foot button")].map(b => b.textContent) };
-  });
+  const pulsar = async (n, opcion) => { await page.click('#ccLista [data-accion="decidir"][data-clave="' + (await clave(n)) + '"][data-opcion="' + opcion + '"]'); await esperar(700); };
+  const sinToasts = () => page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach(t => t.remove()));
+  // La fila de 💶 de una compra: celdas, casillas, «Guardar» y lo de debajo.
+  const fila = n => page.evaluate(c => {
+    const f = document.querySelector('#cbCuerpo tr.cb-fila[data-clave="' + c + '"]');
+    if (!f) return null;
+    const v = s => (f.querySelector(s) || {}).value ?? null;
+    const sub = f.nextElementSibling && f.nextElementSibling.classList.contains("cb-usdt") ? f.nextElementSibling : null;
+    return { celdas: [...f.querySelectorAll("td")].map(td => td.textContent), pagado: v(".cb-valor"), precio: v(".cb-precio"),
+      usd: sub && (sub.querySelector(".cb-usd") || {}).value, usdPrecio: sub && (sub.querySelector(".cb-usd-precio") || {}).value,
+      calcular: !!(sub && sub.querySelector('[data-cb="calcular"]')), foco: document.activeElement && document.activeElement.className,
+      abierto: document.getElementById("cbCoste").open, aviso: document.getElementById("cbCosteAviso").textContent };
+  }, claves[n]);
+  const claves = {};
+  for (const n of [1, 2, 3, 4, 5, 7]) claves[n] = await clave(n);
   const escribir = async (sel, texto) => {
-    await page.$eval(".cc-dlg-rnt " + sel, el => { el.value = ""; el.focus(); });
-    await page.type(".cc-dlg-rnt " + sel, texto);
+    await page.$eval(sel, el => { el.value = ""; el.focus(); });
+    await page.type(sel, texto);
     await esperar(100);
   };
+  const calc = () => page.evaluate(() => {
+    const d = document.querySelector(".cc-dlg-overlay .cb-calc-dlg");
+    return d && { titulo: d.querySelector("h3").textContent, res: d.querySelector(".cb-calc-res").textContent,
+      usar: !d.querySelector(".cb-calc-usar").disabled, total: d.querySelector(".cb-calc-total").parentElement.textContent.trim(),
+      foco: document.activeElement && document.activeElement.className };
+  });
 
   /* ============ R1) botones ============ */
   const r1 = await reg(1);
   assert("R1 -> el RNT del airdrop llega a revisar", r1 && r1.cat === "REVISAR" && r1.revisar, r1);
-  const ops = await page.evaluate(async c => [...document.querySelectorAll('#ccLista [data-accion="decidir"][data-clave="' + c + '"]')]
-    .map(b => [b.getAttribute("data-opcion"), b.title, b.getAttribute("aria-haspopup")]), await clave(1));
-  assert("R1 -> «Regalo (airdrop)», «Recompensa DeFi» y «Compra externa…», con su explicación y como diálogo",
-    ["regalo", "recompensa", "compra-rnt"].every(o => ops.some(([id, t, h]) => id === o && t && h === "dialog")), ops);
+  const ops = await page.evaluate(c => [...document.querySelectorAll('#ccLista [data-accion="decidir"][data-clave="' + c + '"]')]
+    .map(b => [b.getAttribute("data-opcion"), b.title, b.getAttribute("aria-haspopup"), b.classList.contains("sugerida")]), claves[1]);
+  assert("R1 -> «Regalo (airdrop)», «Recompensa DeFi» y «Compra externa…», con su explicación, sin ventana y ninguno sugerido",
+    ["regalo", "recompensa", "compra"].every(o => ops.some(([id, t, h, s]) => id === o && t && h === null && !s)), ops);
 
-  /* ============ R2) regalo con el otro de esa dirección ============ */
+  /* ============ R2) regalo: solo ese movimiento ============ */
   const w0 = await escrituras();
   await pulsar(1, "regalo");
-  const d2 = await dialogo();
-  assert("R2 -> pregunta por el otro: la lista de los dos, «Solo este» y «Todos (2)» con el foco",
-    d2 && d2.titulo === "¿También el otro movimiento de RNT de esta dirección?" && d2.filas === 2 &&
-    d2.botones.join("|") === "Cancelar|Solo este|Todos (2)" && /cc-rnt-todos/.test(d2.foco), d2);
-  await page.keyboard.press("Escape");
-  await esperar(100);
-  assert("R2 -> Esc cierra sin escribir", !(await dialogo()) && (await escrituras()) === w0);
-  await pulsar(1, "regalo");
-  await page.click(".cc-rnt-todos");
-  await esperar(700);
   const [a1, a2] = [await reg(1), await reg(2)];
-  assert("R2 -> «Todos (2)»: los dos, regalo y fuera de revisar, con una sola escritura",
-    a1.cat === "REWARD" && a1.sub === "GPP_REGALO" && !a1.revisar && a2.sub === "GPP_REGALO" && (await escrituras()) === w0 + 1, [a1, a2]);
-  assert("R2 -> el diálogo se cierra", !(await dialogo()));
+  assert("R2 -> «Regalo (airdrop)» se guarda al momento y solo ese (el otro de la dirección sigue a revisar), una escritura",
+    a1.sub === "GPP_REGALO" && !a1.revisar && a2.cat === "REVISAR" && a2.revisar && (await escrituras()) === w0 + 1 &&
+    !(await page.$(".cc-dlg-overlay")), [a1, a2]);
 
-  /* ============ R3) compra bancaria de la preventa ============ */
-  await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach(t => t.remove()));
+  /* ============ R3) compra externa: sin precio, abre 💶 en su fila ============ */
+  await sinToasts();
   const w1 = await escrituras();
-  await pulsar(4, "compra-rnt");
-  const d3 = await dialogo();
-  assert("R3 -> la lista de las tres entregas y el total leído de la reclamación (20.000)",
-    d3 && d3.titulo === "Compra externa de RNT" && d3.filas === 3 && d3.fuera === 0 && d3.total === "20.000" && d3.pagado === "" &&
-    d3.nota.includes("leídos de tu reclamación del 12/02/2024") && /cc-rnt-pagado/.test(d3.foco), d3);
-  await escribir(".cc-rnt-pagado", "1200.5");
-  await page.keyboard.press("Enter");
-  await esperar(150);
-  const d3b = await dialogo();
-  assert("R3 -> «1200.5» no se guarda: pide la coma", d3b && d3b.error === "Usa la coma para los decimales (1.234,56)." &&
-    (await escrituras()) === w1, d3b);
-  await escribir(".cc-rnt-pagado", "1.200");
-  const d3c = await dialogo();
-  assert("R3 -> al escribir, el precio: 1.200,00 € ÷ 20.000 RNT = 0,0600 €/RNT (y el error se va)",
-    d3c.precio === "1.200,00 € ÷ 20.000 RNT = 0,0600 €/RNT" && d3c.error === "", d3c);
-  await escribir(".cc-rnt-total", "10.000");
-  await page.click(".cc-rnt-guardar");
-  await esperar(150);
-  const d3d = await dialogo();
-  assert("R3 -> el total no puede ser menos de lo llegado", d3d && d3d.error.startsWith("Ya te han llegado 11.000 RNT") &&
-    (await escrituras()) === w1, d3d);
-  await page.screenshot({ path: path.join(OUT, "cap_rnt1_compra.png") });
-  await escribir(".cc-rnt-total", "20.000");
-  await page.click(".cc-rnt-guardar");
-  await esperar(700);
-  const compras = [await reg(3), await reg(4), await reg(5)];
-  assert("R3 -> las tres, compras bancarias con su parte (300, 240 y 120 €), con una escritura",
-    compras.every(c => c.cat === "COMPRA" && c.via === "BANCARIA" && !c.revisar) &&
-    JSON.stringify(compras.map(c => c.coste)) === "[300,240,120]" && (await escrituras()) === w1 + 1, compras);
-  assert("R3 -> la nota guarda lo pagado y el total", (await ajuste(3)).nota.endsWith("compra de RNT: 1.200,00 EUR por 20.000 RNT"),
-    await ajuste(3));
-  const cb = await page.evaluate(() => {
-    document.getElementById("cbCoste").open = true;
-    return [...document.querySelectorAll("#cbCuerpo tr.cb-fila")].map(f => [...f.querySelectorAll("td")].map(td => td.textContent));
-  });
-  assert("R3 -> 💶: las tres con «RNT», 0,0600 € por token y sin «por defecto»",
-    cb.length === 3 && cb.every(f => f[1] === "RNT" && f[5] === "0,0600 €" && !f[4].includes("por defecto")), cb);
-  /* 💶: un punto que no es de miles pide la coma (y no guarda). */
-  await page.evaluate(() => document.querySelectorAll("#toasts .toast").forEach(t => t.remove()));
-  const w3 = await escrituras();
-  await page.click('#cbCuerpo [data-cb="editar"][data-clave="' + (await clave(3)) + '"]');
-  await esperar(100);
-  await page.$eval('#cbCuerpo .cb-valor', el => { el.value = ""; el.focus(); });
-  await page.type('#cbCuerpo .cb-valor', "300.5");
-  await page.keyboard.press("Enter");
-  await esperar(300);
-  const aviso3 = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent).join(" | "));
-  assert("R3 -> 💶: «300.5» pide la coma y no guarda", aviso3.includes("Usa la coma para los decimales (1.234,56).") &&
-    (await escrituras()) === w3 && (await ajuste(3)).coste_eur === 300, aviso3);
+  await pulsar(3, "compra");
+  const r3 = await reg(3), f3 = await fila(3);
+  assert("R3 -> «Compra externa…»: compra sin coste, fuera de revisar, una escritura", r3.cat === "COMPRA" && r3.via === "BANCARIA" &&
+    !r3.revisar && r3.coste === null && (await escrituras()) === w1 + 1 && (await reg(4)).revisar, r3);
+  assert("R3 -> 💶 desplegado en su fila abierta, la casilla de lo pagado vacía y con el cursor; debajo, «Calcular…»",
+    f3 && f3.abierto && f3.pagado === "" && f3.precio === "" && /cb-valor/.test(f3.foco) && f3.calcular && f3.celdas[1] === "RNT" &&
+    f3.aviso === "⚠ 1 sin coste", f3);
   await page.keyboard.press("Escape");
   await esperar(100);
+  const f3c = await fila(3);
+  assert("R3 -> cerrada: «Falta el precio» y «—» (sin 100 €/token)", f3c.celdas[4] === "Falta el precio" && f3c.celdas[5] === "—", f3c);
+  const resumen = await page.evaluate(c => { document.getElementById("ccResueltos").open = true;
+    const d = document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + c + '"] b'); return d && d.textContent; }, claves[3]);
+  assert("R3 -> «Ya decididos»: «Compra externa · falta el precio»", resumen === "Compra externa · falta el precio", resumen);
+  assert("R3 -> 🚀: 1 compra de RNT sin precio", (await page.evaluate(() => arrDatosResumen().rntSinPrecio)) === 1);
 
-  /* ============ R4) una entrega posterior: con el precio puesto ============ */
-  await page.evaluate(() => {
-    const t = state.cache.transacciones.wallet_tokens[4];
-    state.cache.transacciones.wallet_tokens.push(Object.assign({}, t, { hash: "0x0006" + "ab".repeat(30), blockNumber: "106",
-      timeStamp: String(Math.floor(Date.UTC(2025, 4, 14, 9) / 1000)), value: (9000n * 10n ** 18n).toString() }));
-    ejecutarClasificacion();
-  });
-  await esperar(500);
-  const antes = JSON.stringify([await ajuste(3), await ajuste(4), await ajuste(5)]);
-  await pulsar(6, "compra-rnt");
-  const d4 = await dialogo();
-  assert("R4 -> viene con el precio de las anteriores (1.200,00 € por 20.000 RNT) y las cuatro en la lista",
-    d4 && d4.pagado === "1.200,00" && d4.total === "20.000" && d4.nota === "El de tus compras anteriores desde esta dirección." &&
-    d4.filas === 4 && d4.precio === "1.200,00 € ÷ 20.000 RNT = 0,0600 €/RNT", d4);
-  await page.click(".cc-rnt-guardar");
+  /* ============ R4) la calculadora y las casillas enlazadas ============ */
+  await page.click('#cbCuerpo [data-cb="editar"][data-clave="' + claves[3] + '"]');
+  await esperar(100);
+  await escribir("#cbCuerpo .cb-valor", "300");
+  assert("R4 -> lo pagado (300 €) → 0,0600 € por token al momento", (await fila(3)).precio === "0,0600", await fila(3));
+  await escribir("#cbCuerpo .cb-precio", "0,05");
+  assert("R4 -> el precio (0,05) → lo pagado (250,00 €)", (await fila(3)).pagado === "250,00", await fila(3));
+  await page.click('#cbCuerpo [data-cb="calcular"][data-clave="' + claves[3] + '"]');
+  await esperar(150);
+  const c0 = await calc();
+  assert("R4 -> «Calcular el precio por token»: en €, «—», «Usar» desactivado y el cursor en los tokens",
+    c0 && c0.titulo === "Calcular el precio por token" && c0.res === "—" && !c0.usar && c0.total.startsWith("Pagaste en total (€)") &&
+    /cb-calc-tokens/.test(c0.foco), c0);
+  await escribir(".cb-calc-tokens", "20.000");
+  await escribir(".cb-calc-total", "1200.5");
+  assert("R4 -> «1200.5» pide la coma", (await calc()).res === "Usa la coma para los decimales (1.234,56)." && !(await calc()).usar, await calc());
+  await escribir(".cb-calc-total", "1.200");
+  assert("R4 -> «20.000» y «1.200»: = 0,0600 € por token", (await calc()).res === "= 0,0600 € por token" && (await calc()).usar, await calc());
+  await page.screenshot({ path: path.join(OUT, "cap_rnt1_calcular.png") });
+  await page.click(".cb-calc-usar");
+  await esperar(150);
+  const f4 = await fila(3);
+  assert("R4 -> «Usar»: el precio en su casilla y lo pagado recalculado (5.000 × 0,06 = 300,00 €), la ventana cerrada",
+    !(await calc()) && f4.precio === "0,0600" && f4.pagado === "300,00" && /cb-precio/.test(f4.foco), f4);
+  const w4 = await escrituras();
+  await page.keyboard.press("Enter");
   await esperar(700);
-  const r6 = await reg(6);
-  assert("R4 -> la nueva se lleva el resto (1.200 − 660 = 540 €) y las anteriores no cambian",
-    r6.cat === "COMPRA" && r6.coste === 540 && JSON.stringify([await ajuste(3), await ajuste(4), await ajuste(5)]) === antes, r6);
+  assert("R4 -> Intro guarda: 300 € en la decisión (sigue siendo una decisión de 🔍)",
+    (await ajuste(3)).coste_eur === 300 && (await ajuste(3)).categoria === "COMPRA" && (await reg(3)).coste === 300 &&
+    (await escrituras()) === w4 + 1, await ajuste(3));
+  const f4c = await fila(3);
+  assert("R4 -> 💶: 300,00 € y 0,0600 € por token; sin «⚠ sin coste»", f4c.celdas[4] === "300,00 €" && f4c.celdas[5] === "0,0600 €" &&
+    f4c.aviso === "", f4c);
+  assert("R4 -> 🚀: ninguna compra de RNT sin precio", (await page.evaluate(() => arrDatosResumen().rntSinPrecio)) === 0);
 
-  /* ============ R5) deshacer, oscuro y errores ============ */
-  await page.evaluate(() => { document.getElementById("ccResueltos").open = true; });
-  await page.click('#ccListaResueltos [data-accion="deshacer-decision"][data-clave="' + (await clave(2)) + '"]');
-  await esperar(600);
-  const r2b = await reg(2);
-  assert("R5 -> deshacer el segundo regalo lo devuelve a revisar (el primero sigue)", r2b.cat === "REVISAR" && r2b.revisar &&
-    (await reg(1)).sub === "GPP_REGALO", r2b);
-  await pulsar(2, "recompensa");
-  const d5 = await dialogo();
-  assert("R5 -> el regalo ya decidido cuenta como el otro (se sustituiría)", d5 && d5.filas === 2 && d5.botones.includes("Todos (2)"), d5);
-  await page.click(".cc-rnt-solo");
-  await esperar(600);
-  assert("R5 -> «Solo este»: recompensa en el segundo y el regalo del primero no se toca",
-    !(await dialogo()) && (await reg(2)).sub === "RCM_REWARD" && (await reg(1)).sub === "GPP_REGALO", [await reg(1), await reg(2)]);
-  /* ============ R6) auditoría: un diálogo a la vez y sin decidir sobre lo cambiado (A3) ============ */
-  await page.evaluate(() => { document.getElementById("ccResueltos").open = true; });
-  await page.click('#ccListaResueltos [data-accion="deshacer-decision"][data-clave="' + (await clave(2)) + '"]');
-  await esperar(600);
-  await pulsar(2, "regalo");
-  const dos = await page.evaluate(async c => {
-    ccPulsarDecision(c, "compra-rnt", null); // como un Intro en otro botón con el diálogo abierto
-    await new Promise(r => setTimeout(r, 100));
-    return document.querySelectorAll(".cc-dlg-overlay").length;
-  }, await clave(2));
-  assert("R6 -> A3: con un diálogo abierto no se abre otro", dos === 1, dos);
-  await page.evaluate(async c => { await ccDeshacerDecision(c); }, await clave(1)); // cambia algo por debajo
-  await esperar(400);
-  const w6 = await escrituras();
-  await page.click(".cc-rnt-todos");
-  await esperar(300);
-  const d6 = await dialogo();
-  assert("R6 -> A3: si la lista cambió, no guarda y lo dice", d6 && d6.error === "Ha cambiado algo: ciérralo y vuelve a abrirlo." &&
-    (await escrituras()) === w6, d6);
+  /* ============ R5) otra entrega, en USD ============ */
+  await pulsar(4, "compra");
+  await page.click('#cbCuerpo [data-cb="usdt"][data-clave="' + claves[4] + '"]');
+  await esperar(150);
+  await page.$eval('#cbCuerpo .cb-usd-fecha', el => { el.value = "2024-07-03"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+  await escribir("#cbCuerpo .cb-usd-precio", "0,066");
+  const f5 = await fila(4);
+  assert("R5 -> «En USD…»: 0,066 USD por token → 264,00 USD y los € con el BCE (1,1 → 240,00 €)",
+    f5.usd === "264,00" && f5.pagado === "240,00", f5);
+  await page.click('#cbCuerpo [data-cb="calcular"][data-clave="' + claves[4] + '"]');
+  await esperar(150);
+  assert("R5 -> la calculadora, en USD", (await calc()).total.startsWith("Pagaste en total (USD)"), await calc());
   await page.keyboard.press("Escape");
   await esperar(100);
-  /* A10: doble clic con un guardado lento, en un RNT que llega solo (se guarda sin diálogo). */
-  await page.evaluate(() => { document.querySelectorAll("#toasts .toast").forEach(t => t.remove());
-    const antes = window.escribirArchivoNavegador;
+  await page.focus("#cbCuerpo .cb-usd-precio");
+  await page.keyboard.press("Enter");
+  await esperar(700);
+  const aj4 = await ajuste(4);
+  assert("R5 -> guardada con lo pagado en USD", aj4.coste_eur === 240 && aj4.pagado_usd === 264 && aj4.fecha_pago_usd === "2024-07-03", aj4);
+
+  /* ============ R6) deshacer, oscuro y errores ============ */
+  await page.evaluate(() => { document.getElementById("ccResueltos").open = true; });
+  await page.click('#ccListaResueltos [data-accion="deshacer-decision"][data-clave="' + claves[3] + '"]');
+  await esperar(700);
+  const r6 = await reg(3);
+  assert("R6 -> deshacer la compra: vuelve a revisar y se va su precio", r6.cat === "REVISAR" && r6.revisar && (await ajuste(3)) === null &&
+    !(await fila(3)), r6);
+  /* Doble clic con un guardado lento: se guarda una vez. */
+  await sinToasts();
+  await page.evaluate(() => { const antes = window.escribirArchivoNavegador;
     window.escribirArchivoNavegador = async c => { await new Promise(r => setTimeout(r, 250)); return antes(c); }; });
-  const w10 = await escrituras();
-  await page.evaluate(c => { const b = document.querySelector('#ccLista [data-accion="decidir"][data-clave="' + c + '"][data-opcion="regalo"]'); b.click(); b.click(); }, await clave(7));
+  const w6 = await escrituras();
+  await page.evaluate(c => { const b = document.querySelector('#ccLista [data-accion="decidir"][data-clave="' + c + '"][data-opcion="regalo"]'); b.click(); b.click(); }, claves[7]);
   await esperar(900);
-  const avisos10 = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent));
-  assert("R6 -> A10: doble clic: se guarda una vez y sin el aviso rojo falso", (await escrituras()) === w10 + 1 &&
-    (await reg(7)).sub === "GPP_REGALO" && !avisos10.some(t => t.includes("Ya tiene un ajuste manual")), avisos10);
-  /* A11: cambiar de pestaña cierra el diálogo. */
-  await pulsar(1, "regalo");
-  const abierto11 = !!(await dialogo());
-  await page.evaluate(() => { location.hash = "#dashboard"; });
-  await esperar(300);
-  const tras11 = await page.evaluate(() => document.querySelectorAll(".cc-dlg-overlay").length);
-  await page.evaluate(() => { location.hash = "#revision"; });
-  await esperar(400);
-  assert("R6 -> A11: el diálogo se cierra al cambiar de pestaña", abierto11 && tras11 === 0, [abierto11, tras11]);
+  const avisos6 = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent));
+  assert("R6 -> doble clic: se guarda una vez y sin el aviso rojo falso", (await escrituras()) === w6 + 1 &&
+    (await reg(7)).sub === "GPP_REGALO" && !avisos6.some(t => t.includes("Ya tiene un ajuste manual")), avisos6);
 
   await page.evaluate(() => document.body.classList.add("dark"));
-  await page.evaluate(() => { const r = state.registros.find(x => x.clave === window.__clave(5)); ccAbrirDialogoRnt(r, "compra-rnt", null, ccContextoSesion(state.registros)); });
-  await esperar(200);
-  const oscuro = await page.evaluate(() => getComputedStyle(document.querySelector(".cc-dlg-rnt")).backgroundColor);
-  assert("R5 -> en oscuro, el diálogo con el color del tema", oscuro !== "rgb(255, 255, 255)", oscuro);
+  await page.click('#cbCuerpo [data-cb="editar"][data-clave="' + claves[4] + '"]');
+  await esperar(100);
+  await page.click('#cbCuerpo [data-cb="calcular"][data-clave="' + claves[4] + '"]');
+  await esperar(150);
+  const oscuro = await page.evaluate(() => getComputedStyle(document.querySelector(".cb-calc-dlg")).backgroundColor);
+  assert("R6 -> en oscuro, la calculadora con el color del tema", oscuro !== "rgb(255, 255, 255)", oscuro);
   await page.screenshot({ path: path.join(OUT, "cap_rnt1_oscuro.png") });
-  assert("R5 -> 0 errores de consola", errores.length === 0, errores.slice(0, 3));
+  assert("R6 -> 0 errores de consola", errores.length === 0, errores.slice(0, 3));
 
   await browser.close();
   console.log("\n" + ok + "/" + (ok + fallos) + " comprobaciones OK" + (fallos ? " -> " + fallos + " FALLOS" : " -> TODO VERDE"));

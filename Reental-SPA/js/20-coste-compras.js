@@ -4,14 +4,17 @@
    (n)» en 🔍 Revisión, cerrado por defecto.
 
    Qué hace:
-   - Lista las compras bancarias del libro (COMPRA con via_compra
+   - Lista las compras externas del libro (COMPRA con via_compra
      BANCARIA), una por fila y las más recientes primero, como en
-     📒 Transacciones: fecha, inmueble,
-     tx, tokens, lo pagado en € y el € por token.
+     📒 Transacciones: fecha, inmueble o token,
+     tx, tokens, lo pagado en € y el € por token. Un RNT sin tu precio
+     no lleva el de por defecto: «Falta el precio».
    - Lo pagado se ve como texto, con «✏️ Editar» (nada
-     editable a la vista hasta que lo pides). Al pulsarlo se abre la
-     casilla, con «Guardar» y «Cancelar»; el € por token se recalcula al
-     escribir. Intro guarda y Esc cancela.
+     editable a la vista hasta que lo pides). Al pulsarlo se abren dos
+     casillas enlazadas, lo pagado y el € por token (escribes en una y la
+     otra cambia), con «Guardar» y «Cancelar», y debajo «Calcular el
+     precio por token» (lo pagado en total ÷ los tokens comprados, para
+     una compra que llega en varias entregas). Intro guarda y Esc cancela.
    - «Guardar» guarda la compra de su fila: el coste se corrige POR
      COMPRA, no por inmueble. Cada
      coste es un ajuste en ajustes_usuario { coste_eur, nota } con la marca
@@ -26,8 +29,9 @@
      revisar por ti.
    - Un ajuste de otro origen (p. ej. uno escrito a mano) nunca
      se pisa: su coste se enseña sin «Editar», con una ⓘ.
-   - «En USD…» (P15), con la casilla abierta: lo pagado en USD y el día
-     del pago (una compra pagada en USDT a Reental y entregada después);
+   - «En USD…» (P15), con la casilla abierta: lo pagado en USD (y su
+     precio por token, enlazados) y el día del pago (una compra pagada en
+     USDT a Reental y entregada después);
      al escribir, la casilla de € se rellena con el BCE de ese día. Al
      guardar, el ajuste lleva también pagado_usd y fecha_pago_usd: la fila
      dice «500,00 $» con los € al lado, y 📊 la cuenta en $. Guardar solo €
@@ -99,14 +103,18 @@ function cbSupuesto(reg, ajustes) {
 }
 
 /* El coste que se enseña: el del ajuste si lo tiene; si no, el que pone
-   el motor (tokens × precio, el € por token por defecto) o, en una de otro
-   origen o sin precio, el del registro. Si guardar no pudo
+   el motor (tokens × precio, el € por token por defecto; el RNT no tiene)
+   o, en una de otro origen o sin precio, el del registro (0 si no lo
+   tiene: «Falta el precio»). Si guardar no pudo
    reclasificar, el registro aún tiene el viejo. */
+function cbEsRnt(reg) {
+  return normalizarDireccion((reg && reg.contrato) || "") === RNT;
+}
 function cbCosteVisto(reg, ajustes, precio) {
   const h = ccBuscarAjuste(ajustes, reg && reg.clave);
   const c = h && pdEsObjeto(h.ajuste) ? Number(h.ajuste.coste_eur) : NaN;
   if (ccEsNumeroPositivo(c)) return c;
-  const defecto = Number(reg.cantidad) * Number(precio);
+  const defecto = cbEsRnt(reg) ? NaN : Number(reg.cantidad) * Number(precio);
   return ccEsNumeroPositivo(defecto) && cbEstadoCoste(reg, ajustes) !== "ajeno" ? defecto : Number(reg.coste_eur);
 }
 
@@ -183,6 +191,7 @@ function cbAjustesConCostes(ajustes, cambios, registros, precio, fechaISO) {
    de ese día (o el último anterior, como el motor): { eur, fecha } (la del
    tipo usado) o { error } (vacío mientras no hay nada escrito). */
 const CB_SIN_TIPO = "Sin tipo del BCE para ese día.";
+const CB_SIN_TIPO_HOY = "El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.";
 let cbEsperaBce = null;
 function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   const t = String(texto || "").trim();
@@ -190,6 +199,7 @@ function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   const usd = cbRedondearCentimos(ccLeerImporte(t)); // a céntimos: lo mismo que se guarda
   if (!ccEsNumeroPositivo(usd)) return { error: ccAvisoImporte(t) };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""))) return { error: "Pon el día del pago." };
+  if (fecha === hoyEspana() && !ccEsNumeroPositivo(Number((tiposBce || {})[fecha]))) return { error: CB_SIN_TIPO_HOY };
   // Pasado lo descargado (un pago de ayer o de hoy), el último tipo
   // guardado no vale: el del día aún no se ha pedido (o no está publicado).
   const cob = cache && cache.bce_cobertura;
@@ -241,7 +251,35 @@ function cbTextoEurDeUsd(calc) {
    con 4 decimales, como el RNT: «0,0300 €»), o «—». */
 function cbTextoPorToken(coste, tokens) {
   const c = Number(coste), t = Number(tokens);
-  return ccEsNumeroPositivo(c) && ccEsNumeroPositivo(t) ? numEs(c / t, ccDecimalesPrecio(c / t)) + " €" : "—";
+  return ccEsNumeroPositivo(c) && ccEsNumeroPositivo(t) ? cbNumPrecio(c / t) + " €" : "—";
+}
+/* Un precio por token a la española, con sus decimales (ccDecimalesPrecio). */
+function cbNumPrecio(p) {
+  return numEs(p, ccDecimalesPrecio(p));
+}
+/* Las casillas enlazadas: lo pagado → el precio por token («» si no vale)
+   y el precio → lo pagado (a céntimos, «» si no vale). */
+function cbPrecioDeTotal(total, tokens) {
+  const c = Number(total), t = Number(tokens);
+  return ccEsNumeroPositivo(c) && ccEsNumeroPositivo(t) ? cbNumPrecio(c / t) : "";
+}
+function cbTotalDePrecio(precio, tokens) {
+  const v = cbRedondearCentimos(Number(precio) * Number(tokens));
+  return ccEsNumeroPositivo(v) ? numEs(v, 2) : "";
+}
+/* «Calcular el precio por token»: lo pagado en total ÷ los tokens de la
+   compra entera. { precio } o { aviso } («» mientras no vale; el de la
+   coma si un número lleva un punto que no es de miles). */
+function cbCalcularPrecio(tokensTxt, totalTxt) {
+  const t = cbValorEscrito(tokensTxt), c = cbValorEscrito(totalTxt);
+  if (ccEsNumeroPositivo(t) && ccEsNumeroPositivo(c)) return { precio: c / t };
+  const coma = [tokensTxt, totalTxt].some(x => String(x).trim() && ccAvisoImporte(String(x)) === CC_AVISO_COMA);
+  return { aviso: coma ? CC_AVISO_COMA : "" };
+}
+/* «= 0,0300 € por token» / «= 0,0300 USD por token», el aviso o «—». */
+function cbTextoCalculado(r, moneda) {
+  if (r && ccEsNumeroPositivo(r.precio)) return "= " + cbNumPrecio(r.precio) + " " + moneda + " por token";
+  return (r && r.aviso) || "—";
 }
 
 /* ----------------------------- HTML (puro) ----------------------------- */
@@ -258,14 +296,16 @@ function cbHtmlFila(f, borrador) {
   const abierta = f.estado !== "ajeno" && cbEscrito(borrador, r.clave);
   const coste = f.coste;
   const guardado = numEs(coste, 2), fecha = ccFechaVer(r);
+  const conPrecio = ccEsNumeroPositivo(coste);
   // El inmueble o, en el RNT (P11), su símbolo (sin rellenar `inmueble`:
   // 📊 lo contaría como uno).
   const nombre = txActivo(r);
   const texto = abierta ? String(borrador[r.clave]) : guardado;
   const valor = abierta ? cbValorEscrito(texto) : coste;
-  let pagado, acciones = "";
+  let pagado, acciones = "", porToken = ccEsc(cbTextoPorToken(valor, r.cantidad));
   // Pagada en USD: «500,00 $» y, al lado y más pequeño, sus €.
-  const fijo = f.usd ? '<span class="cb-fijo">' + ccEsc(numEs(f.usd.importe, 2)) + ' $</span> <span class="cb-en-eur">' + ccEsc(guardado) + " €</span>"
+  const fijo = !conPrecio ? '<span class="cb-falta">Falta el precio</span>'
+    : f.usd ? '<span class="cb-fijo">' + ccEsc(numEs(f.usd.importe, 2)) + ' $</span> <span class="cb-en-eur">' + ccEsc(guardado) + " €</span>"
     : '<span class="cb-fijo">' + ccEsc(guardado) + " €</span>";
   if (f.estado === "ajeno") {
     pagado = fijo + " " + ccInfo(CB_AYUDA_AJENO);
@@ -274,6 +314,7 @@ function cbHtmlFila(f, borrador) {
     const cambia = !cbMismoImporte(valor, coste) || !cbMismoUsd(cbUsdEscrito(f.usdt, f.usdt && f.usdt.calc, valor), f.usd);
     pagado = '<input type="text" inputmode="decimal" class="cb-valor" data-clave="' + ccEsc(r.clave) + '" value="' +
       ccEsc(texto) + '" aria-label="' + ccEsc("Pagado en € · " + nombre + " · " + (fecha || "")) + '"> €';
+    porToken = cbHtmlCasillaPrecio("cb-precio", r.clave, cbPrecioDeTotal(valor, r.cantidad), "€ por token") + " €";
     acciones = cbBoton("guardar", r.clave, "Guardar", !cambia && !f.supuesto) + cbBoton("cancelar", r.clave, "Cancelar") +
       cbBoton("usdt", r.clave, "En USD…", false, "Pagado en USD, USDT o USDC.");
   } else {
@@ -287,19 +328,38 @@ function cbHtmlFila(f, borrador) {
     "<td>" + ccEnlaceHash(r.hash) + "</td>" +
     '<td class="num">' + ccEsc(ccCantidad(Number(r.cantidad))) + "</td>" +
     '<td class="num">' + pagado + "</td>" +
-    '<td class="num cb-por-token">' + ccEsc(cbTextoPorToken(valor, r.cantidad)) + "</td>" +
+    '<td class="num cb-por-token">' + porToken + "</td>" +
     '<td class="cb-acciones">' + acciones + "</td></tr>" +
-    (abierta && f.usdt ? cbHtmlUsdt(r, f.usdt) : "");
+    (abierta ? cbHtmlDebajo(r, f.usdt) : "");
 }
-/* Debajo de la fila abierta: «Pagado [ ] USD el [día]  = … € (BCE del …)».
-   u = { usd, fecha, calc }. */
-function cbHtmlUsdt(r, u) {
+function cbHtmlCasillaPrecio(clase, clave, valor, etiqueta) {
+  return '<input type="text" inputmode="decimal" class="' + clase + '" data-clave="' + ccEsc(clave) + '" value="' +
+    ccEsc(valor) + '" aria-label="' + ccEsc(etiqueta) + '">';
+}
+/* Debajo de la fila abierta, siempre: con «En USD…», «Pagado [ ] USD
+   [ ] USD por token el [día]  = … € (BCE del …)»; a la derecha, «Calcular
+   el precio por token». u = { usd, fecha, calc } o nada. */
+function cbHtmlDebajo(r, u) {
   const c = ccEsc(r.clave);
-  return '<tr class="cb-usdt" data-clave="' + c + '"><td colspan="7">' +
-    '<label>Pagado <input type="text" inputmode="decimal" class="cb-usd" data-clave="' + c + '" value="' + ccEsc(u.usd || "") +
-    '" aria-label="Pagado en USD"> USD</label> <label>el <input type="date" class="cb-usd-fecha" data-clave="' + c + '" value="' +
+  const usd = !u ? "" : '<label>Pagado <input type="text" inputmode="decimal" class="cb-usd" data-clave="' + c + '" value="' +
+    ccEsc(u.usd || "") + '" aria-label="Pagado en USD"> USD</label> <label>' +
+    cbHtmlCasillaPrecio("cb-usd-precio", r.clave, cbPrecioDeTotal(cbValorEscrito(u.usd || ""), r.cantidad), "USD por token") +
+    ' USD por token</label> <label>el <input type="date" class="cb-usd-fecha" data-clave="' + c + '" value="' +
     ccEsc(u.fecha || "") + '" aria-label="Día del pago"></label> <span class="cb-usd-eur" aria-live="polite">' +
-    ccEsc(cbTextoEurDeUsd(u.calc)) + "</span></td></tr>";
+    ccEsc(cbTextoEurDeUsd(u.calc)) + "</span>";
+  return '<tr class="cb-usdt" data-clave="' + c + '"><td colspan="7"><div class="cb-debajo">' + usd +
+    '<button type="button" class="cb-calcular" data-cb="calcular" data-clave="' + c + '">Calcular el precio por token</button>' +
+    "</div></td></tr>";
+}
+/* La ventana de «Calcular el precio por token», en la moneda de la fila. */
+function cbHtmlCalculadora(moneda) {
+  return '<div class="cc-dlg cb-calc-dlg"><div class="cc-dlg-head"><h3>Calcular el precio por token</h3>' +
+    '<button type="button" class="cc-dlg-cerrar" aria-label="Cerrar">✖</button></div>' +
+    '<div class="cb-calc-campos"><label>Tokens que compraste <input type="text" inputmode="decimal" class="cb-calc-tokens"></label>' +
+    '<label>Pagaste en total (' + ccEsc(moneda) + ') <input type="text" inputmode="decimal" class="cb-calc-total"></label></div>' +
+    '<p class="cb-calc-res" aria-live="polite">—</p>' +
+    '<div class="cc-dlg-foot"><div class="row"><button type="button" class="cc-dlg-cancelar">Cancelar</button>' +
+    '<button type="button" class="primary cb-calc-usar" disabled>Usar</button></div></div></div>';
 }
 
 /* El contenido del plegable. Lo de «100 €/token por defecto» lo dice la
@@ -369,13 +429,67 @@ function cbCasilla(clave) {
 function cbAbrir(clave) {
   const reg = ccRegistrosSesion().find(r => r.clave === clave);
   if (!reg) return;
-  cbBorrador[clave] = numEs(cbCosteVisto(reg, cbAjustesSesion(), cbPrecioSesion()), 2);
+  const coste = cbCosteVisto(reg, cbAjustesSesion(), cbPrecioSesion());
+  cbBorrador[clave] = ccEsNumeroPositivo(coste) ? numEs(coste, 2) : "";
   // Pagada en USD: «En USD…» abierto con lo que pusiste.
   const usd = cbPagadoUsd(reg, cbAjustesSesion());
   if (usd) cbUsdt[clave] = { usd: numEs(usd.importe, 2), fecha: usd.fecha, antes: cbBorrador[clave] };
   renderCosteCompras();
   const input = cbCasilla(clave);
   if (input) { input.focus(); input.select(); }
+}
+/* Desde «Compra externa…» de 🔍 (js/15): despliega 💶 y abre la fila de
+   esa compra, con el cursor en lo pagado. */
+function cbIrACompra(clave) {
+  const reg = cbComprasBancarias(ccRegistrosSesion()).find(r => r.clave === clave);
+  if (!reg) return;
+  cbIrACompras();
+  cbAbrir(clave);
+  const fila = document.querySelector('#cbCuerpo tr.cb-fila[data-clave="' + CSS.escape(clave) + '"]');
+  if (fila) fila.scrollIntoView({ block: "center" });
+}
+/* «ir a las compras» de 🚀 (y lo de arriba): 🔍 con 💶 desplegado. */
+function cbIrACompras() {
+  const ir = () => { const det = $("cbCoste"); if (det) { det.open = true; det.scrollIntoView({ block: "start" }); } };
+  if (location.hash === "#revision") return ir();
+  location.hash = "#revision";
+  setTimeout(ir, 150); // tras pintar la pestaña (como irAFechasSinPrecio)
+}
+/* «Calcular el precio por token»: en la moneda de la fila; «Usar» lo
+   pone en su casilla de precio (y lo pagado se recalcula con el precio
+   exacto, no el redondeado que se ve). */
+function cbAbrirCalculadora(clave, trigger) {
+  if (document.querySelector(".cc-dlg-overlay")) return;
+  const usd = !!cbUsdt[clave];
+  const moneda = usd ? "USD" : "€";
+  let modal = null;
+  const cerrar = () => { if (modal) { ccQuitarModal(modal); modal = null; } };
+  modal = ccCrearModal("Calcular el precio por token", cbHtmlCalculadora(moneda), cerrar, trigger);
+  const caja = modal.overlay;
+  const tokens = caja.querySelector(".cb-calc-tokens"), total = caja.querySelector(".cb-calc-total");
+  const res = caja.querySelector(".cb-calc-res"), usar = caja.querySelector(".cb-calc-usar");
+  let calc = {};
+  const repintar = () => {
+    calc = cbCalcularPrecio(tokens.value, total.value);
+    res.textContent = cbTextoCalculado(calc, moneda);
+    usar.disabled = !calc.precio;
+  };
+  const aplicar = () => {
+    if (!calc.precio) return;
+    const precio = calc.precio;
+    cerrar();
+    const casilla = document.querySelector('#cbCuerpo .' + (usd ? "cb-usd-precio" : "cb-precio") + '[data-clave="' + CSS.escape(clave) + '"]');
+    if (!casilla) return;
+    casilla.value = cbNumPrecio(precio);
+    casilla.dispatchEvent(Object.assign(new Event("input", { bubbles: true }), { cbPrecioExacto: precio }));
+    casilla.focus();
+  };
+  for (const el of [tokens, total]) {
+    el.addEventListener("input", repintar);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); aplicar(); } });
+  }
+  usar.addEventListener("click", aplicar);
+  tokens.focus();
 }
 /* El foco, al «✏️ Editar» de esa fila (si no, al repintar se va al
    principio de la página). Solo si no estás ya en otro sitio (guardar
@@ -439,15 +553,16 @@ function cbMontarEventos() {
   const cont = $("cbCuerpo");
   if (!cont || cont.__cbEventos) return;
   cont.__cbEventos = true;
-  // Lo escrito en la casilla de €: el € por token y el «Guardar» de la fila.
-  const alEscribir = input => {
+  // Lo escrito en la casilla de €: el € por token (salvo si viene de
+  // él) y el «Guardar» de la fila.
+  const alEscribir = (input, desdePrecio) => {
     const clave = input.getAttribute("data-clave");
     cbBorrador[clave] = input.value;
     const registros = ccRegistrosSesion();
     const reg = registros.find(r => r.clave === clave);
     const fila = input.closest("tr");
-    const celda = fila && fila.querySelector(".cb-por-token");
-    if (reg && celda) celda.textContent = cbTextoPorToken(cbValorEscrito(input.value), reg.cantidad);
+    const precio = fila && fila.querySelector(".cb-precio");
+    if (reg && precio && !desdePrecio) precio.value = cbPrecioDeTotal(cbValorEscrito(input.value), reg.cantidad);
     const btn = fila && fila.querySelector('[data-cb="guardar"]');
     if (btn) {
       const u = cbUsdt[clave], calc = u && cbEurDeUsd(u.usd, u.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache);
@@ -455,12 +570,31 @@ function cbMontarEventos() {
         cbMismoUsd(cbUsdEscrito(u, calc, cbValorEscrito(input.value)), reg && cbPagadoUsd(reg, cbAjustesSesion()));
     }
   };
-  // «En USD…»: lo pagado y el día → la casilla de €.
-  const alEscribirUsd = input => {
+  // Un precio por token → lo pagado en su moneda (con el precio exacto
+  // si viene de la calculadora).
+  const alEscribirPrecio = (input, exacto) => {
+    const clave = input.getAttribute("data-clave");
+    const reg = ccRegistrosSesion().find(r => r.clave === clave);
+    const p = ccEsNumeroPositivo(exacto) ? exacto : cbValorEscrito(input.value);
+    const total = reg ? cbTotalDePrecio(p, reg.cantidad) : "";
+    if (input.classList.contains("cb-precio")) {
+      const casilla = cbCasilla(clave);
+      if (casilla) { casilla.value = total; alEscribir(casilla, true); }
+    } else {
+      const usd = input.closest("tr").querySelector(".cb-usd");
+      usd.value = total;
+      alEscribirUsd(usd, true);
+    }
+  };
+  // «En USD…»: lo pagado y el día → la casilla de € (y lo pagado, su
+  // precio por token, salvo si viene de él).
+  const alEscribirUsd = (input, desdePrecio) => {
     const clave = input.getAttribute("data-clave");
     const sub = input.closest("tr");
     const u = cbUsdt[clave] = Object.assign(cbUsdt[clave] || { antes: "" }, { usd: sub.querySelector(".cb-usd").value,
       fecha: sub.querySelector(".cb-usd-fecha").value });
+    const reg = ccRegistrosSesion().find(r => r.clave === clave);
+    if (reg && !desdePrecio) sub.querySelector(".cb-usd-precio").value = cbPrecioDeTotal(cbValorEscrito(u.usd), reg.cantidad);
     const calc = cbEurDeUsd(u.usd, u.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache);
     sub.querySelector(".cb-usd-eur").textContent = cbTextoEurDeUsd(calc);
     // La casilla sigue a los USD: con un importe, sus €; con uno que no
@@ -480,23 +614,26 @@ function cbMontarEventos() {
         // borra el aviso), no se toca lo tuyo.
         if (!(await cbBajarTipoBce(dia)) || !sub.isConnected || sub.querySelector(".cb-usd-fecha").value !== dia ||
             sub.querySelector(".cb-usd-eur").textContent !== CB_SIN_TIPO) return;
-        alEscribirUsd(input);
+        alEscribirUsd(input, true);
       }, 400);
     }
   };
   const esDe = (el, ...clases) => !!el.classList && clases.some(c => el.classList.contains(c));
   cont.addEventListener("input", e => {
-    if (esDe(e.target, "cb-valor")) {
-      alEscribir(e.target);
+    if (esDe(e.target, "cb-valor", "cb-precio")) {
+      if (esDe(e.target, "cb-valor")) alEscribir(e.target);
+      else alEscribirPrecio(e.target, e.cbPrecioExacto);
       // Escrita a mano: la cuenta de «En USD…» ya no es lo que se guarda.
       const sub = e.target.closest("tr").nextElementSibling;
-      if (sub && sub.classList.contains("cb-usdt")) sub.querySelector(".cb-usd-eur").textContent = "";
+      const eur = sub && sub.querySelector(".cb-usd-eur");
+      if (eur) eur.textContent = "";
     }
+    else if (esDe(e.target, "cb-usd-precio")) alEscribirPrecio(e.target, e.cbPrecioExacto);
     else if (esDe(e.target, "cb-usd", "cb-usd-fecha")) alEscribirUsd(e.target);
   });
   cont.addEventListener("keydown", e => {
     const input = e.target;
-    if (!esDe(input, "cb-valor", "cb-usd", "cb-usd-fecha")) return;
+    if (!esDe(input, "cb-valor", "cb-precio", "cb-usd", "cb-usd-precio", "cb-usd-fecha")) return;
     const clave = input.getAttribute("data-clave");
     if (e.key === "Enter") { e.preventDefault(); cbGuardar(clave); }
     else if (e.key === "Escape") { e.preventDefault(); cbCerrar(clave); }
@@ -510,6 +647,7 @@ function cbMontarEventos() {
     else if (accion === "cancelar") cbCerrar(clave);
     else if (accion === "guardar") cbGuardar(clave);
     else if (accion === "usdt") cbAbrirUsdt(clave);
+    else if (accion === "calcular") cbAbrirCalculadora(clave, btn);
   });
 }
 
@@ -531,17 +669,26 @@ function cbInyectarEstilos() {
     ".cb-tabla .num{text-align:right;font-variant-numeric:tabular-nums}",
     ".cb-defecto{color:var(--muted);font-size:12.5px;font-weight:400}",
     ".cb-en-eur{color:var(--muted);font-size:12px;margin-left:4px}",
-    ".cb-valor{width:120px;text-align:right;padding:6px 10px;font-size:13.5px}",
+    ".cb-valor,.cb-precio{width:96px;text-align:right;padding:6px 10px;font-size:13.5px}",
+    ".cb-falta{color:var(--warn);font-weight:600}",
     ".cb-acciones{text-align:left}",
     // Editando caben sus tres botones en una línea (la tabla no se sale a 1366 px).
     ".cb-tabla td.cb-acciones{padding-left:8px;padding-right:8px}",
     ".cb-accion{font-size:13px;padding:5px 10px;border-radius:8px}",
     ".cb-accion+.cb-accion{margin-left:6px}",
-    ".cb-tabla tr.cb-usdt td{height:auto;padding:4px 10px 12px;text-align:right;color:var(--muted)}",
-    ".cb-usdt label{display:inline-flex;align-items:center;gap:6px;margin-left:10px}",
-    ".cb-usdt input.cb-usd{width:110px;text-align:right;padding:5px 8px;font-size:13.5px}",
+    ".cb-tabla tr.cb-usdt td{height:auto;padding:4px 10px 12px;color:var(--muted);white-space:normal}",
+    ".cb-debajo{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 10px}",
+    ".cb-usdt label{display:inline-flex;align-items:center;gap:6px}",
+    ".cb-usdt input.cb-usd,.cb-usdt input.cb-usd-precio{width:100px;text-align:right;padding:5px 8px;font-size:13.5px}",
+    // Un botón con aspecto de enlace, a la derecha.
+    ".cb-calcular,.cb-calcular:hover{background:none;border:0;box-shadow:none;padding:2px 0;margin-left:auto;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:13px}",
+    ".cb-calc-dlg{width:min(460px,100%)}",
+    ".cb-calc-campos{display:flex;flex-direction:column;gap:10px;margin-top:12px;font-size:14px}",
+    ".cb-calc-campos label{display:flex;justify-content:space-between;align-items:center;gap:12px}",
+    ".cb-calc-campos input{width:150px;text-align:right}",
+    ".cb-calc-res{font-weight:700;font-variant-numeric:tabular-nums;min-height:1.4em;margin:12px 0 0}",
     ".cb-usdt input.cb-usd-fecha{width:150px;padding:4px 6px;font-size:13.5px}",
-    ".cb-usd-eur{display:inline-block;min-width:230px;margin-left:10px;text-align:left;color:var(--text)}",
+    ".cb-usd-eur{display:inline-block;min-width:230px;text-align:left;color:var(--text)}",
   ].join("\n");
   document.head.appendChild(estilo);
 }

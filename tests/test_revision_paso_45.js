@@ -5,7 +5,7 @@
  * - ccOpcionesDecision: «✔ Dejar como …» (Sugerida) y solo las alternativas
  *   que encajan con el movimiento.
  * - ccAjustesConDecision / ccAjusteDecision: el ajuste de cada decisión
- *   (la compra bancaria con via_compra BANCARIA, para que el cálculo
+ *   (la compra externa con via_compra BANCARIA y sin precio, que se pone en 💶;
  *   fiscal use su coste en €), que sustituye un ajuste que solo pedía
  *   revisión y nunca pisa uno ajeno.
  * - ccAjustesSinDecision: deshacer devuelve los ajustes de antes (también
@@ -39,7 +39,7 @@ function assert(nombre, cond, extra) {
   else { fallos++; console.error("  FALLO " + nombre + (extra !== undefined ? " -> " + JSON.stringify(extra) : "")); }
 }
 const W = "0x" + "11".repeat(20), T = "0x" + "77".repeat(20), INM = "0x" + "a1".repeat(20);
-const USDT = vm.runInContext("USDT", S);
+const USDT = vm.runInContext("USDT", S), RNT_ = vm.runInContext("RNT", S);
 const ctx = { propias: new Set([W]), inmuebles: new Set([INM]) };
 function reg(clave, categoria, extra = {}) {
   return Object.assign({ clave, fecha: "2026-06-14 10:00:00", hash: "0x" + "ab".repeat(32), contrato: USDT, token: "USDT0",
@@ -64,14 +64,29 @@ const rarUsdt = reg("r", "REVISAR");
 assert("USDT que entra sin regla (REVISAR): Ingreso de dinero, Neutro y Spam (sin Sugerida)",
   JSON.stringify(ids(rarUsdt)) === JSON.stringify(["dinero", "neutro", "spam"]), ids(rarUsdt));
 const salidaInm = reg("s", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", simbolo: "RCAC8", origen: W, destino: T, importe_usdt: null });
-assert("salida de un inmueble: Es una venta, Neutro y Spam",
-  JSON.stringify(ids(salidaInm)) === JSON.stringify(["venta", "neutro", "spam"]), ids(salidaInm));
+assert("salida de un inmueble: Es una venta y Neutro (D9: sin spam en una salida tuya)",
+  JSON.stringify(ids(salidaInm)) === JSON.stringify(["venta", "neutro"]), ids(salidaInm));
 const ventaSinPrecio = Object.assign({}, salidaInm, { categoria: "VENTA" });
 assert("venta sin precio: no se ofrece «Dejar»; «Es una venta…» es la Sugerida",
-  JSON.stringify(ids(ventaSinPrecio)) === JSON.stringify(["venta*", "neutro", "spam"]), ids(ventaSinPrecio));
+  JSON.stringify(ids(ventaSinPrecio)) === JSON.stringify(["venta*", "neutro"]), ids(ventaSinPrecio));
 const entradaInm = reg("e", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", simbolo: "RCAC8", importe_usdt: null });
 assert("entrada de un inmueble: Compra externa, Neutro y Spam",
   JSON.stringify(ids(entradaInm)) === JSON.stringify(["compra", "neutro", "spam"]), ids(entradaInm));
+console.log("== 1b. «🚫 Es spam» con un token conocido (D9) ==");
+const DEFI = "0x" + "de".repeat(20), DIST = "0x" + "d1".repeat(20), DESC = "0x" + "99".repeat(20), RARO = "0x" + "c3".repeat(20);
+S.state.config = { wallet: W, vault: "" };
+const cacheD9 = { contratos_aprendidos: { DEFI_STAKING: { [DEFI]: {} }, DISTRIBUIDOR: { [DIST]: {} } }, catalogo_propiedades: {} };
+const ctxD9 = Object.assign({}, ctx, { direcciones: S.construirContexto(cacheD9) });
+const tieneSpam = r => S.ccOpcionesDecision(r, ctxD9).some(o => o.id === "spam");
+assert("salida de USDT: sin spam", !tieneSpam(reg("su", "RETIRADA", { origen: W, destino: DESC })));
+assert("USDT de un comprador P2P (dirección desconocida): con spam", tieneSpam(reg("p2p", "REVISAR", { origen: DESC })));
+assert("RNT de un contrato DeFi: sin spam", !tieneSpam(reg("df", "REVISAR", { contrato: RNT_, simbolo: "RNT", origen: DEFI })));
+assert("RNT de una dirección desconocida (polvo): con spam", tieneSpam(reg("pv", "REVISAR", { contrato: RNT_, simbolo: "RNT", origen: DESC })));
+assert("inmueble que llega de Reental (dirección conocida): sin spam", !tieneSpam(reg("ic", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", origen: DIST })));
+assert("inmueble de una dirección desconocida: con spam", tieneSpam(reg("id", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", origen: DESC })));
+assert("POL de una dirección desconocida: con spam", tieneSpam(reg("pol", "REVISAR", { contrato: "pol", simbolo: "POL", origen: DESC })));
+assert("token desconocido: con spam, también en una salida (como hoy)",
+  tieneSpam(reg("rr", "REVISAR", { contrato: RARO, origen: DEFI })) && tieneSpam(reg("rs", "REVISAR", { contrato: RARO, origen: W, destino: DESC })));
 const rend = reg("rd", "RENDIMIENTO", { fuente: "CSV_REENTAL" });
 assert("rendimiento del archivo: Dejar como Rendimiento y Neutro (sin spam: no es de la blockchain)",
   JSON.stringify(ids(rend)) === JSON.stringify(["dejar*", "neutro"]), ids(rend));
@@ -87,9 +102,22 @@ assert("venta: VENTA/GPP_INMUEBLE con el importe (escrito a la española)",
 let errPunto = "";
 try { aj(salidaInm, "venta", "1234.5"); } catch (e) { errPunto = e.message; }
 assert("«1234.5» no vale: pide la coma para los decimales (P11)", errPunto === "Usa la coma para los decimales (1.234,56).", errPunto);
-const compra = aj(entradaInm, "compra", "3000");
-assert("compra bancaria: COMPRA/COSTE_BASE, via_compra BANCARIA y coste_eur",
-  compra.categoria === "COMPRA" && compra.via_compra === "BANCARIA" && compra.coste_eur === 3000, compra);
+const compra = aj(entradaInm, "compra");
+assert("compra externa: COMPRA/COSTE_BASE, via_compra BANCARIA y sin precio (se pone en 💶)",
+  compra.categoria === "COMPRA" && compra.via_compra === "BANCARIA" && !("coste_eur" in compra) &&
+  compra.nota === "Decidido por ti en Revisión (2026-10-01): compra externa", compra);
+{
+  // Clasificado: el inmueble sin tu precio lleva el de por defecto (D1); el RNT, ninguno; el tuyo se queda.
+  const regs = [Object.assign({}, entradaInm, { cantidad: 3 }), reg("rn", "REVISAR", { contrato: RNT_, cantidad: 500 }),
+    Object.assign({}, entradaInm, { clave: "e2", cantidad: 3 })];
+  S.aplicarAjustesUsuario(regs, { ajustes_usuario: { e: compra, rn: aj(regs[1], "compra"), e2: Object.assign({}, compra, { coste_eur: 240 }) } }, true);
+  S.costeDefectoComprasExternas(regs, { compra_bancaria_coste_eur_por_token: 100 });
+  assert("D1: inmueble sin precio a 100 €/token (300 €); RNT sin precio, sin coste; con tu precio, el tuyo",
+    regs[0].coste_eur === 300 && regs[0].via_compra === "BANCARIA" && !regs[0].revisar && regs[1].coste_eur === null && regs[2].coste_eur === 240,
+    regs.map(r => r.coste_eur));
+}
+const conCoste = aj(entradaInm, "compra", null, { e: { revisar: true, nota: "Mandado a revisar por ti (2026-09-01)", coste_eur: 950 } });
+assert("compra externa sobre un «Mandado a revisar» con coste: el coste sigue", conCoste.coste_eur === 950, conCoste);
 assert("dinero recibido: DEPOSITO/COSTE_BASE con importe_usdt", aj(rarUsdt, "dinero", "18,54").importe_usdt === 18.54);
 assert("neutro: MOVIMIENTO/NEUTRO", aj(rarUsdt, "neutro").categoria === "MOVIMIENTO");
 let lanzo = false;
@@ -161,7 +189,13 @@ assert("A13: «Ya decididos» por el día de la decisión, no por el texto (spam
 assert("el 🚫 de Transacciones no sale en Resueltos de Revisión",
   S.ccDecisionesTomadas({ r: S.txAjustesConSpam({}, "r", "spam", FECHA).r }, [rarUsdt]).length === 0);
 assert("resumen: «Venta · 1.234,50 USD»", S.ccResumenDecision(venta) === "Venta · 1.234,50 USD", S.ccResumenDecision(venta));
-assert("resumen: «Compra externa · 3.000,00 €»", S.ccResumenDecision(compra) === "Compra externa · 3.000,00 €");
+assert("resumen: «Compra externa · 3.000,00 €» (con tu precio)",
+  S.ccResumenDecision(Object.assign({}, compra, { coste_eur: 3000 })) === "Compra externa · 3.000,00 €");
+assert("resumen: inmueble sin tu precio, el de por defecto (el del registro)",
+  S.ccResumenDecision(compra, Object.assign({}, entradaInm, { coste_eur: 1000 })) === "Compra externa · 1.000,00 € (por defecto)",
+  S.ccResumenDecision(compra, Object.assign({}, entradaInm, { coste_eur: 1000 })));
+assert("resumen: RNT sin precio, «falta el precio»",
+  S.ccResumenDecision(compra, reg("x", "COMPRA", { contrato: RNT_, coste_eur: null })) === "Compra externa · falta el precio");
 // «Dejar como…» nombra la categoría del movimiento (sin ella, el texto genérico).
 assert("resumen: «Se deja como Compra»", S.ccResumenDecision({ revisar: false }, { categoria: "COMPRA" }) === "Se deja como Compra" &&
   S.ccResumenDecision({ revisar: false }) === "Se deja como lo dice la app");

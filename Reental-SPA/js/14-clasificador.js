@@ -2117,6 +2117,18 @@ function aplicarAjustesUsuario(registros, cache, silencioso, movidos) {
   return noAplicados;
 }
 
+/* Una compra externa decidida en Revision sin tu precio: un inmueble
+   lleva el de por defecto, como la que detecta la app; el RNT, ninguno
+   (se pone en 💶). */
+function costeDefectoComprasExternas(registros, config) {
+  for (const r of registros) {
+    if (r.categoria === "COMPRA" && r.via_compra === "BANCARIA" && !(Number(r.coste_eur) > 0) &&
+        normalizarDireccion(r.contrato || "") !== RNT && Number(r.cantidad) > 0) {
+      r.coste_eur = r.cantidad * Number(config.compra_bancaria_coste_eur_por_token);
+    }
+  }
+}
+
 function clasificarTransacciones(cache, filasCsv, indicePorHash, config,
                                  informePagos) {
   // informePagos: objeto opcional de salida (pagos diferidos). Si
@@ -2192,6 +2204,7 @@ function clasificarTransacciones(cache, filasCsv, indicePorHash, config,
   if (pdEsObjeto(informePagos)) Object.assign(informePagos, infoPagos);
   const movidos = [];
   aplicarAjustesUsuario(diario.registros, cache, false, movidos);
+  costeDefectoComprasExternas(diario.registros, config);
   // Los ajustes que siguieron a su movimiento (sin que salga
   // al convertir el informe a JSON).
   if (pdEsObjeto(informePagos)) {

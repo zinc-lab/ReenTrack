@@ -102,7 +102,8 @@ console.log("== 3. Con los ajustes de 🔍 de verdad y un tipo del BCE distinto 
 {
   // La compra, con el ajuste que escribe «Compra externa…» (1.000 RNT por 40 €); el premio, a 0,5 USD con 1,25 USD/EUR.
   const e1 = entrega("e1", "2025-01-10 10:00:00", 1000);
-  const aj = sb0.ccAjustesConDecision({}, e1, "compra-rnt", { coste: 40, pagado: 40, total: 1000 }, "2025-12-01T10:00:00.000Z");
+  const aj = sb0.ccAjustesConDecision({}, e1, "compra", null, "2025-12-01T10:00:00.000Z");
+  aj.e1.coste_eur = 40; // lo pagado, puesto en 💶
   const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100);
   const venta = reg("v1", "2025-03-01 10:00:00", "VENTA", "GPP_SWAP", 1100, { origen: WALLET, destino: DEX, importe_usdt: 125 });
   aj.p1 = { subcategoria: "GPP_REGALO" };

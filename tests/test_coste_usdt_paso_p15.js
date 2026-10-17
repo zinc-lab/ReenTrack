@@ -58,8 +58,8 @@ const reg = { clave: "c1", fecha: "2024-03-05 10:00:00", hash: "0x" + "ab".repea
 const [f] = S.cbFilas([reg], {}, 100);
 assert("cerrada: sin «En USD…»", !S.cbHtmlFila(f, {}).includes('data-cb="usdt"'));
 const abierta = S.cbHtmlFila(f, { c1: "900,00" });
-assert("abierta: «En USD…» junto a Guardar y Cancelar, sin subfila", abierta.includes('data-cb="usdt"') && abierta.includes("En USD…") && abierta.includes('title="Pagado en USD, USDT o USDC."') &&
-  !abierta.includes("cb-usdt"), abierta);
+assert("abierta: «En USD…» junto a Guardar y Cancelar; debajo, solo «Calcular el precio por token»", abierta.includes('data-cb="usdt"') && abierta.includes("En USD…") && abierta.includes('title="Pagado en USD, USDT o USDC."') &&
+  abierta.includes('data-cb="calcular"') && !abierta.includes("cb-usd\""), abierta);
 const conUsdt = S.cbHtmlFila(Object.assign({}, f, { usdt: { usd: "1.000", fecha: "2024-03-01", calc: C("1.000", "2024-03-01") } }), { c1: "909,09" });
 assert("con «En USD…» abierto: la subfila con lo pagado, el día y el resultado",
   conUsdt.includes('class="cb-usdt"') && conUsdt.includes('class="cb-usd" data-clave="c1" value="1.000"') &&
