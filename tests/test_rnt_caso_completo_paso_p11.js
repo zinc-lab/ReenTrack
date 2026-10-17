@@ -94,8 +94,9 @@ assert("💶: las 6, «Falta el precio», sin 100 €/token y contadas como sin 
   sb.__regs = copia; sb.__cache = cache;
   sb.__op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
   const colas = ev("motorFiscal(__regs, __cache, state.config, __op)");
-  assert("motor: sin lote de compra en el FIFO del RNT (no se inventa un precio)",
-    !(colas.get("RNT") || []).some(l => l.origen === "COMPRA_BANCO"), (colas.get("RNT") || []).map(l => l.origen));
+  const lotesSin = (colas.get("RNT") || []).filter(l => l.origen === "COMPRA_BANCO");
+  assert("motor: las 6 en el FIFO del RNT sin coste (no se inventa un precio)",
+    lotesSin.length === 6 && lotesSin.every(l => l.sin_coste && l.coste_unitario_eur === 0), lotesSin);
 }
 
 console.log("== 3. El precio en 💶: 1.000 € por la preventa de 25.000 RNT ==");

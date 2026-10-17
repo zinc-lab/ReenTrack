@@ -74,6 +74,26 @@ console.log("== 1. La compra de RNT en € abre lote en la cola «RNT» ==");
     r.activos.includes("RNT") && !r.activos.includes(RNT), r.activos);
 }
 
+console.log("== 1b. COMPRA-EXTERNA A1: una compra sin precio no deja que la venta se lleve otro lote ==");
+{
+  const sinPrecio = { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", revisar: false,
+    nota: "Decidido por ti en Revisión (2025-12-01): compra externa" };
+  const premio = reg("p1", "2025-02-05 10:00:00", "REWARD", "GPP_REGALO", 1000);
+  const venta = reg("v1", "2025-03-01 10:00:00", "VENTA", "GPP_SWAP", 1000, { origen: WALLET, destino: DEX, importe_usdt: 100 });
+  const r = correr([entrega("e1", "2025-01-10 10:00:00", 1000), premio, venta], { e1: sinPrecio, p1: { subcategoria: "GPP_REGALO" } },
+    { "2025-02-05": 0.05 });
+  const c = r.regs.find(x => x.clave === "e1"), v = r.regs.find(x => x.clave === "v1");
+  assert("la compra sin precio, a revisar y diciendo dónde se pone", c.revisar && /compra sin precio: se pone en Revisión, en Coste de las compras externas/.test(c.nota), c.nota);
+  assert("la venta gasta primero la compra (10/01): sin coste registrado y a revisar, sin G/P",
+    v.revisar && /faltan 1\.000 unidades sin coste registrado/.test(v.nota) && v.gp_eur == null, [v.nota, v.gp_eur]);
+  const cola = (r.colas.find(([a]) => a === "RNT") || [, []])[1];
+  assert("el lote del regalo sigue entero en la cola", cola.length === 1 && cola[0].origen === "REWARD" && cola[0].cantidad === 1000, cola);
+  const sinVenta = correr([entrega("e1", "2025-01-10 10:00:00", 1000)], { e1: sinPrecio });
+  const cola2 = (sinVenta.colas.find(([a]) => a === "RNT") || [, []])[1];
+  assert("sin vender, los 1.000 RNT están en la cartera del motor (el cuadre no ve un hueco)",
+    cola2.length === 1 && cola2[0].cantidad === 1000 && cola2[0].sin_coste === true, cola2);
+}
+
 console.log("== 2. Venta de RNT después: la encuentra, mezcla con un premio ==");
 {
   const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100, { nota: "regalo" });

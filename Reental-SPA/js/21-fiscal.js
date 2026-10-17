@@ -147,6 +147,7 @@ function sacarProcedencia(procedencia, cantidad) {
 function consumirFifo(colas, activo, cantidad) {
   let pendiente = cantidad;
   let coste = 0;
+  let sinCoste = 0;
   const trozos = [];
   const cola = colas.get(activo) || [];
   // Lo que queda por debajo de esto es el error de sumar decimales, no
@@ -156,6 +157,15 @@ function consumirFifo(colas, activo, cantidad) {
   while (pendiente > polvo && cola.length) {
     const lote = cola[0];
     const usado = pyMin(lote.cantidad, pendiente);
+    if (lote.sin_coste) {
+      // Una compra sin precio (RNT a la espera del suyo, en 💶): sus
+      // unidades salen de la cola, pero cuentan como sin coste registrado.
+      sinCoste += usado;
+      lote.cantidad -= usado;
+      pendiente -= usado;
+      if (lote.cantidad <= polvo) cola.shift();
+      continue;
+    }
     const costeTrozo = usado * lote.coste_unitario_eur;
     coste += costeTrozo;
     const unitarioUsd = lote.coste_unitario_usd;
@@ -170,7 +180,8 @@ function consumirFifo(colas, activo, cantidad) {
     pendiente -= usado;
     if (lote.cantidad <= polvo) cola.shift();
   }
-  return [coste, pendiente > polvo ? pendiente : 0, trozos];
+  const faltante = (pendiente > polvo ? pendiente : 0) + sinCoste;
+  return [coste, faltante > polvo ? faltante : 0, trozos];
 }
 
 /* Compras de las que vienen unos trozos de lote: la procedencia del trozo
@@ -1206,6 +1217,16 @@ function motorFiscal(registros, cache, config, opciones = {}) {
       };
       if (r.via_compra === "BANCARIA") {
         r.importe_eur = r.coste_eur;
+        if (!fiscHay(r.coste_eur) && cantidadValida(r) && nombreActivoFifo(r.contrato) === "RNT") {
+          // Un RNT sin precio (aún no lo has puesto en Revisión; un inmueble
+          // siempre lleva el de por defecto):
+          // entra en la cola sin coste, para que lo que se venda de ella
+          // salga sin coste registrado y no se lleve otro lote.
+          fiscListaDe(colas, nombreActivoFifo(r.contrato)).push({ cantidad: r.cantidad, coste_unitario_eur: 0, fecha: r.fecha,
+            origen: "COMPRA_BANCO", coste_unitario_usd: null, sin_coste: true });
+          fiscMarcarRevisar(r, "compra sin precio: se pone en Revisión, en Coste de las compras externas");
+          return;
+        }
         // La cola por nombre: una compra de RNT pagada en € (P11) va a la
         // del RNT; en los inmuebles, la dirección del contrato.
         const lote = fiscAbrirLote(r, colas, nombreActivoFifo(r.contrato), r.cantidad,
