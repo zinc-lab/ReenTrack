@@ -363,6 +363,9 @@ textos que el usuario o un ajuste pueden cambiar.
   Mejor una sola pestaña (Web Locks) que reconciliar. Y un fallo al leer
   tomado por «no hay nada»: arrancaba vacía y el siguiente guardado
   escribía encima de lo tuyo.
+- «Hoy» sin mirar qué día de la semana es: el aviso de «el BCE aún no ha
+  publicado el tipo de hoy» salía también en sábado y domingo, cuando el
+  tipo que vale (el del viernes) ya estaba.
 
 ## 10. Reglas del propio proyecto
 
@@ -497,6 +500,10 @@ estuviera mal? Si ninguno, es un hueco.
   que un exchange que devolvía desde otra dirección (cartera doble)
   cuadraba igual. Y un contador que sube por un camino y solo baja por
   otro: la vuelta decidida como «neutro» no lo bajaba.
+- Un caso raro que pasa a ser normal: una compra sin coste no abría lote y
+  la venta siguiente se llevaba en silencio el lote de detrás (un regalo),
+  con su coste y su fecha. Cuando un paso hace habitual un dato que falta,
+  mirar qué hace el FIFO con él.
 
 **Mirar:** cada regla fiscal contra la ley y los criterios de la DGT (art.
 33, 35, 37 de la LIRPF); ¿cuadra la cartera con la blockchain?; ¿suman lo

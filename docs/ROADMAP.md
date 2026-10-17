@@ -20,6 +20,8 @@
   app está abierta en otra pestaña; igual abierta con doble clic como archivo
   único (comprobado en Chrome, Edge y Firefox).
 - **Comprobación antes de cada commit** de que nada de `privado/` va a Git.
+- **Compra externa** (18/10/2026): lo que compraste y la app no ve pagar, una
+  compra por entrega con su precio en 💶 (ver el [CHANGELOG](CHANGELOG.md)).
 - **1.1** y **1.2** (15/10/2026): lo que salió de las primeras pruebas y las
   compras pagadas en dólares (ver el [CHANGELOG](CHANGELOG.md)).
 - **Publicada** (1.0, 10/10/2026): web en GitHub Pages y archivo único para

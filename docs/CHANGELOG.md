@@ -2,6 +2,24 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Compra externa (18/10/2026)
+
+- **Palabras:** «compra bancaria» pasa a **«compra externa»** en toda la app:
+  tokens que compraste y cuyo pago la app no encuentra (banco, exchange, otra
+  wallet, o pagados antes y enviados después). El botón de pagar en dólares de
+  💶 es «En USD…».
+- **🔍 Revisión:** «Compra externa…» (de un inmueble o de RNT) se guarda al
+  momento, solo ese movimiento y sin precio, y abre su fila en 💶. Sin la
+  ventana del RNT: «Regalo (airdrop)» y «Recompensa DeFi» deciden solo ese
+  movimiento. «🚫 Es spam» con un token conocido (RNT, USDT, USDC, POL o un
+  inmueble) solo en lo que llega de una dirección desconocida.
+- **💶 Coste de las compras externas:** lo pagado y el precio por token van
+  enlazados (en € y en USD), con «Calcular el precio por token» para una
+  compra que llega en varias entregas. Un RNT sin precio dice «Falta el
+  precio» (no lleva los 100 €/token de los inmuebles) y 🚀 lo avisa.
+- **Cálculo:** una compra de RNT sin precio no tiene coste: la venta que la
+  gaste sale «sin coste registrado» y a revisar. Lo ya guardado no cambia.
+
 ## 🔍 Revisión como lista de tareas (16/10/2026)
 
 - **🔍 Revisión:** una sola caja centrada con una fila por bloque, en el
