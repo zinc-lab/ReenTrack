@@ -2119,10 +2119,13 @@ function aplicarAjustesUsuario(registros, cache, silencioso, movidos) {
 
 /* Una compra externa decidida en Revision sin tu precio: un inmueble
    lleva el de por defecto, como la que detecta la app; el RNT, ninguno
-   (se pone en 💶). */
-function costeDefectoComprasExternas(registros, config) {
+   (se pone en 💶). Un coste escrito en tus ajustes (aunque sea 0 o no
+   valga) no se toca: el motor lo trata como hasta ahora. */
+function costeDefectoComprasExternas(registros, config, ajustes) {
+  const conCoste = new Set(Object.entries(pdEsObjeto(ajustes) ? ajustes : {})
+    .filter(([, a]) => pdEsObjeto(a) && "coste_eur" in a).map(([k]) => k.trim().toLowerCase()));
   for (const r of registros) {
-    if (r.categoria === "COMPRA" && r.via_compra === "BANCARIA" && !(Number(r.coste_eur) > 0) &&
+    if (r.categoria === "COMPRA" && r.via_compra === "BANCARIA" && !(Number(r.coste_eur) > 0) && !conCoste.has(r.clave) &&
         normalizarDireccion(r.contrato || "") !== RNT && Number(r.cantidad) > 0) {
       r.coste_eur = r.cantidad * Number(config.compra_bancaria_coste_eur_por_token);
     }
@@ -2204,7 +2207,7 @@ function clasificarTransacciones(cache, filasCsv, indicePorHash, config,
   if (pdEsObjeto(informePagos)) Object.assign(informePagos, infoPagos);
   const movidos = [];
   aplicarAjustesUsuario(diario.registros, cache, false, movidos);
-  costeDefectoComprasExternas(diario.registros, config);
+  costeDefectoComprasExternas(diario.registros, config, cache.ajustes_usuario);
   // Los ajustes que siguieron a su movimiento (sin que salga
   // al convertir el informe a JSON).
   if (pdEsObjeto(informePagos)) {
@@ -2403,7 +2406,7 @@ function ejecutarClasificacion(opciones) {
       log("Compras externas detectadas (" + resumen.bancarias.length + "), verificar:", "warn");
       for (const r of resumen.bancarias) {
         log("  " + fechaEs(r.fecha, true) + " " + (r.inmueble || r.simbolo || r.contrato) + ": " + r.cantidad +
-            " tokens -> " + r.coste_eur + " EUR", "warn");
+            " tokens -> " + (Number(r.coste_eur) > 0 ? r.coste_eur + " EUR" : "sin precio"), "warn");
       }
     }
     // Log de vinculos de pagos diferidos: aplicados, avisos y conflictos.

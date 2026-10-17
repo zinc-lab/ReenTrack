@@ -112,6 +112,10 @@ assert("compra externa: COMPRA/COSTE_BASE, via_compra BANCARIA y sin precio (se 
     Object.assign({}, entradaInm, { clave: "e2", cantidad: 3 })];
   S.aplicarAjustesUsuario(regs, { ajustes_usuario: { e: compra, rn: aj(regs[1], "compra"), e2: Object.assign({}, compra, { coste_eur: 240 }) } }, true);
   S.costeDefectoComprasExternas(regs, { compra_bancaria_coste_eur_por_token: 100 });
+  // COMPRA-EXTERNA A6: un coste escrito a mano en los ajustes (0 o que no vale) no se cambia por el de por defecto.
+  const aMano = [Object.assign({}, entradaInm, { clave: "e3", cantidad: 3, categoria: "COMPRA", via_compra: "BANCARIA", coste_eur: 0 })];
+  S.costeDefectoComprasExternas(aMano, { compra_bancaria_coste_eur_por_token: 100 }, { E3: { coste_eur: 0 } });
+  assert("A6: con coste_eur escrito a mano (0), no se pone el de por defecto", aMano[0].coste_eur === 0, aMano[0].coste_eur);
   assert("D1: inmueble sin precio a 100 €/token (300 €); RNT sin precio, sin coste; con tu precio, el tuyo",
     regs[0].coste_eur === 300 && regs[0].via_compra === "BANCARIA" && !regs[0].revisar && regs[1].coste_eur === null && regs[2].coste_eur === 240,
     regs.map(r => r.coste_eur));

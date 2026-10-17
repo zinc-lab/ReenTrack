@@ -154,6 +154,28 @@ filas = sb.cbFilas(regs, cache.ajustes_usuario, 100).filter(f => f.reg.contrato 
 const html = filas.map(f => sb.cbHtmlFila(f, {})).join("");
 assert("💶: 7 filas «RNT» a 0,0400 € por token, sin «por defecto» ni «Falta el precio»", filas.length === 7 && (html.match(/<td>RNT<\/td>/g) || []).length === 7 &&
   (html.match(/0,0400 €/g) || []).length === 7 && !html.includes("por defecto") && !html.includes("Falta el precio"));
+console.log("== 7. Un inmueble decidido «Compra externa…» sin precio: 100 €/token al clasificar (D1) ==");
+{
+  const h8 = hash();
+  cache.transacciones.wallet_tokens.push(tok(P1, V, W, 2, "2025-04-01", h8, "RALC1"));   // llega del vault: no es una compra
+  regs = clasificar();
+  const llega = regs.find(r => r.hash === h8 && r.contrato === P1);
+  assert("llega del vault: no es una compra externa", llega && !(llega.categoria === "COMPRA" && llega.via_compra === "BANCARIA"), llega);
+  cache.ajustes_usuario = sb.ccAjustesConDecision(cache.ajustes_usuario, llega, "compra", null, FECHA);
+  regs = clasificar();
+  const compra = regs.find(r => r.hash === h8 && r.contrato === P1);
+  assert("decidida sin precio: compra externa a 100 €/token (200 €)", compra.categoria === "COMPRA" && compra.via_compra === "BANCARIA" &&
+    compra.coste_eur === 200 && !compra.revisar, compra);
+  const c2 = structuredClone(regs);
+  sb.__regs = c2;
+  const colas2 = ev("motorFiscal(__regs, __cache, state.config, __op)");
+  const lote = (colas2.get(P1) || []).find(l => l.fecha.startsWith("2025-04-01"));
+  assert("su lote, a 100 €/token y con «**» (coste por defecto)", lote && lote.coste_unitario_eur === 100 && lote.coste_supuesto === true, lote);
+  // Se deshace para no tocar lo que sigue.
+  cache.ajustes_usuario = sb.ccAjustesSinDecision(cache.ajustes_usuario, compra.clave, FECHA);
+  cache.transacciones.wallet_tokens.pop();
+  regs = clasificar();
+}
 const dash = sb.dashDineroInvertido(regs, cache.tipos_bce);
 assert("📊: el dinero invertido no cuenta el RNT (solo el inmueble)", dash.eurBanco === 400 && dash.usdStable === 0, [dash.eurBanco, dash.usdStable]);
 const informes = sb.informesRentaAnuales(copia, sb.resumenFiscalAnual(copia), STATE.config, Object.assign({}, sb.__op, { cache, hoy: "2026-10-15" }));
