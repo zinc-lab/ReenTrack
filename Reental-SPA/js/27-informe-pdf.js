@@ -208,7 +208,7 @@ function pdfDetalle(informe) {
     filas.push(pdfFila(["Total", ...conOp(""), "", "", "", "", pdfNum(t.valor_adquisicion_usd),
       pdfNum(t.valor_adquisicion_eur), pdfNum(t.valor_transmision_usd), pdfNum(t.valor_transmision_eur),
       pdfGp(t.gp_eur)], "total"));
-    // Las fechas, con las palabras de 🧾 Fiscal (como el Excel).
+    // Las fechas, con las mismas palabras que el Excel.
     bloques.push(pdfTabla("pdf-transmisiones", ["Activo", ...conOp("Operación"), "Tipo",
       permuta ? "Recibido el" : "Comprado el", permuta ? "Entregado el" : "Vendido el", "Cantidad",
       "Valor de adquisición USD", "Valor de adquisición EUR", "Valor de transmisión USD", "Valor de transmisión EUR",

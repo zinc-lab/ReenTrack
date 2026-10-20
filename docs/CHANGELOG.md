@@ -2,6 +2,17 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## «Ventas y permutas» más simple (20/10/2026)
+
+- **🧾 Fiscal, «Ventas y permutas»:** para puntear el informe fila a fila.
+  Cada bloque (tokens de inmuebles y permutas), cerrado en una línea con su
+  número de operaciones y su ganancia o pérdida. Abierto, una sola tabla:
+  cada operación (fecha, nombre, cantidad con su moneda y totales) y, debajo,
+  una fila por fecha de adquisición, como el informe; la de una sola fecha,
+  en una línea. La fila Total es la del informe. Fuera las tarjetas y las
+  frases; «Adquirido el» en vez de «Comprado el» o «Recibido el». El PDF y
+  el Excel no cambian.
+
 ## Historial de cada activo en 🧾 (20/10/2026)
 
 - **🧾 Fiscal:** «Lotes de cada inmueble» pasa a ser el **historial de cada

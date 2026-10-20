@@ -4,8 +4,8 @@
    informe para la Renta (js/22): aquí no se calcula ninguna cifra fiscal.
 
    Qué se ve: (1) el resumen
-   del ejercicio, con selector de año y «A declarar en»; (2) las ventas del
-   año, cada una desplegable con los lotes que gastó; (3) el historial de
+   del ejercicio, con selector de año y «A declarar en»; (2) las ventas y
+   permutas del año, para puntear el informe fila a fila; (3) el historial de
    cada activo hasta el 31/12 de ese año; (4) los avisos que afectan a la
    Renta, con enlace a 🔍 Revisión solo si allí están.
 
@@ -350,40 +350,52 @@ function fiPieSupuesto(filas) {
   return filas.some(l => l.supuesto) ? '<p class="fi-pie">' + ccEsc(NOTA_COSTE_SUPUESTO) + "</p>" : "";
 }
 
-function fiHtmlOperaciones(tabla, titulo, unidad, operaciones) {
+/* Un bloque (ventas de inmuebles o permutas): cerrado, una línea con su
+   nº de operaciones y su ganancia o pérdida; abierto, una tabla con una
+   fila por operación y, debajo, una por fecha de adquisición (las del
+   informe, en su orden). Una operación de una sola fecha, en una línea.
+   En las permutas, la cantidad lleva su moneda. */
+function fiHtmlOperaciones(tabla, titulo, permuta, operaciones) {
   const ops = fiOperaciones(tabla, operaciones);
   if (!ops.length) return "";
-  const varias = ops.some(op => op.activo.includes("/"));
-  // En las permutas cada fila es una parte de la moneda entregada, por la
-  // fecha en que te llegó (no una compra de tokens).
-  const permuta = unidad === null;
-  const cabeceras = [[permuta ? "Recibido el" : "Comprado el"], ...(varias ? [["Moneda"]] : []), ["Cantidad", 1], ["Valor de adquisición", 1],
-    ["Valor de transmisión", 1], ["Ganancia o pérdida", 1]];
+  const cant = (x, moneda) => cantidadEs(x) + (permuta ? " " + ccEsc(moneda) : "");
+  // Una fecha de adquisición, con el «*» del canje.
+  const adquirido = l => ccEsc(l.fecha_adquisicion ? fechaEs(l.fecha_adquisicion) : "—") + (l.adquirido_por_canje ? " *" : "");
+  const sup = l => (l.coste_supuesto === true ? " **" : "");
   const filas = ops.map(op => {
-    const lotes = op.lotes.map(l => "<tr>" + fiCelda(ccEsc(fechaEs(l.fecha_adquisicion)) + (l.adquirido_por_canje ? " *" : "")) +
-      (varias ? fiCelda(ccEsc(l.activo)) : "") + fiCelda(cantidadEs(l.cantidad), 1) + fiCelda(fiEur(l.valor_adquisicion_eur) + (l.coste_supuesto === true ? " **" : ""), 1) +
-      fiCelda(fiEur(l.valor_transmision_eur), 1) + fiCelda(fiEur(l.gp_eur, true), 1) + "</tr>").join("");
-    const canje = (op.lotes.some(l => l.adquirido_por_canje) ? '<p class="fi-pie">* ' + ccEsc(NOTA_CANJE_INFORME.replace(/^\*\s*/, "")) + "</p>" : "") +
-      fiPieSupuesto(op.lotes.map(l => ({ supuesto: l.coste_supuesto === true })));
-    const nombre = op.operacion === "Venta" ? op.activo : op.operacion + " (" + op.activo + ")";
-    const explica = !permuta ? "" : '<p class="fi-pie">' + (op.cantidad === null
-      ? "Cada fila, una parte de lo que entregaste por la fecha en que te llegó."
-      : (/^Pago/.test(op.operacion) ? "Pagaste " : "Entregaste ") + numEs(op.cantidad, 2) + " " + ccEsc(op.activo) +
-        ". Cada fila, una parte de esos " + ccEsc(op.activo) + " por la fecha en que te llegaron.") + "</p>";
-    return '<details class="fi-op" data-abierto="op:' + ccEsc(op.clave) + '"><summary><span class="fi-op-f">' + ccEsc(fechaEs(op.fecha)) +
-      '</span><span class="fi-op-n">' + ccEsc(nombre) + '</span><span class="fi-op-c">' +
-      (op.cantidad === null ? "" : cantidadEs(op.cantidad) + " " + ccEsc(unidad || op.activo)) + '</span><span class="fi-op-gp">' +
-      fiCeldaEur(op.gp, true) + "</span></summary>" + explica + fiTabla(cabeceras, lotes) + canje + "</details>";
+    const nombre = ccEsc(fechaEs(op.fecha) + " · " + (op.operacion === "Venta" ? op.activo : op.operacion));
+    // Con dos monedas no se suman: cada fila dice la suya.
+    const cantidad = op.cantidad === null ? "" : cant(op.cantidad, op.activo);
+    const uno = op.lotes.length === 1 ? op.lotes[0] : null;
+    // En una línea, las cifras de su fila del informe (con el FIFO a medias, no son las del registro).
+    const [adq, tra, gp] = uno ? [uno.valor_adquisicion_eur, uno.valor_transmision_eur, uno.gp_eur] : [op.adquisicion, op.transmision, op.gp];
+    let html = '<tr class="fi-v-op">' + fiCelda(nombre + (uno ? '<span class="fi-h-debajo">adquirido el ' + adquirido(uno) + "</span>" : "")) +
+      fiCelda(uno ? cant(uno.cantidad, uno.activo) : cantidad, 1) + fiCelda(fiCeldaEur(adq) + (uno ? sup(uno) : ""), 1) +
+      fiCelda(fiCeldaEur(tra), 1) + fiCelda(fiCeldaEur(gp, true), 1) + "</tr>";
+    for (const l of uno ? [] : op.lotes) {
+      html += '<tr class="fi-v-lote">' + fiCelda(adquirido(l)) + fiCelda(cant(l.cantidad, l.activo), 1) +
+        fiCelda(fiEur(l.valor_adquisicion_eur) + sup(l), 1) + fiCelda(fiEur(l.valor_transmision_eur), 1) + fiCelda(fiEur(l.gp_eur, true), 1) + "</tr>";
+    }
+    return html;
   }).join("");
-  return '<div class="fi-subgrupo">' + ccEsc(titulo) + " (" + ops.length + ")</div>" + filas;
+  const t = (tabla && tabla.total) || {};
+  const lotes = ops.flatMap(op => op.lotes);
+  const total = '<tr class="fi-h-suma">' + fiCelda("Total" + fiInfo(NOTA_CENTIMOS)) + fiCelda("") + fiCelda(fiCeldaEur(t.valor_adquisicion_eur), 1) +
+    fiCelda(fiCeldaEur(t.valor_transmision_eur), 1) + fiCelda(fiCeldaEur(t.gp_eur, true), 1) + "</tr>";
+  const pies = (lotes.some(l => l.adquirido_por_canje) ? '<p class="fi-pie">' + ccEsc(NOTA_CANJE_INFORME) + "</p>" : "") +
+    fiPieSupuesto(lotes.map(l => ({ supuesto: l.coste_supuesto === true })));
+  return '<details class="fi-bloque" data-abierto="ventas:' + (permuta ? "permutas" : "inmuebles") + '"><summary>' +
+    '<span class="fi-bloque-n">' + ccEsc(titulo) + '</span><span class="fi-bloque-c">' + ops.length + (ops.length === 1 ? " operación" : " operaciones") +
+    '</span><span class="fi-bloque-gp">' + fiCeldaEur(t.gp_eur, true) + "</span></summary>" +
+    fiTabla([["Operación · Adquirido el"], ["Cantidad", 1], ["Valor de adquisición", 1], ["Valor de transmisión", 1], ["G/P", 1]], filas + total) +
+    pies + "</details>";
 }
 
 function fiHtmlVentas(informe, operaciones) {
   const d = informe.detalle;
-  const html = fiHtmlOperaciones(d.ventas_inmuebles, "Tokens de inmuebles", "tokens", operaciones) +
-    fiHtmlOperaciones(d.permutas, "Permutas: pagos con monedas virtuales y cambios entre ellas", null, operaciones);
-  return html ? '<p class="help">Una fila por fecha de compra.' + fiInfo(NOTA_CENTIMOS) + "</p>" + html
-    : '<p class="help">Sin ventas ni permutas este año.</p>';
+  const html = fiHtmlOperaciones(d.ventas_inmuebles, "Tokens de inmuebles", false, operaciones) +
+    fiHtmlOperaciones(d.permutas, "Permutas: pagos con monedas virtuales y cambios entre ellas", true, operaciones);
+  return html || '<p class="help">Sin ventas ni permutas este año.</p>';
 }
 
 /* ----------------------------- (3) Historial de cada activo ----------------------------- */
@@ -942,13 +954,18 @@ function fiInyectarEstilos() {
     ".fi-fila.total .k{color:var(--text)}",
     ".fi-declarar{font-size:13px;color:var(--faint);margin:3px 0 6px}",
     ".fi-info{cursor:help;color:var(--faint)}",
-    ".fi-op{border:1px solid var(--border);border-radius:10px;margin:6px 0;background:var(--tarjeta)}",
-    ".fi-op>summary{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 12px;cursor:pointer;font-size:14px;color:var(--text)}",
-    ".fi-op-f{font-variant-numeric:tabular-nums;color:var(--muted)}",
-    ".fi-op-n{font-weight:600;flex:1 1 12em;overflow-wrap:anywhere}",
-    ".fi-op-c{color:var(--muted);font-variant-numeric:tabular-nums}",
-    ".fi-op-gp{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}",
-    ".fi-op>.fi-tablawrap,.fi-op>p{margin:0 12px 10px}",
+    ".fi-bloque{border:1px solid var(--border);border-radius:10px;margin:6px 0;background:var(--tarjeta)}",
+    ".fi-bloque>summary{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 12px;cursor:pointer;font-size:14px;color:var(--text)}",
+    ".fi-bloque-n{font-weight:600;flex:1 1 12em}",
+    ".fi-bloque-n::before{content:'▸ ';color:var(--muted)}",
+    ".fi-bloque[open] .fi-bloque-n::before{content:'▾ '}",
+    ".fi-bloque-c{color:var(--muted)}",
+    ".fi-bloque-gp{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}",
+    ".fi-bloque>.fi-tablawrap,.fi-bloque>p{margin:0 12px 10px}",
+    ".fi-v-op td{font-weight:600;border-top:1px solid var(--border)}",
+    ".fi-v-lote td{font-size:13px;color:var(--muted)}",
+    ".fi-v-lote td:first-child{padding-left:22px}",
+    ".fi-bloque .fi-h-debajo{font-weight:400}",
     ".fi-tablawrap{overflow-x:auto}",
     ".fi-tabla{width:100%;font-size:14px}",
     /* Historial: las líneas de cada activo, alineadas en columnas como una

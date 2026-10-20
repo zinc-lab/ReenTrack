@@ -678,7 +678,7 @@ function excelRentaDetalle(hoja, fila, informe) {
     // En las permutas, qué se hizo (pago, cambio, retirada) va en su columna.
     const conOperacion = clave === "permutas";
     const conOp = valor => (conOperacion ? [valor] : []);
-    // Las fechas, con las palabras de 🧾 Fiscal.
+    // Las fechas, con las mismas palabras que el PDF.
     fila = cabecera(["Activo", ...conOp("Operación"), "Tipo", conOperacion ? "Recibido el" : "Comprado el",
       conOperacion ? "Entregado el" : "Vendido el", "Cantidad", "Valor de adquisición USD", "Valor de adquisición EUR",
       "Valor de transmisión USD", "Valor de transmisión EUR", "Ganancia o pérdida EUR"]);

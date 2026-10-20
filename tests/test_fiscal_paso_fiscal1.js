@@ -193,27 +193,43 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
   const dosMonedas = S.fiOperaciones({ filas: [Object.assign(fila("p1", "2024-01-01", 60, 55, 54, -1), { activo: "USDT" }),
     Object.assign(fila("p1", "2024-01-01", 40, 37, 36, -1), { activo: "USDC" })] });
   assert("A11: un pago con dos monedas: las dos en el nombre y sin sumar sus cantidades", dosMonedas[0].activo === "USDT/USDC" && dosMonedas[0].cantidad === null);
-  const htmlDos = S.fiHtmlOperaciones({ filas: dosMonedas[0].lotes.map(l => Object.assign({}, l, { operacion: "Pago de X" })) }, "Permutas", null);
-  assert("A11: con dos monedas, la tabla dice la de cada fila", htmlDos.includes(">Moneda<") && htmlDos.includes(">USDC<") && htmlDos.includes("(USDT/USDC)"));
+  const htmlDos = S.fiHtmlOperaciones({ filas: dosMonedas[0].lotes.map(l => Object.assign({}, l, { operacion: "Pago de X" })) }, "Permutas", true);
+  assert("A11: con dos monedas, cada fila con la suya y la operación sin cantidad", htmlDos.includes(">60 USDT<") && htmlDos.includes(">40 USDC<") &&
+    htmlDos.includes("01/05/2025 · Pago de X</td><td class=\"num\"></td>"), htmlDos);
   const sinImporte = S.fiOperaciones({ filas: [fila("v3", "2024-01-01", 1, null, 50, null)] });
   assert("un lote sin importe: la suma queda sin dar (—), no en 0", sinImporte[0].adquisicion === null && sinImporte[0].gp === null);
-  const htmlOps = S.fiHtmlOperaciones({ filas: [fila("v1", "2024-01-01", 2, 200, 220, 20), fila("v1", "2024-02-01", 1, 110, 110, 0, true)] }, "Tokens", "tokens");
-  assert("HTML: desplegable con un lote por fila, el * del canje y su nota",
-    (htmlOps.match(/<details/g) || []).length === 1 && (htmlOps.match(/<tbody>[\s\S]*?<\/tbody>/)[0].match(/<tr>/g) || []).length === 2 &&
-    htmlOps.includes("01/02/2024 *") && htmlOps.includes("+20,00 €") && htmlOps.includes("canje"));
+  const tot = (adq, tra, gp) => ({ valor_adquisicion_eur: adq, valor_transmision_eur: tra, gp_eur: gp });
+  const htmlOps = S.fiHtmlOperaciones({ filas: [fila("v1", "2024-01-01", 2, 200, 220, 20), fila("v1", "2024-02-01", 1, 110, 110, 0, true)],
+    total: tot(310, 330, 20) }, "Tokens", false);
+  const cuerpo = htmlOps.match(/<tbody>[\s\S]*?<\/tbody>/)[0];
+  assert("P29: un bloque cerrado con su nº de operaciones y su G/P", (htmlOps.match(/<details/g) || []).length === 1 && !/<details[^>]* open/.test(htmlOps) &&
+    /<summary>.*Tokens.*1 operación.*\+20,00 €.*<\/summary>/.test(htmlOps), htmlOps);
+  assert("P29: la operación y debajo una fila por fecha de adquisición, con el * del canje y su nota",
+    (cuerpo.match(/fi-v-op/g) || []).length === 1 && (cuerpo.match(/fi-v-lote/g) || []).length === 2 &&
+    cuerpo.includes("01/05/2025 · Toledo 1") && cuerpo.includes("01/02/2024 *") && htmlOps.includes("canje de contrato"), cuerpo);
+  assert("P29: las fechas, «Adquirido el», sin «Comprado el» ni «Recibido el»", htmlOps.includes(">Operación · Adquirido el<") &&
+    !/Comprado el|Recibido el|Cada fila/.test(htmlOps));
+  assert("P29: la fila Total, la del informe (no la suma de filas)", /fi-h-suma.*Total.*310,00 €.*330,00 €.*\+20,00 €/.test(cuerpo), cuerpo);
   assert("A12: cabeceras con las palabras del glosario", htmlOps.includes(">Valor de adquisición<") && htmlOps.includes(">Valor de transmisión<") &&
     !htmlOps.includes(">Coste<") && !htmlOps.includes("Valor de venta"));
-  const htmlVentas = S.fiHtmlVentas({ detalle: { ventas_inmuebles: { filas: [fila("v1", "2024-01-01", 2, 200, 220, 20)] },
-    permutas: { filas: [Object.assign(fila("p1", "2024-01-01", 60, 55, 54, -1), { activo: "USDT", operacion: "Pago de Y" })] } } }, new Map());
-  assert("ventas y permutas, cada una con su título, y la nota de los céntimos", htmlVentas.includes("Tokens de inmuebles (1)") &&
-    htmlVentas.includes("Permutas: pagos con monedas virtuales y cambios entre ellas (1)") && htmlVentas.includes("Pago de Y (USDT)") &&
+  const unaFecha = S.fiHtmlOperaciones({ filas: [Object.assign(fila("p1", "2024-01-01", 108, 100, 99, -1), { activo: "USDT", operacion: "Pago de Rentas 3" })],
+    total: tot(100, 99, -1) }, "Permutas", true);
+  assert("P29: una operación de una sola fecha, en una línea, con «adquirido el» debajo y la moneda en la cantidad",
+    !unaFecha.includes("fi-v-lote") && unaFecha.includes("01/05/2025 · Pago de Rentas 3<span class=\"fi-h-debajo\">adquirido el 01/01/2024</span>") &&
+    unaFecha.includes(">108 USDT<"), unaFecha);
+  const fifoCorto = S.fiHtmlOperaciones({ filas: [Object.assign(fila("p2", "2024-01-01", 60, 55, 59.4, 4.4), { activo: "USDT", operacion: "Pago de Z" })],
+    total: tot(55, 99, 44) }, "Permutas", true, new Map([["p2", { adquisicion: 55, transmision: 99, gp: 44 }]]));
+  assert("P29: en una línea, las cifras de su fila del informe, no las del registro (FIFO a medias)",
+    /fi-v-op.*>55,00 €<.*>59,40 €<.*\+4,40 €.*fi-h-suma/.test(fifoCorto) && /fi-h-suma.*>99,00 €<.*\+44,00 €/.test(fifoCorto), fifoCorto);
+  const supDebajo = S.fiHtmlOperaciones({ filas: [Object.assign(fila("v4", "2024-01-01", 1, 100, 110, 10), { coste_supuesto: true }),
+    fila("v4", "2024-02-01", 1, 100, 110, 10)], total: tot(200, 220, 20) }, "Tokens", false);
+  assert("P29: el «**» en la fila de debajo y su nota", supDebajo.includes(">100,00 € **<") && supDebajo.includes("** Incluye compras"), supDebajo);
+  const htmlVentas = S.fiHtmlVentas({ detalle: { ventas_inmuebles: { filas: [fila("v1", "2024-01-01", 2, 200, 220, 20)], total: tot(200, 220, 20) },
+    permutas: { filas: [Object.assign(fila("p1", "2024-01-01", 60, 55, 54, -1), { activo: "USDT", operacion: "Pago de Y" })], total: tot(55, 54, -1) } } }, new Map());
+  assert("ventas y permutas, cada una en su bloque, y la nota de los céntimos en el Total", htmlVentas.includes(">Tokens de inmuebles<") &&
+    htmlVentas.includes(">Permutas: pagos con monedas virtuales y cambios entre ellas<") && htmlVentas.includes("· Pago de Y") &&
+    htmlVentas.includes('data-abierto="ventas:inmuebles"') && htmlVentas.includes('data-abierto="ventas:permutas"') &&
     htmlVentas.includes("Cada total se suma con todos los decimales"));
-  // En las permutas, «Recibido el» y qué es cada fila.
-  assert("permutas: «Recibido el» y «Pagaste 60,00 USDT. Cada fila…»", htmlVentas.includes("Recibido el") &&
-    htmlVentas.includes("Pagaste 60,00 USDT. Cada fila, una parte de esos USDT por la fecha en que te llegaron.") &&
-    htmlVentas.includes("Comprado el"), htmlVentas);
-  assert("permutas con dos monedas: la frase sin cantidad", htmlDos.includes("Cada fila, una parte de lo que entregaste"), htmlDos);
-  assert("ventas de tokens: sin la frase de las permutas", !htmlOps.includes("Cada fila, una parte"));
   assert("sin ventas ni permutas: lo dice", /Sin ventas/.test(S.fiHtmlVentas({ detalle: { ventas_inmuebles: { filas: [] }, permutas: { filas: [] } } })));
 
   const lote = (cantidad, unitario, fecha, origen) => ({ cantidad, coste_unitario_eur: unitario, fecha, origen });

@@ -141,7 +141,7 @@ console.log("== A5: 🧾 Fiscal, por el camino de la app (fiCalcular, como 📤)
       const res = fiCalcular(__regs, __cache, state.config, { hoy: "2025-12-31", diaReal: null, descargaIncompleta: false });
       const inf = res.informes[2025];
       return { ii: inf.inversiones_activas.inmuebles.filas,
-        ventas: fiHtmlOperaciones(inf.detalle.ventas_inmuebles, "Ventas", "tokens", res.operaciones),
+        ventas: fiHtmlOperaciones(inf.detalle.ventas_inmuebles, "Ventas", false, res.operaciones),
         lotes: fiHtmlHistorial(res, 2025, inf, inf) };
     })();`, sb);
   assert("II marcada también por fiCalcular (cierres_supuestos en su op)", r.ii.length === 1 && r.ii[0].coste_supuesto === true, r.ii);
