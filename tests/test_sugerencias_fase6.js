@@ -163,6 +163,11 @@ assert("con uno solo, nada (ya lo dice su fila)", juntos([cob2("a", 220)], salid
 assert("lejos del precio: sin 💲", !juntos([cob2("a", 20), cob2("b", 20)], salida, 110, 0, sinAsig).includes("💲"));
 const conYa = juntos([cob2("a", 100), cob2("b", 200)], salida, 110, 240, sinAsig);
 assert("suma lo ya cobrado y lo dice en la burbuja", conYa.includes("135,00 USD/token (+23 %) 💲") && conYa.includes("(Ya cobrado + elegidos)"), conYa);
+// B21-A11 A1: con la venta ya a su precio (440 = 0 %), dos cobros que la alejan no llevan 💲 (como sus filas).
+assert("B21-A11 A1: si los elegidos alejan la venta de lo que costó, sin 💲",
+  !juntos([cob2("a", 10), cob2("b", 10)], salida, 110, 440, sinAsig).includes("💲") &&
+  juntos([cob2("a", 10), cob2("b", 10)], salida, 110, 440, sinAsig).includes("115,00 USD/token (+5 %)"));
+assert("B21-A11 A1: si la acercan, con 💲", juntos([cob2("a", 20), cob2("b", 20)], salida, 110, 360, sinAsig).includes("100,00 USD/token (−9 %) 💲"));
 const parte = new Map([["a", { asignado: 120, enEstaVenta: false }]]);
 assert("de un cobro que pagó otra venta, solo lo que le queda", juntos([cob2("a", 340), cob2("b", 220)], salida, 110, 0, parte).includes("110,00 USD/token"));
 assert("un elegido sin cantidad legible: nada", juntos([cob2("a", 220), cob2("b", "x")], salida, 110, 0, sinAsig) === "");

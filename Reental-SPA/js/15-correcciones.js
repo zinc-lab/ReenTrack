@@ -2084,16 +2084,21 @@ function ccTextoPct(precio, precioCompra) {
 
 /* Con dos o más cobros elegidos, su precio juntos (B21 A11): lo ya cobrado
    + lo que queda de cada elegido, ÷ los tokens de la venta, con su % y el
-   💲 si cuadra. Cada fila sigue con el suyo (así la lista no se mueve al
-   elegir). "" con menos de dos, un elegido sin cantidad legible o una venta
-   sin tokens. asignados: el cobrosAsignados de ccContextoBuscador. */
+   💲 si cuadra (con algo ya cobrado, solo si lo acercan a lo que costó, como
+   en las filas: ccOrdenarSugerencias). Cada fila sigue con el suyo (así la
+   lista no se mueve al elegir). "" con menos de dos, un elegido sin cantidad
+   legible o una venta sin tokens. asignados: el cobrosAsignados de
+   ccContextoBuscador. */
 function ccHtmlElegidosJuntos(elegidos, salida, precioCompra, yaCobrado, asignados) {
   if (elegidos.length < 2 || elegidos.some(c => !ccEsNumeroPositivo(c.cantidad))) return "";
   const resto = c => { const m = asignados && asignados.get(c.clave); return Math.max(0, c.cantidad - (m && Number.isFinite(m.asignado) ? m.asignado : 0)); };
   const total = elegidos.reduce((t, c) => t + resto(c), yaCobrado);
   const precio = ccPrecioPorTokenImplicito(total, salida && salida.cantidad);
   if (precio === null) return "";
-  const cuadra = ccSenalesCobro({}, salida, precioCompra, total).includes("precio");
+  const pYa = yaCobrado > 0 ? ccPrecioPorTokenImplicito(yaCobrado, salida.cantidad) : null;
+  const lejania = p => Math.abs(p / precioCompra - 1);
+  const acerca = pYa === null || !(precioCompra > 0) || lejania(precio) < lejania(pYa);
+  const cuadra = acerca && ccSenalesCobro({}, salida, precioCompra, total).includes("precio");
   return ': <span title="' + (yaCobrado > 0 ? "(Ya cobrado + elegidos)" : "Elegidos") + ' ÷ tokens de la venta">' +
     ccEsc(numEs(precio, 2) + " USD/token" + ccTextoPct(precio, precioCompra)) + (cuadra ? " " + CC_ICONO_SENAL.precio : "") + "</span>";
 }
