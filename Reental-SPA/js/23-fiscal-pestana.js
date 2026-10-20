@@ -699,7 +699,7 @@ function fiTablaHistorial(a, abiertos, nombres, anio) {
     // La hora, debajo de la fecha (ocupa menos de ancho).
     const conHora = fechaEs(f.fecha, true).split(" ");
     const fecha = fiPorMes(f) ? mesEs(f.fecha.slice(0, 7))
-      : ccEsc(conHora[0]) + (conHora[1] ? '<span class="fi-h-hora">' + conHora[1] + "</span>" : "");
+      : ccEsc(conHora[0]) + (conHora[1] ? '<span class="fi-h-debajo">' + conHora[1] + "</span>" : "");
     const titulo = fiPorMes(f) ? "" : fechaDosHoras(f.fecha, f.r && f.r.instante);
     const otros = f.tipo === "rend" ? [...f.registros].filter(r => String(r.fecha).slice(0, 7) !== f.fecha.slice(0, 7)) : [];
     const nota = f.tipo === "revisar" ? "No cuenta hasta revisarla"
@@ -719,7 +719,8 @@ function fiTablaHistorial(a, abiertos, nombres, anio) {
     const conSigno = numEs(n0, 6, true, true);
     const tokens = (/[1-9]/.test(conSigno) ? conSigno : "±0") +
       (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
-    const quedan = c && fiscHay(c.quedan) ? cantidadEs(c.quedan) + " de " + cantidadEs(c.tokens) : "";
+    // «de y» debajo, como la hora bajo la fecha (ocupa menos de ancho).
+    const quedan = c && fiscHay(c.quedan) ? cantidadEs(c.quedan) + '<span class="fi-h-debajo">de ' + cantidadEs(c.tokens) + "</span>" : "";
     html += '<tr class="fi-h-' + clase + (f.tipo === "revisar" ? " fi-h-nocuenta" : "") + '">' +
       fiCelda(titulo ? '<span title="' + ccEsc(titulo) + '" tabindex="0">' + fecha + "</span>" : fecha) + fiCelda(et + boton) +
       fiCelda(tokens, 1) + fiCelda(f.tipo === "revisar" ? "" : cantidadEs(f.tienes), 1) +
@@ -965,12 +966,13 @@ function fiInyectarEstilos() {
     ".fi-et-sale{background:var(--info-bg);border-color:var(--info-bd);color:var(--info);font-weight:700}",
     ".fi-et-canje{border-style:dashed}",
     ".fi-et-grupo{border-style:dotted}",
-    ".fi-lotes{font-size:12px;font-weight:600;padding:0 6px;margin-left:4px;min-height:0;line-height:1.5;border-radius:6px;box-shadow:none}",
+    // El botón de lotes, debajo de la etiqueta (ocupa menos de ancho).
+    ".fi-lotes{display:block;margin-top:3px;font-size:12px;font-weight:600;padding:0 6px;min-height:0;line-height:1.5;border-radius:6px;box-shadow:none}",
     ".fi-h-lote td{background:var(--panel2);font-size:13px;color:var(--muted)}",
     ".fi-h-lote td:nth-child(2){padding-left:22px}",
     ".fi-h-suma td{font-weight:700;border-top:2px solid var(--border)}",
     ".fi-h-nocuenta td{color:var(--muted)}",
-    ".fi-h-hora{display:block;font-size:11.5px;color:var(--muted);line-height:1.2}",
+    ".fi-h-debajo{display:block;font-size:11.5px;color:var(--muted);line-height:1.2}",
     ".fi-historial .fi-ir-avisos{text-decoration:none}",
     "@media print{.fi-historial .fi-h-cerrado{display:block!important}.fi-historial tr.fi-h-lote[hidden]{display:table-row!important}}",
     ".fi-pos{color:var(--ok)}",

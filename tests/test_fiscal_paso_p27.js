@@ -155,9 +155,9 @@ console.log("== La pantalla ==");
   assert("grupos con los nombres del Resumen", R.html.includes("Transmisión de tokens de inmuebles") && R.html.includes("Permutas de monedas virtuales"));
   assert("la venta con su botón de lotes (aria-expanded) y sus filas ocultas", /aria-expanded="false" data-desglose="[^"]+" data-foco="[^"]+">▸ 2 lotes/.test(R.html) &&
     (R.html.match(/class="fi-h-lote"[^>]* hidden/g) || []).length >= 2);
-  assert("el canje ±0, «Quedan x de y» y la entrada que no cuenta", R.html.includes("±0") && R.html.includes("3 de 5") &&
+  assert("el canje ±0, «Quedan x de y» y la entrada que no cuenta", R.html.includes("±0") && R.html.includes('3<span class="fi-h-debajo">de 5</span>') &&
     R.html.includes("No cuenta hasta revisarla") && R.html.includes("fi-h-nocuenta"));
-  assert("la hora, debajo de la fecha, y las dos horas al pasar el ratón", R.html.includes('<span class="fi-h-hora">10:00</span>') &&
+  assert("la hora, debajo de la fecha, y las dos horas al pasar el ratón", R.html.includes('<span class="fi-h-debajo">10:00</span>') &&
     R.html.includes("hora española · "));
   assert("la compra externa con el coste de por defecto (Piso) lleva «**» y su nota; con el tuyo (Casa), no",
     R.html.includes("200,00 € **") && R.html.includes("** Incluye compras") && !R.html.includes("500,00 € **"));

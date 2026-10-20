@@ -142,7 +142,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   /* ============ H5 ============ */
   const fecha = await page.evaluate(() => {
     const s = document.querySelector("#fiHistorial td span[title][tabindex='0']");
-    return { title: s.title, hora: !!s.querySelector(".fi-h-hora") };
+    return { title: s.title, hora: !!s.querySelector(".fi-h-debajo") };
   });
   assert("H5 -> la fecha, con la hora debajo y las dos horas también con el teclado", /hora española · .* UTC/.test(fecha.title) && fecha.hora, fecha);
   await page.click("#btnDark");
