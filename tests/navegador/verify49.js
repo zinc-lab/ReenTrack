@@ -296,6 +296,32 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   for (const m of errs) console.error("  [" + m.tipo + "] " + m.texto.slice(0, 160));
   assert("E -> 0 errores de consola en todos los escenarios", errs.length === 0, errs.map(x => x.texto.slice(0, 120)));
 
+  /* ============ F) B21-A11: «N elegidos» con la venta ya cobrada en parte ============ */
+  console.log("\nF) B21-A11: el precio de los elegidos juntos cuenta lo ya cobrado");
+  await clickCentrado('.cc-item[data-clave="' + claveS1 + '"] [data-accion="abrir-buscador"]');
+  await elegirCobro("300 USDC");
+  await esperar(150);
+  await page.click(".cc-dlg-proponer");
+  await esperar(500);
+  await page.click(".cc-form-confirmar");
+  await esperar(900);
+  await page.evaluate(() => { document.getElementById("ccResueltos").open = true; });
+  await clickCentrado('#ccListaResueltos [data-accion="abrir-buscador"][data-clave="' + claveS1 + '"]');
+  await elegirCobro("179,4321 USDC");
+  await esperar(150);
+  await elegirCobro("60 USDC");
+  await esperar(250);
+  r = await page.evaluate(() => {
+    const instr = [...document.querySelectorAll(".cc-dlg-nota .cc-dlg-instr")].find(x => x.textContent.includes("elegidos"));
+    const span = instr && instr.querySelector("span[title]");
+    return { texto: instr ? instr.textContent : "", burbuja: span ? span.title : "" };
+  });
+  // (300 ya cobrados + 179,4321 + 60) ÷ 250 tokens = 2,16.
+  assert("F -> «2 elegidos: 2,16 USD/token» con lo ya cobrado, y la burbuja lo dice",
+    r.texto.includes("2 elegidos: 2,16 USD/token") && r.burbuja === "(Ya cobrado + elegidos) ÷ tokens de la venta", r);
+  await page.keyboard.press("Escape");
+  await esperar(250);
+
   await browser.close();
   console.log("\n" + ok + "/" + (ok + fallos) + " comprobaciones OK" + (fallos ? " -> " + fallos + " FALLOS" : " -> TODO VERDE"));
   process.exit(fallos ? 1 : 0);
