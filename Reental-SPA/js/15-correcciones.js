@@ -2023,9 +2023,7 @@ function ccHtmlLeyenda(precioCompra, yaCobrado, tokens) {
   let ya = "";
   if (yaCobrado > 0) {
     const p = precioCompra > 0 ? ccPrecioPorTokenImplicito(yaCobrado, tokens) : null;
-    const pct = p === null ? null : Math.round((p / precioCompra - 1) * 100);
-    ya = '<span class="cc-dlg-ya">' + ccEsc("Ya cobrado: " + numEs(yaCobrado, 2) + " USD" + (pct === null ? "" :
-      " (" + (pct > 0 ? "+" : pct < 0 ? "−" : "") + numEs(Math.abs(pct), 0) + " %)") + ".") + "</span>";
+    ya = '<span class="cc-dlg-ya">' + ccEsc("Ya cobrado: " + numEs(yaCobrado, 2) + " USD" + ccTextoPct(p, precioCompra) + ".") + "</span>";
   }
   return '<div class="cc-dlg-leyenda"><b>Cobros sugeridos (revísalo):</b>' +
     ["direccion", "precio"].filter(s => s === "direccion" || precioCompra > 0)
@@ -2054,10 +2052,7 @@ function ccHtmlFilaCobro(reg, elegida, salida, senales, precioCompra, importeTot
   let textoPrecio = "", pct = "";
   if (precio !== null) {
     textoPrecio = numEs(precio, 2) + " USD/token";
-    if (precioCompra > 0) {
-      const p = Math.round((precio / precioCompra - 1) * 100);
-      pct = " (" + (p > 0 ? "+" : p < 0 ? "\u2212" : "") + numEs(Math.abs(p), 0) + " %)";
-    }
+    pct = ccTextoPct(precio, precioCompra);
   }
   const exacto = Number.isFinite(reg.cantidad) ? ccCantidad(reg.cantidad) + (reg.simbolo ? " " + reg.simbolo : "") : "";
   const importe = Number.isFinite(reg.cantidad) ? numEs(reg.cantidad, 2) + (reg.simbolo ? " " + reg.simbolo : "") : "";
@@ -2077,6 +2072,30 @@ function ccHtmlFilaCobro(reg, elegida, salida, senales, precioCompra, importeTot
     '" title="' + (elegida ? "Quitar" : "Añadir") + '">' +
     (elegida ? "✔" : "➕") + "</button>" +
     "</div>";
+}
+
+/* « (−35 %)»: el precio por token frente a lo que te costó, redondeado (el
+   mismo que decide el 💲); "" si falta alguno de los dos. */
+function ccTextoPct(precio, precioCompra) {
+  if (precio === null || !(precioCompra > 0)) return "";
+  const p = Math.round((precio / precioCompra - 1) * 100);
+  return " (" + (p > 0 ? "+" : p < 0 ? "−" : "") + numEs(Math.abs(p), 0) + " %)";
+}
+
+/* Con dos o más cobros elegidos, su precio juntos (B21 A11): lo ya cobrado
+   + lo que queda de cada elegido, ÷ los tokens de la venta, con su % y el
+   💲 si cuadra. Cada fila sigue con el suyo (así la lista no se mueve al
+   elegir). "" con menos de dos, un elegido sin cantidad legible o una venta
+   sin tokens. asignados: el cobrosAsignados de ccContextoBuscador. */
+function ccHtmlElegidosJuntos(elegidos, salida, precioCompra, yaCobrado, asignados) {
+  if (elegidos.length < 2 || elegidos.some(c => !ccEsNumeroPositivo(c.cantidad))) return "";
+  const resto = c => { const m = asignados && asignados.get(c.clave); return Math.max(0, c.cantidad - (m && Number.isFinite(m.asignado) ? m.asignado : 0)); };
+  const total = elegidos.reduce((t, c) => t + resto(c), yaCobrado);
+  const precio = ccPrecioPorTokenImplicito(total, salida && salida.cantidad);
+  if (precio === null) return "";
+  const cuadra = ccSenalesCobro({}, salida, precioCompra, total).includes("precio");
+  return ': <span title="' + (yaCobrado > 0 ? "(Ya cobrado + elegidos)" : "Elegidos") + ' ÷ tokens de la venta">' +
+    ccEsc(numEs(precio, 2) + " USD/token" + ccTextoPct(precio, precioCompra)) + (cuadra ? " " + CC_ICONO_SENAL.precio : "") + "</span>";
 }
 
 /* La burbuja del precio de una fila: qué se divide entre los tokens. */
@@ -2177,15 +2196,17 @@ function ccDlgActualizar() {
   /* Más pistas arriba y, a igualdad, el más cercano a la venta. */
   const precioCompra = ccPrecioCompraUsd(registros, salidaReg, state.cache && state.cache.tipos_bce, 0);
   const filas = ccOrdenarSugerencias(mostrados, salidaReg, precioCompra, buscador.ctx, state.cache);
+  const yaCobrado = buscador.venta ? ccAsignacionesValidas(buscador.venta)
+    .reduce((t, a) => t + (Number(a.cantidad_asignada) > 0 && Number.isFinite(Number(a.cantidad_asignada)) ? Number(a.cantidad_asignada) : 0), 0) : 0;
+  const elegidos = ccDlg.elegidos.map(k => todos.find(c => c.clave === k));
   ccDlg.refs.nota.innerHTML =
     '<div class="cc-dlg-cab"><h4>' + ccEsc(titulo) + "</h4>" + (acciones ? "<span>" + acciones + "</span>" : "") + "</div>" +
     (ayuda ? '<div class="cc-dlg-instr">' + ccEsc(ayuda) + "</div>" : "") +
     (mostrados.length
       ? '<div class="cc-dlg-instr"><b>Instrucciones:</b> pulsa ➕ en el cobro que corresponde y luego «Vincular cobro…».' +
-        (nEleg ? " · <b>" + nEleg + (nEleg === 1 ? " elegido" : " elegidos") + "</b>" : "") + "</div>" +
-        ccHtmlLeyenda(precioCompra, buscador.venta ? ccAsignacionesValidas(buscador.venta)
-          .reduce((t, a) => t + (Number(a.cantidad_asignada) > 0 && Number.isFinite(Number(a.cantidad_asignada)) ? Number(a.cantidad_asignada) : 0), 0) : 0,
-          salidaReg && salidaReg.cantidad)
+        (nEleg ? " · <b>" + nEleg + (nEleg === 1 ? " elegido" : " elegidos") + "</b>" +
+          ccHtmlElegidosJuntos(elegidos, salidaReg, precioCompra, yaCobrado, buscador.ctx.cobrosAsignados) : "") + "</div>" +
+        ccHtmlLeyenda(precioCompra, yaCobrado, salidaReg && salidaReg.cantidad)
       : "");
   ccDlg.refs.resultados.innerHTML = mostrados.length
     ? filas.map(f => ccHtmlFilaCobro(f.c, ccDlg.elegidos.includes(f.c.clave), salidaReg, f.sen, precioCompra, f.importe, f.como)).join("")

@@ -155,6 +155,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   /* ============ B) multi-cobro: dos pagos elegidos a la vez ============ */
   console.log("\nB) 4.10: varios pagos elegidos con ➕ en el buscador");
   await clickCentrado('.cc-item[data-clave="' + claveS1 + '"] [data-accion="abrir-buscador"]');
+  const ordenFilas = () => page.evaluate(() => [...document.querySelectorAll(".cc-dlg-item .cc-dlg-amt")].map(e => e.title).join("|"));
+  const ordenAntes = await ordenFilas();
   await elegirCobro("300 USDC");
   await esperar(200);
   await elegirCobro("179,4321 USDC");
@@ -162,9 +164,13 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   r = await page.evaluate(() => ({
     boton: document.querySelector(".cc-dlg-proponer").textContent.trim(),
     elegidas: document.querySelectorAll(".cc-dlg-item.elegida").length,
+    nota: document.querySelector(".cc-dlg-nota").textContent,
   }));
   assert("B -> dos filas elegidas y botón «🔗 Vincular 2 cobros…»",
     r.boton === "🔗 Vincular 2 cobros…" && r.elegidas === 2, r);
+  // B21 A11: (300 + 179,4321) ÷ 250 tokens; sin compras, sin % ni 💲.
+  assert("B -> «2 elegidos: 1,92 USD/token» (el precio de los dos juntos) y las filas no cambian de sitio",
+    r.nota.includes("2 elegidos: 1,92 USD/token") && !r.nota.includes("💲") && (await ordenFilas()) === ordenAntes, { nota: r.nota, ordenAntes });
   await page.screenshot({ path: path.join(OUT, "cap_49_buscador_multi.png"), fullPage: false });
   await page.click(".cc-dlg-proponer");
   await esperar(500);

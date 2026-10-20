@@ -139,7 +139,8 @@ console.log("\n== A10: la leyenda dice lo ya cobrado ==");
     FUENTE15.includes(".cc-dlg-leyenda .cc-dlg-ya{") && FUENTE15.includes("background:var(--resalte);color:var(--text);font-weight:700}") &&
     (fs.readFileSync(path.join(__dirname, "..", "Reental-SPA", "index.html"), "utf8").match(/--resalte:/g) || []).length === 2);
   assert("A10: ccDlgActualizar le pasa lo cobrado de la venta",
-    /ccHtmlLeyenda\(precioCompra, buscador\.venta \? ccAsignacionesValidas\(buscador\.venta\)/.test(FUENTE15));
+    /const yaCobrado = buscador\.venta \? ccAsignacionesValidas\(buscador\.venta\)/.test(FUENTE15) &&
+    FUENTE15.includes("ccHtmlLeyenda(precioCompra, yaCobrado, salidaReg && salidaReg.cantidad)"));
 }
 
 console.log("\n== A3: coste por compra que redondeado es 0 ==");

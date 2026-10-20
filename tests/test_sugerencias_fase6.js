@@ -149,6 +149,25 @@ assert("leyenda: «Cobros sugeridos (revísalo):» con 📍 y 💲 en su línea 
   ley.includes("<span>📍 Coincide con la dirección a la que enviaste los tokens.</span>") &&
   ley.includes("<span>💲 Precio a ±35 % de lo que te costó cada token.</span>"), ley);
 assert("sin lo que te costó, la leyenda no habla del precio", !sandbox.ccHtmlLeyenda(null).includes("💲"));
+assert("la leyenda con lo ya cobrado sigue igual", sandbox.ccHtmlLeyenda(110, 220, 4).includes("Ya cobrado: 220,00 USD (−50 %)."));
+
+console.log("== ccHtmlElegidosJuntos (B21 A11: el precio de los elegidos juntos) ==");
+const juntos = sandbox.ccHtmlElegidosJuntos;
+const cob2 = (clave, cantidad) => ({ ...cobro(OTRO, cantidad), clave });
+const sinAsig = new Map();
+// Venta de 4 tokens que te costaron 110 USD cada uno, cobrada en dos pagos de 220.
+const dos = juntos([cob2("a", 220), cob2("b", 220)], salida, 110, 0, sinAsig);
+assert("dos de 220: 110,00 USD/token (0 %) con 💲", dos.includes("110,00 USD/token (0 %) 💲") && dos.includes('title="Elegidos ÷ tokens de la venta"'), dos);
+assert("cada fila sigue con el suyo (55 USD/token, −50 %)", ccHtmlFilaCobro(cob2("a", 220), true, salida, [], 110).includes("55,00 USD/token<b> (−50 %)</b>"));
+assert("con uno solo, nada (ya lo dice su fila)", juntos([cob2("a", 220)], salida, 110, 0, sinAsig) === "");
+assert("lejos del precio: sin 💲", !juntos([cob2("a", 20), cob2("b", 20)], salida, 110, 0, sinAsig).includes("💲"));
+const conYa = juntos([cob2("a", 100), cob2("b", 200)], salida, 110, 240, sinAsig);
+assert("suma lo ya cobrado y lo dice en la burbuja", conYa.includes("135,00 USD/token (+23 %) 💲") && conYa.includes("(Ya cobrado + elegidos)"), conYa);
+const parte = new Map([["a", { asignado: 120, enEstaVenta: false }]]);
+assert("de un cobro que pagó otra venta, solo lo que le queda", juntos([cob2("a", 340), cob2("b", 220)], salida, 110, 0, parte).includes("110,00 USD/token"));
+assert("un elegido sin cantidad legible: nada", juntos([cob2("a", 220), cob2("b", "x")], salida, 110, 0, sinAsig) === "");
+assert("sin lo que te costó: el precio, sin % ni 💲", juntos([cob2("a", 220), cob2("b", 220)], salida, null, 0, sinAsig).includes(">110,00 USD/token</span>"));
+assert("venta sin tokens: nada", juntos([cob2("a", 220), cob2("b", 220)], { ...salida, cantidad: 0 }, 110, 0, sinAsig) === "");
 
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);
