@@ -258,9 +258,10 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
 
   /* Al imprimir no sale «ⓘ Qué es cada cosa» (🔍 y 📒). */
   await page.emulateMediaType("print");
-  const impreso = await page.evaluate(() => [...document.querySelectorAll(".card>.cc-que-es")].map(e => getComputedStyle(e).display));
+  // Va en la barra de arriba, que no se imprime.
+  const impreso = await page.evaluate(() => { const b = document.querySelector(".top-right .cc-que-es"); return b && b.offsetParent === null; });
   await page.emulateMediaType(null);
-  assert("al imprimir, sin «ⓘ Qué es cada cosa» (en 🔍 y en 📒)", impreso.length === 2 && impreso.every(d => d === "none"), impreso);
+  assert("al imprimir, sin «ⓘ Qué es cada cosa» (en 🔍 y en 📒)", impreso === true, impreso);
 
   /* Al salir de 🔍 se pliega todo menos «Por decidir», que con algo se
      vuelve a abrir; un enlace a un bloque lo abre igual. */

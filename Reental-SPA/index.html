@@ -508,6 +508,8 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <div class="sub">App no oficial · Sin relación con Reental</div>
     </div>
     <div class="top-right">
+      <!-- «ⓘ Qué es cada cosa» (js/15): solo en 🔍 y 📒, siempre a la vista. -->
+      <span data-que-es></span>
       <span id="chipEstado" class="chip">Sin datos cargados</span>
       <button id="btnDark" class="icon-btn" title="Modo oscuro / claro">🌙</button>
     </div>
@@ -528,7 +530,6 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
 <section id="view-revision" class="view">
   <div class="card">
     <h2>🔍 Revisión</h2>
-    <span data-que-es></span>
     <!-- Lista de tareas (P21): una fila plegable por bloque, en el orden en
          que conviene resolver, con su estado a la derecha (.rv-aviso; vacío,
          «Al día»). Cerrada es estrecha; con una fila abierta, la caja toma
@@ -627,7 +628,6 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
 <section id="view-transacciones" class="view">
   <div class="card">
     <h2>📒 Transacciones</h2>
-    <span data-que-es></span>
     <!-- Libro diario en tabla. La lógica vive en js/18-transacciones.js. Sin chips de categoría: filtra el selector, con su recuento; «DeFi» es un botón del resumen (txTriaje) -->
     <div id="txTriaje" class="tx-triaje" role="group" aria-label="Resumen del libro diario por tipo"></div>
     <div class="cc-filtros row" id="txFiltros" role="group" aria-label="Filtros del libro diario">
