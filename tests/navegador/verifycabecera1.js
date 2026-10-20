@@ -42,7 +42,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     await page.evaluate(id => {
       const cuerpo = document.getElementById(id).querySelector("tbody");
       const n = document.getElementById(id).querySelectorAll("thead th").length;
-      cuerpo.innerHTML = Array.from({ length: 80 }, (_, i) => "<tr><td>fila " + i + "</td>" + "<td></td>".repeat(n - 1) + "</tr>").join("");
+      cuerpo.innerHTML = Array.from({ length: 80 }, (_, i) => "<tr><td>fila " + i + "</td>" + "<td></td>".repeat(n - 2) + "<td><button type=\"button\" style=\"padding:0\">·</button></td></tr>").join("");
     }, tabla);
     await esperar(200);
     await page.evaluate(() => window.scrollTo({ top: 1800, behavior: "instant" }));
@@ -50,6 +50,22 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     let m = await medir(tabla);
     assert(hash + ": al bajar, los títulos se quedan justo debajo de la barra de arriba", m.fija && m.th === m.barra && m.barra > 0, m);
     assert(hash + ": a 1366 px la página no desplaza de lado", !m.deLado, m);
+    /* a-A11: con Mayús+Tab, el botón de la fila tapada por los títulos baja a la vista. */
+    const preparado = await page.evaluate(id => {
+      const t = document.getElementById(id), bs = t.tBodies[0].querySelectorAll("button");
+      // El botón 40, justo debajo de la barra de arriba (tapado por los títulos); el foco, en el 41.
+      window.scrollBy({ top: bs[40].getBoundingClientRect().top - document.querySelector(".topbar").offsetHeight - 4, behavior: "instant" });
+      const tapado = bs[40].getBoundingClientRect().bottom < t.querySelector("thead th").getBoundingClientRect().bottom;
+      bs[41].focus({ preventScroll: true });
+      return tapado;
+    }, tabla);
+    await page.keyboard.down("Shift"); await page.keyboard.press("Tab"); await page.keyboard.up("Shift");
+    await esperar(800);
+    const foco = await page.evaluate(id => {
+      const t = document.getElementById(id);
+      return { boton: Math.round(document.activeElement.getBoundingClientRect().top), titulos: Math.round(t.querySelector("thead th").getBoundingClientRect().bottom) };
+    }, tabla);
+    assert(hash + ": a-A11, con Mayús+Tab lo enfocado no queda debajo de los títulos", preparado && foco.boton >= foco.titulos, { preparado, ...foco });
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await esperar(300);
     m = await medir(tabla);

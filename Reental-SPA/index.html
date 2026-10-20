@@ -309,6 +309,8 @@ th,td{border:1px solid var(--border);padding:7px 9px;text-align:left;vertical-al
    arriba al bajar. Si no cabe, su caja se desplaza de lado y no se fijan. */
 .cabecera-fija{overflow:visible !important}
 .cabecera-fija>table>thead th{position:sticky;top:var(--alto-topbar,0px);z-index:5;box-shadow:inset 0 -1px 0 var(--border2)}
+/* Con el teclado (Mayús+Tab), lo enfocado no queda debajo de esos títulos (en 📒 miden ~55 px) */
+.cabecera-fija>table>tbody :is(button,a,input,select,[tabindex]){scroll-margin-top:64px}
 .tabla-libro .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* Solo para lectores de pantalla (no se ve). */
 .solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
