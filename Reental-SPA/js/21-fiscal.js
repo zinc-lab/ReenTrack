@@ -211,6 +211,11 @@ function fiscAEur(registro, importeUsd) {
   return usdAEur(importeUsd, registro.tipo_bce);
 }
 
+/* El registro que motorFiscal está valorando, o null. Solo lo lee 🧾
+   (js/23) para saber de qué operación es cada lote que nace o se gasta;
+   ninguna cifra depende de él. */
+let fiscEnCurso = null;
+
 // Campos que pone el motor fiscal para el informe y el Excel y que no van
 // al libro diario del JSON: trozos de lote, canje emparejado, colas de
 // stablecoin movidas, gas sumado o restado y POL de gas sin coste.
@@ -1014,9 +1019,15 @@ function motorFiscal(registros, cache, config, opciones = {}) {
   }
 
   // Valora un registro una sola vez (un canje procesa antes su venta).
+  // Mientras, fiscEnCurso dice cuál es (solo se lee).
   function procesar(r) {
     if (procesados.has(r.clave)) return;
     procesados.add(r.clave);
+    const antes = fiscEnCurso;
+    fiscEnCurso = r;
+    try { valorar(r); } finally { fiscEnCurso = antes; }
+  }
+  function valorar(r) {
     const cat = r.categoria, sub = r.subcategoria;
     const anio = pyVerdad(r.fecha) ? parseInt(r.fecha.slice(0, 4), 10) : null;
 
@@ -1024,7 +1035,9 @@ function motorFiscal(registros, cache, config, opciones = {}) {
       const info = poolsPorHash.get(r.hash);
       if (info !== undefined && !info.hecho) {
         info.hecho = true;
+        fiscEnCurso = info.recibo;   // lo que mueve el pool es del recibo
         liquidarPool(info);
+        fiscEnCurso = r;
       }
       if (pyVerdad(r.cantidad)) {
         const origen = normalizarDireccion(r.origen || "");

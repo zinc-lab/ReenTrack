@@ -8,7 +8,7 @@
  * - fiMotivoSinCalculo: solo con la clasificación al día y que terminó bien.
  * - fiCalcular: una pasada sobre una copia y crearLote vuelve a ser el de
  *   js/21 aunque el motor falle.
- * - fiAnioElegido, fiOperaciones, fiLotesPorInmueble, fiTextoAviso,
+ * - fiAnioElegido, fiOperaciones, fiLotesCuadran, fiTextoAviso,
  *   fiAvisos (enlace a Revisión solo si allí está) y el HTML del resumen.
  * - index.html: la sección y js/23 después de js/22 y antes de js/13.
  *
@@ -124,7 +124,7 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
   FE.errorClasificacion = false;
 
   console.log("== 4. Una pasada sobre una copia; crearLote se devuelve ==");
-  const crearLoteOriginal = S.crearLote;
+  const crearLoteOriginal = S.crearLote, consumirOriginal = S.consumirFifo, abrirOriginal = S.fiscAbrirLote;
   const motorOriginal = S.motorFiscal, informesOriginal = S.informesRentaAnuales;
   const regs = [{ clave: "r1", fecha: "2025-01-01", contrato: "0xa", categoria: "COMPRA" }];
   let recibidos = null;
@@ -146,11 +146,12 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
   assert("al informe, el hoy de los datos (el movimiento posterior), sin descarga incompleta y opciones nuevas",
     igual(res.informes[2025], { hoy: "2026-02-01", incompleta: false, nuevas: true }));
   assert("A14: un lote que no queda en las colas no está vivo", res.lotes[0].vivo === false);
-  assert("crearLote vuelve a ser el de js/21", S.crearLote === crearLoteOriginal);
+  assert("crearLote, consumirFifo y fiscAbrirLote vuelven a ser los de js/21",
+    S.crearLote === crearLoteOriginal && S.consumirFifo === consumirOriginal && S.fiscAbrirLote === abrirOriginal);
   S.motorFiscal = () => { throw new Error("roto"); };
   let lanzo = false;
   try { S.fiCalcular(regs, {}, {}, { hoy: null }); } catch (e) { lanzo = e.message === "roto"; }
-  assert("con el motor roto: lanza y crearLote vuelve igual", lanzo && S.crearLote === crearLoteOriginal);
+  assert("con el motor roto: lanza y crearLote y consumirFifo vuelven igual", lanzo && S.crearLote === crearLoteOriginal && S.consumirFifo === consumirOriginal);
   S.motorFiscal = () => new Map([["0xa", [{ cantidad: 1, coste_unitario_eur: 100 }]]]);   // un lote que no nació por crearLote
   let parado = false;
   try { S.fiCalcular(regs, {}, {}, { hoy: null }); } catch (e) { parado = /lotes del motor/.test(e.message); }
@@ -225,23 +226,12 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
     { activo: "0xd", inicial: 4, vivo: false, lote: lote(4e-11, 95, "2025-02-01", "COMPRA_BANCO") },
     { activo: "RNT", inicial: 10, vivo: true, lote: lote(10, 0.2, "2024-01-01", "REWARD") },
   ];
-  const inm = S.fiLotesPorInmueble(lotes, nombres);
-  assert("por nombre (el contrato viejo y el del canje juntos), sin RNT, los vendidos del todo al final",
-    igual(inm.map(i => [i.nombre, i.lotes.length]), [["Bilbao 2", 1], ["Toledo 1", 2], ["Zamora 1", 1]]), inm.map(i => i.nombre));
-  assert("A14: queda lo de los lotes vivos en las colas del motor (no un umbral propio)",
-    inm[0].lotes[0].queda === 1e-12 && inm[1].lotes[1].queda === 1.5 && inm[2].lotes[0].queda === 0);
-  assert("A13: el lote del canje lleva la fecha de la compra de la que viene y esa compra sale «canjeada»",
-    inm[1].lotes[1].fecha === "2024-01-01 10:00:00" && inm[1].lotes[1].porCanje && inm[1].lotes[0].canjeado && !inm[1].lotes[1].canjeado);
-  const htmlLotes = S.fiHtmlLotes({ lotes, nombres });
-  assert("HTML de lotes: los vivos con «Quedan», los gastados aparte y el origen en llano",
-    htmlLotes.includes("Gastados (1)") && htmlLotes.includes("Compra (canjeada)") && htmlLotes.includes("Compra externa") &&
-    htmlLotes.includes("No te queda ningún token") && htmlLotes.includes("150,00 €") && htmlLotes.includes("01/01/2024 *"));
-  assert("A16: la columna dice «Coste del lote»", htmlLotes.includes(">Coste del lote<") && !htmlLotes.includes(">Coste<"));
+  // El historial (P27) lo prueba test_fiscal_paso_p27.js; aquí, el aviso de que los lotes no cuadran.
   const cartera = filas => ({ ejercicio: 2026, inversiones_activas: { inmuebles: { filas } } });
-  assert("A15: si lo que queda cuadra con la cartera del informe, sin aviso",
-    !S.fiHtmlLotes({ lotes, nombres }, cartera([{ nombre: "Toledo 1", cantidad: 1.5 }, { nombre: "Bilbao 2", cantidad: 1e-12 }])).includes("No cuadran"));
-  assert("A15: si no cuadra (una fecha mal escrita deja lotes fuera del informe), se dice",
-    S.fiHtmlLotes({ lotes, nombres }, cartera([{ nombre: "Toledo 1", cantidad: 3 }])).includes("No cuadran con la cartera del informe de 2026"));
+  assert("A14/A15: si lo que queda en los lotes vivos cuadra con la cartera del informe (sin umbral propio), cuadra",
+    S.fiLotesCuadran(lotes, nombres, cartera([{ nombre: "Toledo 1", cantidad: 1.5 }, { nombre: "Bilbao 2", cantidad: 1e-12 }])));
+  assert("A15: si no cuadra (una fecha mal escrita deja lotes fuera del informe), no cuadra",
+    !S.fiLotesCuadran(lotes, nombres, cartera([{ nombre: "Toledo 1", cantidad: 3 }])));
 
   assert("textos antiguos: sincronizar, USD y la mayúscula", S.fiTextoInforme("saldo; vuelve a ejecutar el programa con internet") === "Saldo; vuelve a sincronizar con internet" &&
     S.fiTextoInforme("da mas que lo repartido (10) USDT") === "Da mas que lo repartido (10) USD" &&

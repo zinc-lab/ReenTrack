@@ -142,11 +142,11 @@ console.log("== A5: 🧾 Fiscal, por el camino de la app (fiCalcular, como 📤)
       const inf = res.informes[2025];
       return { ii: inf.inversiones_activas.inmuebles.filas,
         ventas: fiHtmlOperaciones(inf.detalle.ventas_inmuebles, "Ventas", "tokens", res.operaciones),
-        lotes: fiHtmlLotes(res, inf) };
+        lotes: fiHtmlHistorial(res, 2025, inf, inf) };
     })();`, sb);
   assert("II marcada también por fiCalcular (cierres_supuestos en su op)", r.ii.length === 1 && r.ii[0].coste_supuesto === true, r.ii);
   assert("Ventas de 🧾: «200,00 € **» y la nota", r.ventas.includes("200,00 € **") && r.ventas.includes("** Incluye compras"));
-  assert("Lotes de 🧾: el coste del lote con «**» y la nota", r.lotes.includes("300,00 € **") && r.lotes.includes("** Incluye compras"));
+  assert("Historial de 🧾: el total de la compra externa con «**» y la nota", r.lotes.includes("300,00 € **") && r.lotes.includes("** Incluye compras"));
 }
 
 console.log("== A1 y A2: «💶 Coste…» confirma el de por defecto como tuyo ==");

@@ -5,9 +5,9 @@
 
    Qué se ve: (1) el resumen
    del ejercicio, con selector de año y «A declarar en»; (2) las ventas del
-   año, cada una desplegable con los lotes que gastó; (3) los lotes de cada
-   inmueble (los gastados, aparte); (4) los avisos que afectan a la Renta,
-   con enlace a 🔍 Revisión solo si allí están.
+   año, cada una desplegable con los lotes que gastó; (3) el historial de
+   cada activo hasta el 31/12 de ese año; (4) los avisos que afectan a la
+   Renta, con enlace a 🔍 Revisión solo si allí están.
 
    Cómo se llama al motor (cabecera de motorFiscal, js/21): una sola pasada
    sobre una copia nueva de los registros clasificados, con objetos de
@@ -31,6 +31,8 @@ const fiEstado = {
   errorClasificacion: false,   // la última clasificación dio un error
   memo: null,        // { clave, resultado }: el último cálculo
   pintar: false,     // un repintado ya pedido para cuando acabe lo que se está haciendo
+  verTodos: false,   // el historial, también con los activos que ya no tienes
+  desgloses: new Set(),   // las filas del historial con sus lotes a la vista
 };
 
 /* Importe en euros a la española; «—» si no hay importe. Con signo, un
@@ -135,6 +137,11 @@ function fiClaveAviso(fecha, concepto, detalle) { return [fecha, concepto, detal
    las compras de las que viene; sigue vivo si está en las colas del
    final). Si un lote de las colas no se vio nacer, se para: mejor un
    error que una tabla de lotes incompleta.
+   eventos: cada lote que nace (los de lotes, entra: true) y cada salida
+   de una cola (consumirFifo, también envuelta: lo pedido, los trozos y lo
+   que sacó de cada lote, agotado si salió de la cola), en el orden del
+   motor y con el registro que lo movió (fiscEnCurso; el de un cobro que
+   llega días después, el que le pasa fiscAbrirLote).
    avisosRevisar: clave del aviso -> claves de los registros que lo dan.
    operaciones: clave del registro -> lo que vale la operación entera,
    con las mismas cuentas que el total del informe.
@@ -145,22 +152,42 @@ function fiClaveAviso(fecha, concepto, detalle) { return [fecha, concepto, detal
 function fiCalcular(registros, cache, config, hasta, lectura = null) {
   const regs = structuredClone(registros);
   const op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {}, apartado: {} };
-  const lotes = [];
-  const original = globalThis.crearLote;
+  const eventos = [];
+  const originales = { crearLote, consumirFifo, fiscAbrirLote };
+  let abriendo = null;
+  globalThis.fiscAbrirLote = function (r) {
+    const antes = abriendo;
+    abriendo = r;
+    try { return originales.fiscAbrirLote.apply(this, arguments); } finally { abriendo = antes; }
+  };
   globalThis.crearLote = function (colas, activo, cantidad) {
-    const lote = original.apply(this, arguments);
+    const lote = originales.crearLote.apply(this, arguments);
     if (lote) {
-      lotes.push({ activo, inicial: cantidad, lote,
+      eventos.push({ entra: true, activo, inicial: cantidad, lote, registro: abriendo || fiscEnCurso,
         procedencia: lote.procedencia ? lote.procedencia.map(p => ({ ...p })) : null });
     }
     return lote;
+  };
+  globalThis.consumirFifo = function (colas, activo, cantidad) {
+    // FIFO: solo se gasta la cabeza de la cola (hasta reunir lo pedido, y uno más
+    // por los decimales); los que salen de ella son los primeros.
+    const cola = colas.get(activo) || [];
+    let k = 0;
+    for (let suma = 0; k < cola.length && suma < cantidad; k++) suma += cola[k].cantidad;
+    const antes = cola.slice(0, k + 1).map(l => [l, l.cantidad]), largo = cola.length;
+    const res = originales.consumirFifo.apply(this, arguments);
+    const fuera = largo - (colas.get(activo) || []).length;
+    eventos.push({ entra: false, activo, pedido: cantidad, trozos: res[2], registro: fiscEnCurso,
+      sacado: antes.map(([l, n], i) => ({ lote: l, n: n - l.cantidad, agotado: i < fuera })).filter(s => s.n || s.agotado) });
+    return res;
   };
   let colas;
   try {
     colas = motorFiscal(regs, cache, config, op);
   } finally {
-    globalThis.crearLote = original;
+    Object.assign(globalThis, originales);
   }
+  const lotes = eventos.filter(e => e.entra);
   const vivos = new Set([...(colas || new Map()).values()].flat());
   const vistos = new Set(lotes.map(x => x.lote));
   if ([...vivos].some(l => !vistos.has(l))) throw new Error("no se pudieron leer los lotes del motor");
@@ -178,7 +205,7 @@ function fiCalcular(registros, cache, config, hasta, lectura = null) {
     const transmision = rentaEur2(pyO(r.importe_eur, 0)), adquisicion = rentaEur2(r.coste_fifo_eur);
     return [r.clave, { transmision, adquisicion, gp: rentaEur2(transmision - adquisicion) }];
   }));
-  return { informes, avisosRevisar, operaciones, lotes, nombres: rentaNombresInmuebles(regs, cache), hasta,
+  return { informes, avisosRevisar, operaciones, lotes, eventos, nombres: rentaNombresInmuebles(regs, cache), hasta,
     registros: regs, colas, resumen, apartado: op.apartado, cuadre };
 }
 
@@ -346,7 +373,7 @@ function fiHtmlOperaciones(tabla, titulo, unidad, operaciones) {
     return '<details class="fi-op" data-abierto="op:' + ccEsc(op.clave) + '"><summary><span class="fi-op-f">' + ccEsc(fechaEs(op.fecha)) +
       '</span><span class="fi-op-n">' + ccEsc(nombre) + '</span><span class="fi-op-c">' +
       (op.cantidad === null ? "" : cantidadEs(op.cantidad) + " " + ccEsc(unidad || op.activo)) + '</span><span class="fi-op-gp">' +
-      fiEur(op.gp, true) + "</span></summary>" + explica + fiTabla(cabeceras, lotes) + canje + "</details>";
+      fiCeldaEur(op.gp, true) + "</span></summary>" + explica + fiTabla(cabeceras, lotes) + canje + "</details>";
   }).join("");
   return '<div class="fi-subgrupo">' + ccEsc(titulo) + " (" + ops.length + ")</div>" + filas;
 }
@@ -359,76 +386,373 @@ function fiHtmlVentas(informe, operaciones) {
     : '<p class="help">Sin ventas ni permutas este año.</p>';
 }
 
-/* ----------------------------- (3) Lotes de cada inmueble ----------------------------- */
-const FI_ORIGEN_LOTE = {
-  COMPRA: "Compra", COMPRA_BANCO: "Compra externa", CANJE: "Canje de contrato",
-  DEPOSITO: "Depósito", REWARD: "Recompensa", SWAP: "Cambio", POOL: "Pool", RENDIMIENTO: "Rendimiento",
-};
+/* ----------------------------- (3) Historial de cada activo ----------------------------- */
+/* Como el extracto de un bróker: por activo y en orden, cada compra o
+   cobro (abre lote) y cada venta, pago o comisión (gasta lotes), hasta el
+   31/12 del ejercicio elegido. Las cifras son las del motor (eventos y
+   registros de fiCalcular): aquí solo se reparten y se suman. */
+// Las monedas (ACTIVOS_NO_INMUEBLE de js/22), en el orden de la pantalla.
+const FI_MONEDAS = ["RNT", "POL", "USDT", "USDC"];
+const fiStable = nombre => nombre === "USDT" || nombre === "USDC";
+const FI_AVISO = '<a href="#fiAvisos" class="fi-ir-avisos" title="A revisar: mira los avisos">⚠️</a>';
+const FI_ENTRADA = { COMPRA: "Compra", COMPRA_BANCO: "Compra externa", CANJE: "Canje", POOL: "Pool (vuelve)",
+  VENTA_P2P: "Cobro de venta", LIQUIDACION: "Cobro de venta" };
 
-/* Lotes de los tokens de inmuebles, por inmueble y en orden FIFO:
-   [{ nombre, lotes: [{fecha, origen, inicial, queda, unitario, canjeado,
-   porCanje, supuesto}] }] (supuesto: coste de por defecto, «**»). Por
-   nombre: el contrato viejo y el nuevo de un canje son
-   el mismo inmueble. El lote de un canje lleva la fecha de la compra de la
-   que viene (porCanje) y esa compra no cuenta como gastada (canjeado).
-   Queda lo de los lotes vivos en las colas del motor. Los que aún
-   tienes primero; los vendidos del todo, al final. */
-function fiLotesPorInmueble(lotes, nombres) {
-  const porNombre = fiAgrupar(lotes.filter(x => nombres.has(x.activo)), x => nombres.get(x.activo));
-  const vacio = i => i.lotes.every(l => l.queda === 0) ? 1 : 0;
-  return [...porNombre].map(([nombre, xs]) => {
-    const deCanje = new Set(xs.flatMap(x => x.procedencia || []).map(p => p.fecha + "\u0000" + p.origen));
-    return { nombre, lotes: xs.map(x => {
-      const p = (x.procedencia || [])[0];
-      return {
-        fecha: p ? p.fecha : x.lote.fecha, porCanje: !!p, origen: p ? p.origen : x.lote.origen,
-        canjeado: !x.vivo && deCanje.has(x.lote.fecha + "\u0000" + x.lote.origen),
-        inicial: x.inicial, queda: x.vivo ? x.lote.cantidad : 0, unitario: x.lote.coste_unitario_eur,
-        supuesto: x.lote.coste_supuesto === true,
-      };
-    }) };
-  }).sort((a, b) => vacio(a) - vacio(b) || cmpTexto(String(a.nombre).toLowerCase(), String(b.nombre).toLowerCase()));
+/* Lo que queda de un lote al corte (sus salidas hasta entonces). */
+function fiQueda(x, salidas) {
+  const ss = salidas.get(x.lote) || [];
+  return ss.some(s => s.agotado) ? 0 : x.inicial - pySuma(ss.map(s => s.n));
 }
 
-/* Los lotes vivos llevan «Quedan»; los gastados, no. */
-function fiTablaLotes(lotes, conQueda) {
-  const cabeceras = [["Fecha"], ["Origen"], ["Tokens", 1], ...(conQueda ? [["Quedan", 1]] : []), ["Coste del lote", 1], ["€ por token", 1]];
-  return fiTabla(cabeceras, lotes.map(l => "<tr>" + fiCelda(ccEsc(fechaEs(l.fecha)) + (l.porCanje ? " *" : "")) +
-    fiCelda(ccEsc((FI_ORIGEN_LOTE[l.origen] || l.origen) + (l.canjeado ? " (canjeada)" : ""))) + fiCelda(cantidadEs(l.inicial), 1) +
-    (conQueda ? fiCelda(cantidadEs(l.queda), 1) : "") +
-    fiCelda(fiEur(l.inicial * l.unitario) + (l.supuesto ? " **" : ""), 1) + fiCelda(fiEur(l.unitario), 1) + "</tr>").join(""));
+/* Nombre del lote de procedencia en el desglose de una venta: su compra
+   («Compra del 21/03/2024»; las del mismo día y origen, juntas, como en
+   el informe) o, los rendimientos y las recompensas, su mes. */
+function fiPieza(p, stable) {
+  if (p.origen === "RENDIMIENTO") return { clave: "rend:" + String(p.fecha).slice(0, 7), texto: "Rendimientos de " + mesEs(String(p.fecha).slice(0, 7)) };
+  if (p.origen === "REWARD") return { clave: "rew:" + String(p.fecha).slice(0, 7), texto: "Recompensas DeFi de " + mesEs(String(p.fecha).slice(0, 7)) };
+  const nombre = { DEPOSITO: "Ingreso", SWAP: stable ? "Cambio" : "Compra" }[p.origen] || FI_ENTRADA[p.origen] || p.origen;
+  return { clave: String(p.fecha).slice(0, 10) + "\u0000" + p.origen, texto: nombre + " del " + fechaEs(p.fecha) };
+}
+
+// Una fila que junta las de un mes.
+const fiPorMes = f => f.tipo === "rend" || f.tipo === "rew" || f.tipo === "gas";
+
+/* Qué operación es una fila. */
+function fiOperacion(f, nombre, nombres) {
+  const r = f.r, n = f.registros.size, stable = fiStable(nombre);
+  if (f.tipo === "canje") return "Canje";
+  if (f.tipo === "rend") return "Rendimientos · " + n + (n === 1 ? " cobro" : " cobros");
+  if (f.tipo === "rew") return "Recompensas DeFi · " + n;
+  if (f.tipo === "gas") return "Comisiones de red (gas) · " + n;
+  const deQue = () => {
+    const inm = rentaInmuebleDe(r, nombres), a = nombreActivoFifo(r.contrato);
+    return inm ? " · " + inm : FI_MONEDAS.includes(a) && a !== nombre ? " · " + a : "";
+  };
+  if (f.sale.length) {
+    if (r.categoria === "VENTA") return r.subcategoria === "GPP_INMUEBLE" ? "Venta" : "Permuta";
+    if (r.categoria === "COMPRA") return "Pago" + deQue();
+    if (r.categoria === "RETIRADA") return stable ? "Salida de dinero" : "Salida";
+    return r.categoria === "MOVIMIENTO" ? "Pool (aportado)" : TX_OPERACIONES[r.subcategoria] || r.categoria;
+  }
+  const origen = f.entra.length ? f.entra[0].lote.origen
+    : ["DEPOSITO", "REWARD", "RENDIMIENTO"].includes(r.categoria) ? r.categoria
+      : r.via_compra === "BANCARIA" ? "COMPRA_BANCO" : r.via_compra === "CANJE" ? "CANJE" : "COMPRA";
+  if (origen === "DEPOSITO") return stable ? "Ingreso de dinero" : "Ingreso";
+  if (origen === "REWARD") return r.subcategoria === "GPP_REGALO" ? "Regalo recibido" : "Recompensa DeFi";
+  if (origen === "RENDIMIENTO") return "Rendimiento";
+  if (origen === "SWAP") return stable ? "Cambio" : "Compra";
+  return (FI_ENTRADA[origen] || origen) + (origen === "VENTA_P2P" || origen === "LIQUIDACION" ? deQue() : "");
+}
+
+/* USD de lo que vale una fila: lo que dice el registro; el de una compra
+   externa, el pagado en USD que pusiste en 💶; sin él, o si el valor se
+   puso en € (coste o cobro a mano), null («—»). Si no, el valor en € al
+   tipo del BCE del día (con el que se pasó a €). */
+function fiUsd(r, eur, parte, cache) {
+  if (fiscEsNumero(r.importe_usdt)) return r.importe_usdt * parte;
+  if (r.via_compra === "BANCARIA") {
+    const a = ccBuscarAjuste(cache && cache.ajustes_usuario, r.clave);
+    const u = a && ccPagadoUsd(a.ajuste, (cache && cache.tipos_bce) || {}, cache);
+    return u ? u.importe * parte : null;
+  }
+  return fiscHay(r.cobrado_eur) || fiscHay(r.coste_eur) ? null : rentaAUsd(r, eur);
+}
+
+/* Las cifras de una fila: tokens (con signo), total, comisión, coste de
+   compra, ganancia o pérdida (null: no hay; undefined: falta, ⚠️), lo que
+   queda de sus lotes, precios y el desglose por lotes de una venta. */
+function fiCifrasFila(f, nombre, ctx) {
+  const r = f.r, falta = v => (fiscHay(v) ? v : r && r.revisar ? undefined : null);
+  const entra = pySuma(f.entra.map(x => x.inicial)), sale = pySuma(f.sale.map(e => e.pedido));
+  const c = { tokens: entra - sale, total: null, comision: null, coste: null, gp: null, quedan: null, usd: null, piezas: [],
+    // Lo que salió sin lote del que salir (el motor lo da sin coste): «Tienes» baja de más.
+    sinLote: sale - pySuma(f.sale.flatMap(e => e.sacado.map(s => s.n))) };
+  const costeLotes = pySuma(f.entra.map(x => x.inicial * x.lote.coste_unitario_eur));
+  const quedaDe = x => ctx.queda.get(x.lote) + (ctx.heredado.get(nombre + "\u0000" + x.lote.fecha + "\u0000" + x.lote.origen) || 0);
+  if (f.tipo === "canje") {
+    for (const e of f.sale) c.piezas.push(...fiPiezasDe(e.trozos, false));
+    return c;
+  }
+  if (f.tipo === "gas") {
+    c.coste = pySuma([...f.registros].map(g => pyO(g.coste_fifo_eur, 0)));
+    return c;
+  }
+  if (f.entra.length) {
+    // La comisión de una compra va en el coste de sus lotes: aparte, su parte.
+    const parte = r && ctx.entradas.get(r) ? entra / ctx.entradas.get(r) : 1;
+    c.comision = r && r.categoria === "COMPRA" && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
+    c.total = costeLotes - (c.comision || 0);
+    c.quedan = pySuma(f.entra.map(quedaDe));
+    // Rendimientos y lo que vuelve de un pool: el USD de sus lotes (sin comisión).
+    c.usd = fiPorMes(f) || r.categoria === "MOVIMIENTO"
+      ? pySuma(f.entra.map(x => fiscHay(x.lote.coste_unitario_usd) ? x.inicial * x.lote.coste_unitario_usd : NaN))
+      : fiUsd(r, c.total, parte, ctx.cache);
+    if (!Number.isFinite(c.usd)) c.usd = null;
+    c.supuesto = f.entra.some(x => x.lote.coste_supuesto === true);
+    return c;
+  }
+  // Venta, pago, salida: la parte de este activo en lo que movió el
+  // registro. Lo aportado a un pool, solo su coste (su resultado va
+  // aparte en el Resumen).
+  const coste = pySuma(f.sale.flatMap(e => e.trozos.map(t => t.coste_eur)));
+  if (r.categoria === "MOVIMIENTO") return Object.assign(c, { coste });
+  const parte = ctx.salidasDe.get(r) ? sale / ctx.salidasDe.get(r) : 1;
+  const esPago = r.categoria === "COMPRA";
+  c.total = !fiscHay(r.importe_eur) ? falta(null) : (r.importe_eur + (esPago ? 0 : pyO(r.gas_eur, 0))) * parte;
+  c.comision = !esPago && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
+  c.coste = fiscHay(r.coste_fifo_eur) ? coste : falta(null);
+  c.gp = !fiscHay(r.gp_eur) ? falta(null) : parte === 1 ? r.gp_eur : c.total - (c.comision || 0) - c.coste;
+  c.usd = fiscHay(c.total) ? fiUsd(r, c.total, parte, ctx.cache) : null;
+  // El desglose, solo si el motor guardó de qué lotes sale.
+  if (pyVerdad(r.lotes_consumidos)) c.piezas = fiPiezasDe(f.sale.flatMap(e => e.trozos), fiStable(nombre));
+  return c;
+}
+
+/* Las compras de las que salen unos trozos de lote, juntas por compra
+   (la del canje, la original), en orden. */
+function fiPiezasDe(trozos, stable) {
+  const piezas = new Map();
+  for (const t of trozos) {
+    for (const p of pyO(t.procedencia, [t])) {
+      const { clave, texto } = fiPieza(p, stable);
+      const parte = pyVerdad(t.cantidad) ? p.cantidad / t.cantidad : 0;
+      const x = piezas.get(clave) || { texto, n: 0, coste: 0 };
+      x.n += p.cantidad;
+      x.coste += t.coste_eur * parte;
+      piezas.set(clave, x);
+    }
+  }
+  return [...piezas.values()];
+}
+
+/* El historial hasta el 31/12 de anio: [{ nombre, moneda, filas, quedan,
+   costeQueda, gp, gpAnio, avisos, abierto }], los inmuebles por nombre (el
+   contrato viejo y el nuevo de un canje juntos) y después RNT, POL, USDT y
+   USDC. Cada fila: { tipo (r, rend, rew, gas, canje, revisar), fecha, r,
+   registros, entra, sale, cifras, tienes }. Abierto: le queda algún lote vivo. */
+function fiHistorial(resultado, anio, cache = null) {
+  const corte = anio + "-12-31 23:59:59", nombres = resultado.nombres;
+  const nombreDe = a => nombres.get(a) ?? (FI_MONEDAS.includes(a) ? a : null);
+  const fechaDe = e => (e.entra ? e.lote.fecha : e.registro && e.registro.fecha);
+  const eventos = (resultado.eventos || []).filter(e => { const f = fechaDe(e); return fiscFechaValida(f) && f <= corte; });
+  const ctx = { salidas: new Map(), queda: new Map(), heredado: new Map(), entradas: new Map(), salidasDe: new Map(), cache };
+  for (const e of eventos) {
+    if (e.entra) {
+      if (e.registro && e.lote.origen !== "CANJE") ctx.entradas.set(e.registro, (ctx.entradas.get(e.registro) || 0) + e.inicial);
+    } else {
+      for (const s of e.sacado) fiscListaDe(ctx.salidas, s.lote).push(s);
+      if (e.registro) ctx.salidasDe.set(e.registro, (ctx.salidasDe.get(e.registro) || 0) + e.pedido);
+    }
+  }
+  for (const x of eventos) if (x.entra) ctx.queda.set(x.lote, fiQueda(x, ctx.salidas));
+  // Lo que queda de una compra pasada por un canje sigue siendo suyo.
+  // ponytail: por fecha y origen de la compra (como el informe); dos del mismo instante y origen se lo repartirían.
+  for (const x of eventos) {
+    if (!x.entra || !x.procedencia) continue;
+    const total = pySuma(x.procedencia.map(p => p.cantidad)), queda = ctx.queda.get(x.lote);
+    for (const p of x.procedencia) {
+      const k = nombreDe(x.activo) + "\u0000" + p.fecha + "\u0000" + p.origen;
+      ctx.heredado.set(k, (ctx.heredado.get(k) || 0) + (total ? queda * p.cantidad / total : 0));
+    }
+  }
+  const activos = new Map();
+  const filaDe = (nombre, clave, tipo, fecha, r) => {
+    if (!activos.has(nombre)) activos.set(nombre, { nombre, moneda: FI_MONEDAS.includes(nombre), filas: new Map() });
+    const a = activos.get(nombre);
+    if (!a.filas.has(clave)) a.filas.set(clave, { clave, tipo, fecha, r, registros: new Set(), entra: [], sale: [] });
+    return a;
+  };
+  const esCanje = r => r && ((r.categoria === "COMPRA" && r.via_compra === "CANJE") || (r.categoria === "VENTA" && pyVerdad(r.canje)));
+  for (const e of eventos) {
+    const nombre = nombreDe(e.activo), r = e.registro;
+    if (nombre === null) continue;
+    const f = fechaDe(e);
+    let clave = "r:" + (r ? r.clave : "?") + (e.entra ? ":+" : ":-"), tipo = "r";
+    // Lo pequeño y repetido, por mes: rendimientos, recompensas DeFi (no los regalos) y gas.
+    if (e.entra && e.lote.origen === "RENDIMIENTO") [clave, tipo] = ["rend:" + f.slice(0, 7), "rend"];
+    else if (e.entra && e.lote.origen === "REWARD" && r && r.subcategoria !== "GPP_REGALO") [clave, tipo] = ["rew:" + f.slice(0, 7), "rew"];
+    else if (!e.entra && r && r.categoria === "COMISION") [clave, tipo] = ["gas:" + f.slice(0, 7), "gas"];
+    else if (esCanje(r)) [clave, tipo] = ["canje:" + r.hash, "canje"];
+    const a = filaDe(nombre, clave, tipo, f, r);
+    const fila = a.filas.get(clave);
+    if (r) fila.registros.add(r);
+    (e.entra ? fila.entra : fila.sale).push(e);
+  }
+  // Las entradas a revisar que no abrieron lote: salen, pero no cuentan.
+  const conEntrada = new Set((resultado.eventos || []).filter(e => e.entra && e.registro).map(e => e.registro));
+  for (const r of resultado.registros || []) {
+    if (!pyVerdad(r.revisar) || !fiscFechaValida(r.fecha) || r.fecha > corte || conEntrada.has(r)) continue;
+    let activo = null;
+    if (r.categoria === "RENDIMIENTO") activo = STABLECOINS.has(r.contrato) ? nombreActivoFifo(r.contrato) : "USDT";
+    else if (r.categoria === "DEPOSITO" || r.categoria === "REWARD") activo = nombreActivoFifo(r.contrato);
+    else if (r.categoria === "COMPRA" && !(STABLECOINS.has(r.contrato) && fiscHay(r.via_compra) && r.via_compra !== "BANCARIA")) {
+      activo = r.via_compra === "CANJE" ? r.contrato : nombreActivoFifo(r.contrato);
+    }
+    const nombre = activo && nombreDe(activo);
+    if (nombre) filaDe(nombre, "rev:" + r.clave, "revisar", r.fecha, r).filas.get("rev:" + r.clave).registros.add(r);
+  }
+  const lista = [...activos.values()].map(a => {
+    // En orden de fecha (con la misma, el del motor).
+    const filas = [...a.filas.values()].sort((x, y) => cmpTexto(x.fecha, y.fecha));
+    let tienes = 0;
+    for (const f of filas) {
+      f.cifras = f.tipo === "revisar" ? null : fiCifrasFila(f, a.nombre, ctx);
+      if (f.cifras) tienes += f.cifras.tokens;
+      f.tienes = tienes;
+      f.aviso = [...f.registros].some(r => pyVerdad(r.revisar));
+    }
+    const vivos = filas.flatMap(f => f.entra).filter(x => ctx.queda.get(x.lote) > 0);
+    const gps = filas.filter(f => f.cifras && typeof f.cifras.gp === "number");
+    // gp y gpAnio, null sin ventas ni permutas (hasta el corte o ese año).
+    const suma = fs => (fs.length ? pySuma(fs.map(f => f.cifras.gp)) : null);
+    return { nombre: a.nombre, moneda: a.moneda, filas,
+      quedan: pySuma(vivos.map(x => ctx.queda.get(x.lote))),
+      costeQueda: pySuma(vivos.map(x => ctx.queda.get(x.lote) * x.lote.coste_unitario_eur)),
+      gp: suma(gps), gpAnio: suma(gps.filter(f => f.fecha.slice(0, 4) === String(anio))),
+      avisos: filas.filter(f => f.aviso).length, abierto: vivos.length > 0 };
+  });
+  const orden = a => (a.moneda ? 1 + FI_MONEDAS.indexOf(a.nombre) : 0);
+  return lista.sort((a, b) => orden(a) - orden(b) || cmpTexto(String(a.nombre).toLowerCase(), String(b.nombre).toLowerCase()));
+}
+
+/* Ganancia o pérdida de anio de los registros de un grupo, con las
+   cuentas del Resumen (rentaTablaTransmisiones: sumas redondeadas y
+   restadas): sin canjes ni pools, que el Resumen pone aparte. */
+function fiGpDelGrupo(activos, anio) {
+  const regs = new Set();
+  for (const a of activos) {
+    for (const f of a.filas) {
+      if (f.tipo !== "r" || f.entra.length || !f.sale.length || f.fecha.slice(0, 4) !== String(anio)) continue;
+      for (const r of f.registros) if (fiscHay(r.gp_eur) && !rentaEsCanje(r) && !rentaEsResultadoPool(r)) regs.add(r);
+    }
+  }
+  return rentaEur2(rentaEur2(pySuma([...regs].map(r => pyO(r.importe_eur, 0)))) -
+    rentaEur2(pySuma([...regs].map(r => pyO(r.coste_fifo_eur, 0)))));
 }
 
 /* Lo que queda de cada inmueble frente a las inversiones activas del
    último informe: si no cuadra (una fecha mal escrita o sin fecha deja
-   lotes fuera del informe), se dice. */
-function fiLotesCuadran(inmuebles, informe) {
-  const enInforme = new Map();
+   lotes fuera del informe), se dice. Con todos los lotes del motor. */
+function fiLotesCuadran(lotes, nombres, informe) {
+  const enInforme = new Map(), quedan = new Map();
   for (const f of ((informe.inversiones_activas || {}).inmuebles || {}).filas || []) {
     enInforme.set(f.nombre, (enInforme.get(f.nombre) || 0) + f.cantidad);
   }
-  const quedan = new Map(inmuebles.map(i => [i.nombre, pySuma(i.lotes.map(l => l.queda))]));
+  for (const x of lotes) {
+    if (nombres.has(x.activo)) quedan.set(nombres.get(x.activo), (quedan.get(nombres.get(x.activo)) || 0) + (x.vivo ? x.lote.cantidad : 0));
+  }
   return [...new Set([...enInforme.keys(), ...quedan.keys()])]
     .every(n => Math.abs((enInforme.get(n) || 0) - (quedan.get(n) || 0)) < 1e-6);
 }
 
-function fiHtmlLotes(resultado, ultimo) {
-  const inmuebles = fiLotesPorInmueble(resultado.lotes, resultado.nombres);
-  if (!inmuebles.length) return '<p class="help">Sin compras de tokens de inmuebles.</p>';
-  const aviso = ultimo && !fiLotesCuadran(inmuebles, ultimo)
+/* Cifras de una celda: «⚠️» si falta (con enlace a los avisos), «» si no
+   hay, y la ganancia o pérdida con su color. */
+function fiCeldaEur(v, signo = false) {
+  if (v === undefined) return FI_AVISO;
+  if (v === null) return "";
+  const t = fiEur(v, signo);
+  return signo && /[1-9]/.test(t) ? '<span class="' + (v < 0 ? "fi-neg" : "fi-pos") + '">' + t + "</span>" : t;
+}
+// Precio por token, con los decimales de los precios de la app (ccDecimalesPrecio).
+const fiPrecio = (v, n, unidad) => {
+  const x = fiscEsNumero(v) && n ? Math.abs(v / n) : NaN;
+  return Number.isFinite(x) ? numEs(x, ccDecimalesPrecio(x)) + " " + unidad : "";
+};
+
+const FI_COLUMNAS = [["Fecha"], ["Operación"], ["Tokens", 1], ["Tienes", 1], ["Precio USD", 1], ["Precio EUR", 1],
+  ["Total EUR", 1], ["Comisión", 1], ["Coste de compra", 1], ["G/P", 1], ["Quedan", 1]];
+
+/* Una fila de la tabla con solo algunas columnas ({posición en FI_COLUMNAS: contenido}). */
+const fiFilaH = (attrs, celdas) => "<tr " + attrs + ">" + FI_COLUMNAS.map(([, num], i) => fiCelda(celdas[i] ?? "", num)).join("") + "</tr>";
+
+/* La tabla de un activo: una fila por operación (rendimientos y gas, por
+   mes), el botón «▸ n lotes» en una venta y la fila Total. */
+function fiTablaHistorial(a, abiertos, nombres) {
+  let html = "";
+  for (const f of a.filas) {
+    // La clave va en un atributo: sin \u0000 (el navegador lo cambia).
+    const c = f.cifras, id = a.nombre + "::" + f.clave, abierto = abiertos.has(id);
+    // La hora, debajo de la fecha (ocupa menos de ancho).
+    const conHora = fechaEs(f.fecha, true).split(" ");
+    const fecha = fiPorMes(f) ? mesEs(f.fecha.slice(0, 7))
+      : ccEsc(conHora[0]) + (conHora[1] ? '<span class="fi-h-hora">' + conHora[1] + "</span>" : "");
+    const titulo = fiPorMes(f) ? "" : fechaDosHoras(f.fecha, f.r && f.r.instante);
+    const otros = f.tipo === "rend" ? [...f.registros].filter(r => String(r.fecha).slice(0, 7) !== f.fecha.slice(0, 7)) : [];
+    const nota = f.tipo === "revisar" ? "No cuenta hasta revisarla"
+      : otros.length ? "Incluye " + otros.length + (otros.length === 1 ? " reparto del " : " repartos del ") + otros.map(r => fechaEs(r.fecha)).join(", ") : "";
+    const clase = f.tipo === "canje" ? "canje" : fiPorMes(f) ? "grupo"
+      : f.tipo === "revisar" || (c && c.tokens >= 0) ? "entra" : "sale";
+    const n = c ? c.piezas.length : 0;
+    const boton = n ? ' <button type="button" class="fi-lotes" aria-expanded="' + abierto + '" data-desglose="' + ccEsc(id) + '" data-foco="' + ccEsc("lotes:" + id) + '">' +
+      (abierto ? "▾ " : "▸ ") + n + (n === 1 ? " lote" : " lotes") + "</button>" : "";
+    const et = '<span class="fi-et fi-et-' + clase + '"' + (nota ? ' title="' + ccEsc(nota) + '" tabindex="0"' : "") + ">" +
+      ccEsc(fiOperacion(f, a.nombre, nombres)) + (nota && f.tipo !== "revisar" ? " ⓘ" : "") + "</span>" +
+      (f.aviso ? " " + FI_AVISO : "");
+    const n0 = c ? c.tokens : pyO(f.r.cantidad, 0), sinLote = c && c.sinLote > 1e-9 * Math.abs(n0 || 1) ? c.sinLote : 0;
+    const tokens = (n0 === 0 ? "±0" : numEs(n0, 6, true, true)) +
+      (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
+    const quedan = c && fiscHay(c.quedan) ? cantidadEs(c.quedan) + " de " + cantidadEs(c.tokens) : "";
+    html += '<tr class="fi-h-' + clase + (f.tipo === "revisar" ? " fi-h-nocuenta" : "") + '">' +
+      fiCelda(titulo ? '<span title="' + ccEsc(titulo) + '" tabindex="0">' + fecha + "</span>" : fecha) + fiCelda(et + boton) +
+      fiCelda(tokens, 1) + fiCelda(f.tipo === "revisar" ? "" : cantidadEs(f.tienes), 1) +
+      fiCelda(c ? fiPrecio(c.usd, c.tokens, "$") || (typeof c.total === "number" ? "—" : "") : "", 1) + fiCelda(c && typeof c.total === "number" ? fiPrecio(c.total, c.tokens, "€") : "", 1) +
+      fiCelda(c ? fiCeldaEur(c.total) + (c.supuesto ? " **" : "") : fiCeldaEur(undefined), 1) + fiCelda(c ? fiCeldaEur(c.comision) : "", 1) +
+      fiCelda(c ? fiCeldaEur(c.coste) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true) : "", 1) + fiCelda(quedan, 1) + "</tr>";
+    for (const p of n ? c.piezas : []) {
+      // Cada lote, con su parte de lo cobrado y de la comisión.
+      const parte = c.tokens ? p.n / Math.abs(c.tokens) : 0;
+      const total = typeof c.total === "number" ? c.total * parte : null, comision = c.comision === null ? null : c.comision * parte;
+      const gp = typeof c.gp === "number" ? total - (comision || 0) - p.coste : null;
+      html += fiFilaH('class="fi-h-lote" data-de="' + ccEsc(id) + '"' + (abierto ? "" : " hidden"), { 1: "↳ " + ccEsc(p.texto),
+        2: cantidadEs(p.n), 6: fiCeldaEur(total), 7: fiCeldaEur(comision), 8: fiCeldaEur(p.coste), 9: fiCeldaEur(gp, true) });
+    }
+  }
+  html += fiFilaH('class="fi-h-suma"', { 1: "Total", 3: cantidadEs(a.quedan), 8: fiEur(a.costeQueda), 9: fiCeldaEur(a.gp, true) });
+  return fiTabla(FI_COLUMNAS, html) + fiPieSupuesto(a.filas.map(f => ({ supuesto: !!(f.cifras && f.cifras.supuesto) })));
+}
+
+/* Una línea de columnas: activo, quedan, coste de lo que queda, ganancia
+   o pérdida desde el principio y del año. */
+function fiLineaHistorial(clase, celdas) {
+  return '<div class="fi-h-linea ' + clase + '">' + celdas.map(c => "<span>" + c + "</span>").join("") + "</div>";
+}
+
+function fiHtmlHistorial(resultado, anio, informe, ultimo) {
+  const activos = fiHistorial(resultado, anio, state.cache);
+  if (!activos.length) return '<p class="help">Sin operaciones hasta el 31/12/' + anio + ".</p>";
+  const cerrados = activos.filter(a => !a.abierto).length;
+  const c = informe.cabecera;
+  const hasta = c.anio_terminado ? "Hasta el 31/12/" + anio : "Hasta el " + fechaEs(c.datos_hasta);
+  const interruptor = cerrados ? '<label class="rv-interruptor"><input type="checkbox" role="switch" id="fiVerTodos" data-foco="verTodos"' +
+    (fiEstado.verTodos ? " checked" : "") + '><span class="rv-interruptor-pista" aria-hidden="true"></span><span>Ver también los que ya no tienes (' +
+    cerrados + ")</span></label>" : "";
+  const aviso = ultimo && !fiLotesCuadran(resultado.lotes, resultado.nombres, ultimo)
     ? '<p class="fi-nota-aviso">No cuadran con la cartera del informe de ' + ultimo.ejercicio + ": revisa las fechas de los avisos.</p>" : "";
-  return aviso + inmuebles.map(i => {
-    const vivos = i.lotes.filter(l => l.queda > 0), gastados = i.lotes.filter(l => l.queda === 0);
-    const quedan = pySuma(vivos.map(l => l.queda));
-    const coste = pySuma(vivos.map(l => l.queda * l.unitario));
-    const canje = (i.lotes.some(l => l.porCanje) ? '<p class="fi-pie">* ' + ccEsc(NOTA_CANJE_INFORME.replace(/^\*\s*/, "")) + "</p>" : "") +
-      fiPieSupuesto(i.lotes);
-    return '<details class="fi-op" data-abierto="lotes:' + ccEsc(i.nombre) + '"><summary><span class="fi-op-n">' + ccEsc(i.nombre) +
-      '</span><span class="fi-op-c">' + cantidadEs(quedan) + ' tokens</span><span class="fi-op-gp">' + fiEur(coste) + "</span></summary>" +
-      (vivos.length ? fiTablaLotes(vivos, true) : '<p class="help">No te queda ningún token.</p>') +
-      (gastados.length ? '<details class="fi-gastados" data-abierto="gastados:' + ccEsc(i.nombre) + '"><summary>Gastados (' +
-        gastados.length + ")</summary>" + fiTablaLotes(gastados, false) + "</details>" : "") + canje + "</details>";
-  }).join("");
+  // Los nombres de los grupos, los de su bloque del Resumen.
+  const titulo = clave => (informe.resumen.find(f => f.clave === clave) || { concepto: "" }).concepto.split(":")[0];
+  const grupos = [[titulo("gp_inmuebles"), "Tokens de cada inmueble.", activos.filter(a => !a.moneda)],
+    [titulo("gp_permutas"), "RNT, POL, USDT y USDC.", activos.filter(a => a.moneda)]].filter(g => g[2].length);
+  const sub = grupos.map(([, , as]) => fiGpDelGrupo(as, anio));
+  const total = as => [fiEur(pySuma(as.map(a => a.costeQueda))), fiCeldaEur(pySuma(as.map(a => a.gp || 0)), true)];
+  let html = '<p class="help">' + hasta + ", en orden FIFO: al vender salen primero los más antiguos." + interruptor + "</p>" + aviso +
+    '<div class="fi-historial' + (fiEstado.verTodos ? " fi-todos" : "") + '">' +
+    fiLineaHistorial("fi-h-cab", ["Activo", "Quedan", "Coste de lo que queda", "Ganancia o pérdida (desde el principio)", "Ganancia o pérdida de " + anio]) +
+    fiLineaHistorial("fi-h-total", ["Total", "", ...total(activos), fiCeldaEur(pySuma(sub), true)]);
+  grupos.forEach(([titulo, nota, as], i) => {
+    html += '<div class="fi-subgrupo">' + ccEsc(titulo) + '</div><p class="fi-pie">' + nota + "</p>" +
+      fiLineaHistorial("fi-h-subtotal", ["Total", "", ...total(as), fiCeldaEur(sub[i], true)]) +
+      as.map(a => {
+        const etiqueta = a.nombre + ": quedan " + cantidadEs(a.quedan) + ", coste de lo que queda " + fiEur(a.costeQueda) +
+          (a.gp === null ? "" : ", ganancia o pérdida desde el principio " + fiEur(a.gp, true)) +
+          (a.gpAnio === null ? "" : ", de " + anio + " " + fiEur(a.gpAnio, true));
+        return '<details class="fi-h-activo' + (a.abierto ? "" : " fi-h-cerrado") + '" data-abierto="historial:' + ccEsc(a.nombre) + '">' +
+          '<summary aria-label="' + ccEsc(etiqueta) + '">' +
+          fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
+            cantidadEs(a.quedan), fiEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
+          "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres) + "</details>";
+      }).join("");
+  });
+  return html + "</div>";
 }
 
 /* ----------------------------- (4) Avisos ----------------------------- */
@@ -456,7 +780,7 @@ function fiHtmlAvisos(avisos) {
 
 /* ----------------------------- Pantalla ----------------------------- */
 function fiHtmlCabecera(informe, hasta, anios, anio) {
-  const botones = anios.map(a => '<button type="button" class="fi-anio" data-anio="' + a + '" aria-pressed="' +
+  const botones = anios.map(a => '<button type="button" class="fi-anio" data-anio="' + a + '" data-foco="anio:' + a + '" aria-pressed="' +
     (a === anio) + '">' + a + "</button>").join("");
   const c = informe.cabecera;
   let estado = c.anio_terminado ? "Ejercicio terminado"
@@ -479,23 +803,22 @@ function fiHtml(resultado, anios, anio, clasificados) {
       (aRevisar === 1 ? " aviso puede cambiar" : " avisos pueden cambiar") + " estas cifras</a></p>" : "") +
     seccion("fiResumen", "Resumen del ejercicio " + anio, fiHtmlResumen(informe)) +
     seccion("fiVentas", "Ventas y permutas de " + anio, fiHtmlVentas(informe, resultado.operaciones)) +
-    seccion("fiLotes", "Lotes de cada inmueble", '<p class="help">A la fecha de los datos, en orden FIFO: al vender salen primero los más antiguos.</p>' +
-      fiHtmlLotes(resultado, resultado.informes[anios.at(-1)])) +
+    seccion("fiHistorial", "Historial de cada activo", fiHtmlHistorial(resultado, anio, informe, resultado.informes[anios.at(-1)])) +
     seccion("fiAvisos", "Avisos de " + anio, fiHtmlAvisos(avisos)) +
     // Descargo genérico, sin casillas ni países.
     '<p class="fi-pie fi-descargo">Ayuda para preparar la declaración, no un documento oficial: confírmalo con un asesor.</p>';
 }
 
-/* Repinta sin cerrar lo que estaba desplegado ni perder el foco de un
-   botón de año. */
+/* Repinta sin cerrar lo que estaba desplegado ni perder el foco de lo que
+   lo recupera (data-foco: un botón de año, el interruptor, un botón de lotes). */
 function fiPintar(cuerpo, html) {
   const abiertos = new Set([...cuerpo.querySelectorAll("details[open][data-abierto]")].map(d => d.dataset.abierto));
-  const foco = document.activeElement && cuerpo.contains(document.activeElement) && document.activeElement.dataset
-    ? document.activeElement.dataset.anio : undefined;
+  const a = document.activeElement;
+  const foco = a && cuerpo.contains(a) && a.dataset ? a.dataset.foco : undefined;
   cuerpo.innerHTML = html;
   for (const d of cuerpo.querySelectorAll("details[data-abierto]")) if (abiertos.has(d.dataset.abierto)) d.open = true;
   if (foco !== undefined) {
-    const b = [...cuerpo.querySelectorAll(".fi-anio")].find(x => x.dataset.anio === foco);
+    const b = [...cuerpo.querySelectorAll("[data-foco]")].find(x => x.dataset.foco === foco);
     if (b) b.focus();
   }
 }
@@ -568,15 +891,53 @@ function fiInyectarEstilos() {
     ".fi-declarar{font-size:13px;color:var(--faint);margin:3px 0 6px}",
     ".fi-info{cursor:help;color:var(--faint)}",
     ".fi-op{border:1px solid var(--border);border-radius:10px;margin:6px 0;background:var(--tarjeta)}",
-    ".fi-op>summary{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 12px;cursor:pointer;font-size:14px}",
+    ".fi-op>summary{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 12px;cursor:pointer;font-size:14px;color:var(--text)}",
     ".fi-op-f{font-variant-numeric:tabular-nums;color:var(--muted)}",
     ".fi-op-n{font-weight:600;flex:1 1 12em;overflow-wrap:anywhere}",
     ".fi-op-c{color:var(--muted);font-variant-numeric:tabular-nums}",
     ".fi-op-gp{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}",
-    ".fi-op>.fi-tablawrap,.fi-op>p,.fi-op>details{margin:0 12px 10px}",
+    ".fi-op>.fi-tablawrap,.fi-op>p{margin:0 12px 10px}",
     ".fi-tablawrap{overflow-x:auto}",
     ".fi-tabla{width:100%;font-size:14px}",
-    ".fi-gastados>summary{font-size:14px;color:var(--muted);cursor:pointer;padding:4px 0}",
+    /* Historial: las líneas de cada activo, alineadas en columnas como una
+       tabla de posiciones; dentro, la tabla del activo. */
+    ".fi-historial{overflow-x:auto}",
+    ".fi-h-linea{display:grid;grid-template-columns:minmax(170px,1fr) 110px 170px 230px 190px;gap:0 10px;align-items:baseline;padding:7px 12px;font-size:14px}",
+    ".fi-h-linea>span:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}",
+    ".fi-h-cab{font-weight:700;font-size:13px;color:var(--muted);border-bottom:2px solid var(--border)}",
+    ".fi-h-total{font-weight:700;border-bottom:1px solid var(--border2)}",
+    ".fi-h-subtotal{font-weight:700;background:var(--panel2);border-radius:8px}",
+    ".fi-historial .fi-subgrupo{margin-top:18px}",
+    ".fi-historial .fi-subgrupo+.fi-pie{margin:0 0 4px}",
+    ".fi-h-activo{margin:0;border-bottom:1px solid var(--border)}",
+    ".fi-h-activo>summary{list-style:none;cursor:pointer;color:var(--text);font-weight:400}",
+    ".fi-h-activo>summary::-webkit-details-marker{display:none}",
+    ".fi-h-activo>summary .fi-h-linea>span:first-child{font-weight:600}",
+    ".fi-h-activo>summary .fi-h-linea>span:first-child::before{content:'▸ ';color:var(--muted)}",
+    ".fi-h-activo[open]>summary .fi-h-linea>span:first-child::before{content:'▾ '}",
+    ".fi-h-activo>summary:hover{background:var(--panel2)}",
+    ".fi-h-activo>.fi-tablawrap,.fi-h-activo>p{margin:0 12px 12px}",
+    ".fi-h-cerrado{color:var(--muted)}",
+    ".fi-historial:not(.fi-todos) .fi-h-cerrado{display:none}",
+    ".fi-h-avisos{color:var(--warn);font-weight:700;font-size:13px}",
+    // Once columnas sin desplazarse de lado: letra y márgenes más justos.
+    ".fi-historial .fi-tabla{font-size:12.5px;min-width:0}",
+    ".fi-historial .fi-tabla td,.fi-historial .fi-tabla th{white-space:nowrap;padding:5px 4px}",
+    ".fi-historial .fi-tabla th{font-size:12px;text-transform:none;letter-spacing:0;white-space:normal;vertical-align:bottom}",
+    ".fi-et{display:inline-block;border:1px solid var(--border2);border-radius:6px;padding:0 6px;font-size:13px}",
+    ".fi-et-entra{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok)}",
+    ".fi-et-sale{background:var(--info-bg);border-color:var(--info-bd);color:var(--info);font-weight:700}",
+    ".fi-et-canje{border-style:dashed}",
+    ".fi-et-grupo{border-style:dotted}",
+    ".fi-lotes{font-size:12px;font-weight:600;padding:0 6px;margin-left:4px;min-height:0;line-height:1.5;border-radius:6px;box-shadow:none}",
+    ".fi-h-lote td{background:var(--panel2);font-size:13px;color:var(--muted)}",
+    ".fi-h-lote td:nth-child(2){padding-left:22px}",
+    ".fi-h-suma td{font-weight:700;border-top:2px solid var(--border)}",
+    ".fi-h-nocuenta td{color:var(--muted)}",
+    ".fi-h-hora{display:block;font-size:11.5px;color:var(--muted);line-height:1.2}",
+    ".fi-historial .fi-ir-avisos{text-decoration:none}",
+    ".fi-pos{color:var(--ok)}",
+    ".fi-neg{color:var(--err)}",
     ".fi-pie{font-size:13px;color:var(--faint)}",
     ".fi-avisos{list-style:none;padding:0;margin:0}",
     ".fi-aviso{border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin:6px 0;font-size:14px}",
@@ -641,8 +1002,24 @@ function fiInyectarEstilos() {
     cuerpo.addEventListener("click", ev => {
       const boton = ev.target.closest(".fi-anio");
       if (boton) { fiElegirAnio(Number(boton.dataset.anio)); fiRenderSeguro(true); return; }
+      const lotes = ev.target.closest(".fi-lotes");
+      if (lotes) {
+        // Sin repintar: solo se ven u ocultan sus filas.
+        const id = lotes.dataset.desglose, abrir = !fiEstado.desgloses.has(id);
+        fiEstado.desgloses[abrir ? "add" : "delete"](id);
+        for (const tr of cuerpo.querySelectorAll('tr[data-de="' + CSS.escape(id) + '"]')) tr.hidden = !abrir;
+        lotes.setAttribute("aria-expanded", abrir);
+        lotes.textContent = (abrir ? "▾ " : "▸ ") + lotes.textContent.slice(2);
+        return;
+      }
       const ir = ev.target.closest(".fi-ir-avisos");
       if (ir) { ev.preventDefault(); const s = $("fiAvisos"); if (s) s.scrollIntoView({ behavior: "smooth" }); }
+    });
+    cuerpo.addEventListener("change", ev => {
+      if (ev.target.id !== "fiVerTodos") return;
+      fiEstado.verTodos = ev.target.checked;
+      const h = cuerpo.querySelector(".fi-historial");
+      if (h) h.classList.toggle("fi-todos", fiEstado.verTodos);
     });
   }
   fiRenderSeguro(false);

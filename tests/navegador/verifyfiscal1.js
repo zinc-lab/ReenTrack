@@ -10,7 +10,7 @@
  *      sale el último terminado.
  *  S3) cada cifra del resumen es la del informe (js/22) con el mismo «hoy»;
  *      «A declarar en» en rendimientos.
- *  S4) los lotes: un desplegable por inmueble con sus lotes y lo que queda.
+ *  S4) el historial: un desplegable por inmueble con lo que queda.
  *  S5) cambiar de año repinta ese año; «Sin ventas» si no las hay.
  *  S6) 375 px sin scroll de lado, oscuro; 0 errores.
  *
@@ -92,8 +92,9 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
       nFilas: Object.keys(enPantalla).length, nInforme: inf.resumen.length,
       declarar: document.querySelector("#fiResumen .fi-declarar") ? document.querySelector("#fiResumen .fi-declarar").textContent : "",
       ventas: document.querySelector("#fiVentas").textContent,
-      lotes: [...document.querySelectorAll("#fiLotes details.fi-op")].map(d => [d.querySelector(".fi-op-n").textContent,
-        d.querySelectorAll("tbody tr").length, d.querySelector(".fi-op-c").textContent]),
+      lotes: [...document.querySelectorAll("#fiHistorial details.fi-h-activo")].map(d => d.querySelectorAll(".fi-h-linea>span"))
+        .filter(s => s[0].textContent.startsWith("Prueba")).map(s => [s[0].textContent, s[1].textContent,
+          s[0].closest("details").querySelectorAll("tbody tr.fi-h-entra").length]),
       texto: document.querySelector("#fiCuerpo").textContent,
     };
   });
@@ -106,8 +107,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("S3 -> sin casillas ni consejos por país, y al final un descargo genérico",
     !/casilla|LLC|España/.test(d.texto) && (d.texto.match(/asesor/g) || []).length === 1 &&
     /confírmalo con un asesor\.$/.test(d.texto.trim()), d.texto.slice(-200));
-  assert("S4 -> un desplegable por inmueble con sus lotes y lo que queda",
-    JSON.stringify(d.lotes) === JSON.stringify([["Prueba Cáceres 8", 2, "7 tokens"], ["Prueba Fondo 1", 1, "6 tokens"], ["Prueba Sevilla 2", 1, "7 tokens"]]), d.lotes);
+  assert("S4 -> el historial: un desplegable por inmueble con lo que queda y sus compras",
+    JSON.stringify(d.lotes) === JSON.stringify([["Prueba Cáceres 8", "7", 2], ["Prueba Fondo 1", "6", 1], ["Prueba Sevilla 2", "7", 1]]), d.lotes);
   assert("S5 -> sin ventas ni permutas: lo dice", /Sin ventas ni permutas este año/.test(d.ventas));
   await page.evaluate(() => document.querySelectorAll("#fiCuerpo details").forEach(x => { x.open = true; }));
   await page.screenshot({ path: path.join(OUT, "cap_fiscal1.png"), fullPage: true });
@@ -120,9 +121,9 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
 
   /* ============ S7) arreglos que se ven en pantalla ============ */
   // A8: un repintado no cierra lo desplegado y el año elegido con el teclado conserva el foco.
-  await page.evaluate(() => { document.querySelector("#fiLotes details.fi-op").open = true; renderPanel(); });
+  await page.evaluate(() => { document.querySelector("#fiHistorial details.fi-h-activo").open = true; renderPanel(); });
   await esperar(150);
-  const sigueAbierto = await page.evaluate(() => document.querySelector("#fiLotes details.fi-op").open);
+  const sigueAbierto = await page.evaluate(() => document.querySelector("#fiHistorial details.fi-h-activo").open);
   await page.focus('.fi-anio[data-anio="2024"]');
   await page.keyboard.press("Enter");
   await esperar(150);
