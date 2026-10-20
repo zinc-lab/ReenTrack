@@ -119,6 +119,22 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     assert("H4 -> a " + ancho + " px ni las tablas ni las líneas se desplazan de lado", desborde <= 0, desborde);
   }
   await page.setViewport({ width: 1366, height: 900 });
+  // A3: al imprimir (📤 abre los desplegables), también los que ya no tienes y los lotes de cada venta.
+  await page.click("#fiHistorial label.rv-interruptor");   // apagado, como suele estar
+  await page.evaluate(() => {
+    document.querySelectorAll("#fiHistorial details").forEach(x => { x.open = true; });
+    document.querySelectorAll("#fiHistorial tr.fi-h-lote").forEach(tr => { tr.hidden = true; });
+  });
+  await page.emulateMediaType("print");
+  const papel = await page.evaluate(() => ({
+    apagado: !document.querySelector("#fiVerTodos").checked,
+    piso: getComputedStyle([...document.querySelectorAll("#fiHistorial details.fi-h-activo")].find(d => d.dataset.abierto === "historial:Piso")).display,
+    lotes: [...document.querySelectorAll("#fiHistorial tr.fi-h-lote")].map(tr => getComputedStyle(tr).display),
+  }));
+  await page.emulateMediaType(null);
+  assert("H4 -> A3: al imprimir salen los que ya no tienes y las filas de los lotes", papel.apagado && papel.piso !== "none" &&
+    papel.lotes.length > 0 && papel.lotes.every(d => d === "table-row"), papel);
+  await page.click("#fiHistorial label.rv-interruptor");
   await (await page.$("#fiHistorial")).screenshot({ path: path.join(OUT, "cap_p27_historial.png") });
 
   /* ============ H5 ============ */

@@ -939,6 +939,7 @@ function fiInyectarEstilos() {
     ".fi-h-nocuenta td{color:var(--muted)}",
     ".fi-h-hora{display:block;font-size:11.5px;color:var(--muted);line-height:1.2}",
     ".fi-historial .fi-ir-avisos{text-decoration:none}",
+    "@media print{.fi-historial .fi-h-cerrado{display:block!important}.fi-historial tr.fi-h-lote[hidden]{display:table-row!important}}",
     ".fi-pos{color:var(--ok)}",
     ".fi-neg{color:var(--err)}",
     ".fi-pie{font-size:13px;color:var(--faint)}",
