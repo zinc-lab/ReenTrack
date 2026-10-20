@@ -179,5 +179,15 @@ console.log("== A1: una compra de RNT sin precio no vale 0 ==");
   assert("A1: en la línea de RNT, ⚠️ en «Coste de lo que queda»", /data-abierto="historial:RNT"[\s\S]*?<span>60<\/span><span><a href="#fiAvisos"/.test(R.html));
 }
 
+console.log("== A4: el aviso de una fila de otro año ==");
+{
+  const R = pasada([...base,
+    reg("c3", "2024-07-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 1, { inmueble: "Casa", via_compra: "ONCHAIN" }),
+    reg("c4", "2025-03-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 2, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 200 })], 2025);
+  const fila = (R.html.match(/<tr class="fi-h-entra fi-h-nocuenta">[\s\S]*?<\/tr>/) || [""])[0];
+  assert("A4: en 2025, la fila a revisar de 2024 dice que su aviso está en los de 2024, sin enlace a los de 2025",
+    fila.includes("su aviso, en los de 2024") && !fila.includes('href="#fiAvisos"'), fila);
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

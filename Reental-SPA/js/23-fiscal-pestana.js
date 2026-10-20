@@ -646,10 +646,10 @@ function fiLotesCuadran(lotes, nombres, informe) {
     .every(n => Math.abs((enInforme.get(n) || 0) - (quedan.get(n) || 0)) < 1e-6);
 }
 
-/* Cifras de una celda: «⚠️» si falta (con enlace a los avisos), «» si no
-   hay, y la ganancia o pérdida con su color. */
-function fiCeldaEur(v, signo = false) {
-  if (v === undefined) return FI_AVISO;
+/* Cifras de una celda: «⚠️» si falta (con enlace a los avisos, o el aviso
+   que se le pase), «» si no hay, y la ganancia o pérdida con su color. */
+function fiCeldaEur(v, signo = false, aviso = FI_AVISO) {
+  if (v === undefined) return aviso;
   if (v === null) return "";
   const t = fiEur(v, signo);
   return signo && /[1-9]/.test(t) ? '<span class="' + (v < 0 ? "fi-neg" : "fi-pos") + '">' + t + "</span>" : t;
@@ -668,7 +668,7 @@ const fiFilaH = (attrs, celdas) => "<tr " + attrs + ">" + FI_COLUMNAS.map(([, nu
 
 /* La tabla de un activo: una fila por operación (rendimientos y gas, por
    mes), el botón «▸ n lotes» en una venta y la fila Total. */
-function fiTablaHistorial(a, abiertos, nombres) {
+function fiTablaHistorial(a, abiertos, nombres, anio) {
   let html = "";
   for (const f of a.filas) {
     // La clave va en un atributo: sin \u0000 (el navegador lo cambia).
@@ -684,11 +684,14 @@ function fiTablaHistorial(a, abiertos, nombres) {
     const clase = f.tipo === "canje" ? "canje" : fiPorMes(f) ? "grupo"
       : f.tipo === "revisar" || (c && c.tokens >= 0) ? "entra" : "sale";
     const n = c ? c.piezas.length : 0;
+    // El aviso de una fila de otro año no está en los de este: sin enlace, con su año.
+    const deOtro = f.fecha.slice(0, 4) !== String(anio);
+    const av = deOtro ? '<span class="fi-info" tabindex="0" title="A revisar: su aviso, en los de ' + f.fecha.slice(0, 4) + '">⚠️</span>' : FI_AVISO;
     const boton = n ? ' <button type="button" class="fi-lotes" aria-expanded="' + abierto + '" data-desglose="' + ccEsc(id) + '" data-foco="' + ccEsc("lotes:" + id) + '">' +
       (abierto ? "▾ " : "▸ ") + n + (n === 1 ? " lote" : " lotes") + "</button>" : "";
     const et = '<span class="fi-et fi-et-' + clase + '"' + (nota ? ' title="' + ccEsc(nota) + '" tabindex="0"' : "") + ">" +
       ccEsc(fiOperacion(f, a.nombre, nombres)) + (nota && f.tipo !== "revisar" ? " ⓘ" : "") + "</span>" +
-      (f.aviso ? " " + FI_AVISO : "");
+      (f.aviso ? " " + av : "");
     const n0 = c ? c.tokens : pyO(f.r.cantidad, 0), sinLote = c && c.sinLote > 1e-9 * Math.abs(n0 || 1) ? c.sinLote : 0;
     const tokens = (n0 === 0 ? "±0" : numEs(n0, 6, true, true)) +
       (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
@@ -697,8 +700,8 @@ function fiTablaHistorial(a, abiertos, nombres) {
       fiCelda(titulo ? '<span title="' + ccEsc(titulo) + '" tabindex="0">' + fecha + "</span>" : fecha) + fiCelda(et + boton) +
       fiCelda(tokens, 1) + fiCelda(f.tipo === "revisar" ? "" : cantidadEs(f.tienes), 1) +
       fiCelda(c ? fiPrecio(c.usd, c.tokens, "$") || (typeof c.total === "number" ? "—" : "") : "", 1) + fiCelda(c && typeof c.total === "number" ? fiPrecio(c.total, c.tokens, "€") : "", 1) +
-      fiCelda(c ? fiCeldaEur(c.total) + (c.supuesto ? " **" : "") : fiCeldaEur(undefined), 1) + fiCelda(c ? fiCeldaEur(c.comision) : "", 1) +
-      fiCelda(c ? fiCeldaEur(c.coste) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true) : "", 1) + fiCelda(quedan, 1) + "</tr>";
+      fiCelda(c ? fiCeldaEur(c.total, false, av) + (c.supuesto ? " **" : "") : av, 1) + fiCelda(c ? fiCeldaEur(c.comision, false, av) : "", 1) +
+      fiCelda(c ? fiCeldaEur(c.coste, false, av) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true, av) : "", 1) + fiCelda(quedan, 1) + "</tr>";
     for (const p of n ? c.piezas : []) {
       // Cada lote, con su parte de lo cobrado y de la comisión.
       const parte = c.tokens ? p.n / Math.abs(c.tokens) : 0;
@@ -751,7 +754,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
           '<summary aria-label="' + ccEsc(etiqueta) + '">' +
           fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
             cantidadEs(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
-          "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres) + "</details>";
+          "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres, anio) + "</details>";
       }).join("");
   });
   return html + "</div>";
