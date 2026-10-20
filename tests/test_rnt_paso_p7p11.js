@@ -122,6 +122,9 @@ assert("💶 (D5): sin 100 €/token; «Falta el precio» y «—», cuenta como
 assert("💶: una decisión de 🔍 lleva «↩ Deshacer…» (a «Ya decididos»); una compra sin decisión, no",
   hSin.includes('data-cb="decidida"') && hSin.includes("↩ Deshacer…") &&
   !S.cbHtmlFila(S.cbFilas([casa], {}, 100)[0], {}).includes('data-cb="decidida"'));
+assert("RETOQUES R2: el aviso «sin precio» cuenta el RNT sin precio, no las de 100 €/token ni las de un ajuste a mano",
+  S.cbNumSinPrecio([fSin]) === 1 && S.cbNumSinPrecio(S.cbFilas([casa], {}, 100)) === 0 &&
+  S.cbNumSinPrecio(S.cbFilas([comprado], { e1: { nota: "a mano" } }, 100)) === 0, S.cbFilas([comprado], { e1: { nota: "a mano" } }, 100)[0].estado);
 // Con tu precio en 💶: la decisión lleva el coste y «Ya decididos» lo dice.
 const conPrecio = S.cbAjustesConCostes({ e1: dec }, [{ clave: "e1", valor: 150 }], [comprado], 100, FECHA);
 assert("💶 guarda el coste en la decisión (sigue deshaciéndose en «Ya decididos»)", conPrecio.e1.coste_eur === 150 &&

@@ -133,6 +133,14 @@ function cbFilas(registros, ajustes, precio) {
   });
 }
 
+/* El aviso de 💶 en la lista de tareas de 🔍 (P21): las que no tienen
+   precio (un RNT a la espera del suyo) y se pueden editar aquí. Las de por
+   defecto (100 €/token) tienen coste, y una de un ajuste a mano se cambia
+   en «Ajustes en JSON»: no avisan. */
+function cbNumSinPrecio(filas) {
+  return filas.filter(f => f.estado !== "ajeno" && !ccEsNumeroPositivo(f.coste)).length;
+}
+
 /* Lo escrito, leído como número (NaN si está vacío o no se entiende). */
 function cbValorEscrito(texto) {
   const t = String(texto).trim();
@@ -422,10 +430,7 @@ function renderCosteCompras() {
   }
   const n = $("cbCount");
   if (n) n.textContent = String(vivas.size);
-  // Su estado en la lista de tareas de 🔍 (P21): las que no tienen precio
-  // (un RNT a la espera del suyo). Las de por defecto (100 €/token) tienen
-  // coste: no avisan (el informe las marca con «**»).
-  const sin = filas.filter(f => !ccEsNumeroPositivo(f.coste)).length;
+  const sin = cbNumSinPrecio(filas);
   const aviso = $("cbCosteAviso");
   if (aviso) aviso.textContent = sin ? "⚠ " + sin + " sin precio" : "";
   cont.innerHTML = cbHtmlEditor(filas, cbBorrador);
@@ -476,23 +481,32 @@ function cbIrACompras() {
 }
 /* «↩ Deshacer…»: abre «Movimientos ya decididos» en su decisión, resaltada
    y con el cursor en su «↩ Deshacer». */
+let cbTemporizadores = [];
 function cbIrADecidida(clave) {
   const det = $("ccResueltos");
-  const card = document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + CSS.escape(clave) + '"]');
-  if (!det || !card) return;
+  const buscar = () => document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + CSS.escape(clave) + '"]');
+  if (!det || !buscar()) return;
+  // Otra pulsación empieza de cero (si no, lo de la primera lo cortaría antes).
+  cbTemporizadores.forEach(clearTimeout);
+  det.classList.remove("cb-brillo");
+  document.querySelectorAll("#ccListaResueltos .cc-destacada").forEach(c => c.classList.remove("cc-destacada"));
   // Cerrado, se despliega en 0,6 s: se va a la tarjeta cuando ya está en su sitio.
   const cerrado = !det.open;
   det.open = true;
-  setTimeout(() => {
+  cbTemporizadores = [setTimeout(() => {
+    // La tarjeta, otra vez (puede haberse repintado mientras se desplegaba).
+    const card = buscar();
+    if (!card) return;
     card.scrollIntoView({ block: "center" });
     card.classList.add("cc-destacada");
-    setTimeout(() => card.classList.remove("cc-destacada"), 2500);
     // «Ya decididos» brilla un momento: es ahí donde se deshace.
+    void det.offsetWidth; // para que la animación empiece otra vez
     det.classList.add("cb-brillo");
-    setTimeout(() => det.classList.remove("cb-brillo"), 5600);
+    cbTemporizadores.push(setTimeout(() => card.classList.remove("cc-destacada"), 2500),
+      setTimeout(() => det.classList.remove("cb-brillo"), 5600));
     const boton = card.querySelector('[data-accion="deshacer-decision"]');
     if (boton) boton.focus({ preventScroll: true });
-  }, cerrado ? 650 : 0);
+  }, cerrado ? 650 : 0)];
 }
 /* «Calcular el precio por token»: en la moneda de la fila; «Usar» lo
    pone en su casilla de precio (y lo pagado se recalcula con el precio

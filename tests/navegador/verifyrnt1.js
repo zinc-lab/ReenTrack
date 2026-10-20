@@ -194,9 +194,32 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     foco: !!document.activeElement && document.activeElement.getAttribute("data-accion") === "deshacer-decision" &&
       document.activeElement.getAttribute("data-clave") === c }), claves[3]);
   await page.screenshot({ path: path.join(OUT, "cap_rnt1_brillo.png") });
+  // RETOQUES R6: una segunda pulsación a los 3 s alarga el brillo (no lo corta lo de la primera).
+  await esperar(2000);
+  await page.click('#cbCuerpo [data-cb="decidida"][data-clave="' + claves[3] + '"]');
+  await esperar(3500);
+  const brillo6 = await page.evaluate(() => document.getElementById("ccResueltos").classList.contains("cb-brillo"));
+  assert("R4 -> R6: otra pulsación vuelve a empezar el brillo (a los 6,5 s de la primera sigue)", brillo6, brillo6);
   await page.evaluate(() => document.getElementById("rellenoR4").remove());
   assert("R4 -> «↩ Deshacer…» (con «Ya decididos» cerrado) lo abre y, al primer clic, deja su decisión a la vista con el cursor en «↩ Deshacer»",
     ir4.abierto && ir4.aLaVista && ir4.foco && ir4.brillo, ir4);
+
+  /* Huecos de la auditoría de los retoques: «ⓘ Qué es cada cosa», en la barra, solo en 🔍 y 📒. */
+  const verQueEs = await page.evaluate(async () => {
+    const r = {};
+    for (const v of ["revision", "transacciones", "dashboard", "fiscal", "inicio"]) {
+      location.hash = "#" + v;
+      await new Promise(x => setTimeout(x, 500));
+      r[v] = document.querySelector(".top-right .cc-que-es").offsetParent !== null;
+    }
+    location.hash = "#revision";
+    await new Promise(x => setTimeout(x, 500));
+    return r;
+  });
+  assert("«ⓘ Qué es cada cosa» se ve en 🔍 y 📒 y no en 📊, 🧾 ni 🚀",
+    verQueEs.revision && verQueEs.transacciones && !verQueEs.dashboard && !verQueEs.fiscal && !verQueEs.inicio, verQueEs);
+  await page.evaluate(() => { document.getElementById("cbCoste").open = true; });
+  await esperar(800);
 
   /* ============ R5) otra entrega, en USD ============ */
   await pulsar(4, "compra");
