@@ -459,22 +459,29 @@ function fiUsd(r, eur, parte, cache) {
   return fiscHay(r.cobrado_eur) || fiscHay(r.coste_eur) ? null : rentaAUsd(r, eur);
 }
 
-/* Las cifras de una fila: tokens (con signo), total, comisión, coste de
-   compra, ganancia o pérdida (null: no hay; undefined: falta, ⚠️), lo que
-   queda de sus lotes, precios y el desglose por lotes de una venta. */
+/* Las cifras de una fila: tokens (con signo), importe (total: lo pagado
+   o cobrado), comisión, coste de lo vendido (coste), coste con signo como
+   el de un bróker (costeSigno: + lo que entra, − lo que sale; sumado, lo
+   que cuesta lo que queda), ganancia o pérdida (null: no hay; undefined:
+   falta, ⚠️), lo que queda de sus lotes, precios y el desglose por lotes
+   de una venta. */
 function fiCifrasFila(f, nombre, ctx) {
   const r = f.r, falta = v => (fiscHay(v) ? v : r && r.revisar ? undefined : null);
   const entra = pySuma(f.entra.map(x => x.inicial)), sale = pySuma(f.sale.map(e => e.pedido));
   const c = { tokens: entra - sale, total: null, comision: null, coste: null, gp: null, quedan: null, usd: null, piezas: [],
-    // Lo que salió sin lote del que salir (el motor lo da sin coste): «Tienes» baja de más.
+    // Lo que salió sin lote del que salir (el motor lo da sin coste).
     sinLote: sale - pySuma(f.sale.flatMap(e => e.sacado.map(s => s.n))) };
   const costeLotes = pySuma(f.entra.map(x => x.inicial * x.lote.coste_unitario_eur));
+  const costeSale = pySuma(f.sale.flatMap(e => e.trozos.map(t => t.coste_eur)));
   if (f.tipo === "canje") {
+    // Sale del contrato viejo y entra en el nuevo con su coste (más el gas del canje).
     for (const e of f.sale) c.piezas.push(...fiPiezasDe(e.trozos, false));
+    c.costeSigno = costeLotes - costeSale;
     return c;
   }
   if (f.tipo === "gas") {
     c.coste = pySuma([...f.registros].map(g => pyO(g.coste_fifo_eur, 0)));
+    c.costeSigno = -c.coste;
     return c;
   }
   if (f.entra.length) {
@@ -483,6 +490,7 @@ function fiCifrasFila(f, nombre, ctx) {
     c.comision = r && r.categoria === "COMPRA" && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
     // Un lote sin precio (RNT a la espera del suyo, en 💶): su valor no se sabe.
     c.total = f.entra.some(x => x.lote.sin_coste) ? undefined : costeLotes - (c.comision || 0);
+    c.costeSigno = c.total === undefined ? undefined : costeLotes;
     c.quedan = pySuma(f.entra.map(x => ctx.quedaConCanjes(x.lote)));
     // Rendimientos y lo que vuelve de un pool: el USD de sus lotes (sin comisión).
     c.usd = fiPorMes(f) || r.categoria === "MOVIMIENTO"
@@ -495,13 +503,13 @@ function fiCifrasFila(f, nombre, ctx) {
   // Venta, pago, salida: la parte de este activo en lo que movió el
   // registro. Lo aportado a un pool, solo su coste (su resultado va
   // aparte en el Resumen).
-  const coste = pySuma(f.sale.flatMap(e => e.trozos.map(t => t.coste_eur)));
-  if (r.categoria === "MOVIMIENTO") return Object.assign(c, { coste });
+  if (r.categoria === "MOVIMIENTO") return Object.assign(c, { coste: costeSale, costeSigno: -costeSale });
   const parte = ctx.salidasDe.get(r) ? sale / ctx.salidasDe.get(r) : 1;
   const esPago = r.categoria === "COMPRA";
   c.total = !fiscHay(r.importe_eur) ? falta(null) : (r.importe_eur + (esPago ? 0 : pyO(r.gas_eur, 0))) * parte;
   c.comision = !esPago && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
-  c.coste = fiscHay(r.coste_fifo_eur) ? coste : falta(null);
+  c.coste = fiscHay(r.coste_fifo_eur) ? costeSale : falta(null);
+  c.costeSigno = typeof c.coste === "number" ? -c.coste : c.coste;
   c.gp = !fiscHay(r.gp_eur) ? falta(null) : parte === 1 ? r.gp_eur : c.total - (c.comision || 0) - c.coste;
   c.usd = fiscHay(c.total) ? fiUsd(r, c.total, parte, ctx.cache) : null;
   // El desglose, solo si el motor guardó de qué lotes sale.
@@ -530,7 +538,7 @@ function fiPiezasDe(trozos, stable) {
    costeQueda, gp, gpAnio, avisos, abierto }], los inmuebles por nombre (el
    contrato viejo y el nuevo de un canje juntos) y después RNT, POL, USDT y
    USDC. Cada fila: { tipo (r, rend, rew, gas, canje, revisar), fecha, r,
-   registros, entra, sale, cifras, tienes }. Abierto: le queda algún lote vivo. */
+   registros, entra, sale, cifras }. Abierto: le queda algún lote vivo. */
 function fiHistorial(resultado, anio, cache = null) {
   const corte = anio + "-12-31 23:59:59", nombres = resultado.nombres;
   // Un inmueble sin nombre en el catálogo, con el de reserva del Resumen
@@ -618,11 +626,8 @@ function fiHistorial(resultado, anio, cache = null) {
     // octubre); con la misma, el del motor.
     for (const f of a.filas.values()) f.orden = fechaParaOrdenar({ fecha: f.fecha, instante: f.r && f.r.fecha === f.fecha ? f.r.instante : undefined });
     const filas = [...a.filas.values()].sort((x, y) => cmpTexto(x.orden, y.orden));
-    let tienes = 0;
     for (const f of filas) {
       f.cifras = f.tipo === "revisar" ? null : fiCifrasFila(f, a.nombre, ctx);
-      if (f.cifras) tienes += f.cifras.tokens;
-      f.tienes = tienes;
       f.aviso = [...f.registros].some(r => pyVerdad(r.revisar));
     }
     const vivos = filas.flatMap(f => f.entra).filter(x => ctx.queda.get(x.lote) > 0);
@@ -683,8 +688,18 @@ const fiPrecio = (v, n, unidad) => {
   return Number.isFinite(x) ? numEs(x, ccDecimalesPrecio(x)) + " " + unidad : "";
 };
 
-const FI_COLUMNAS = [["Fecha"], ["Operación"], ["Tokens", 1], ["Tienes", 1], ["Precio USD", 1], ["Precio EUR", 1],
-  ["Total EUR", 1], ["Comisión", 1], ["Coste de compra", 1], ["G/P", 1], ["Quedan", 1]];
+// Como el extracto de IBKR: el importe (lo pagado o cobrado) y el coste con signo.
+const FI_COLUMNAS = [["Fecha"], ["Operación"], ["Tokens", 1], ["Precio USD", 1], ["Precio EUR", 1],
+  ["Importe EUR", 1], ["Comisión", 1], ["Coste EUR", 1], ["G/P", 1], ["Quedan", 1]];
+/* Una cantidad de tokens con 2 decimales y, al pasar el ratón, entera; lo
+   muy pequeño (que daría «0»), entero. */
+function fiCant(x, signo = false) {
+  const completo = numEs(x, 6, signo, true), corto = numEs(x, 2, signo, true);
+  const t = /[1-9]/.test(corto) ? corto : completo;
+  return t === completo ? t : '<span title="' + completo + '">' + t + "</span>";
+}
+// El coste con signo, sin color (no es una ganancia): «⚠️» si falta, «» si no hay.
+const fiCosteSigno = (v, aviso = FI_AVISO) => (v === undefined ? aviso : v === null ? "" : fiEur(v, true));
 
 /* Una fila de la tabla con solo algunas columnas ({posición en FI_COLUMNAS: contenido}). */
 const fiFilaH = (attrs, celdas) => "<tr " + attrs + ">" + FI_COLUMNAS.map(([, num], i) => fiCelda(celdas[i] ?? "", num)).join("") + "</tr>";
@@ -717,26 +732,28 @@ function fiTablaHistorial(a, abiertos, nombres, anio) {
       (f.aviso ? " " + av : "");
     const n0 = c ? c.tokens : pyO(f.r.cantidad, 0), sinLote = c && c.sinLote > 1e-9 * Math.abs(n0 || 1) ? c.sinLote : 0;
     const conSigno = numEs(n0, 6, true, true);
-    const tokens = (/[1-9]/.test(conSigno) ? conSigno : "±0") +
+    const tokens = (/[1-9]/.test(conSigno) ? fiCant(n0, true) : "±0") +
       (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
     // «de y» debajo, como la hora bajo la fecha (ocupa menos de ancho).
-    const quedan = c && fiscHay(c.quedan) ? cantidadEs(c.quedan) + '<span class="fi-h-debajo">de ' + cantidadEs(c.tokens) + "</span>" : "";
+    const quedan = c && fiscHay(c.quedan) ? fiCant(c.quedan) + '<span class="fi-h-debajo">de ' + fiCant(c.tokens) + "</span>" : "";
     html += '<tr class="fi-h-' + clase + (f.tipo === "revisar" ? " fi-h-nocuenta" : "") + '">' +
       fiCelda(titulo ? '<span title="' + ccEsc(titulo) + '" tabindex="0">' + fecha + "</span>" : fecha) + fiCelda(et + boton) +
-      fiCelda(tokens, 1) + fiCelda(f.tipo === "revisar" ? "" : cantidadEs(f.tienes), 1) +
+      fiCelda(tokens, 1) +
       fiCelda(c ? fiPrecio(c.usd, c.tokens, "$") || (typeof c.total === "number" ? "—" : "") : "", 1) + fiCelda(c && typeof c.total === "number" ? fiPrecio(c.total, c.tokens, "€") : "", 1) +
       fiCelda(c ? fiCeldaEur(c.total, false, av) + (c.supuesto ? " **" : "") : av, 1) + fiCelda(c ? fiCeldaEur(c.comision, false, av) : "", 1) +
-      fiCelda(c ? fiCeldaEur(c.coste, false, av) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true, av) : "", 1) + fiCelda(quedan, 1) + "</tr>";
+      fiCelda(c ? fiCosteSigno(c.costeSigno, av) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true, av) : "", 1) + fiCelda(quedan, 1) + "</tr>";
     for (const p of n ? c.piezas : []) {
       // Cada lote, con su parte de lo cobrado y de la comisión.
       const parte = c.tokens ? p.n / Math.abs(c.tokens) : 0;
       const total = typeof c.total === "number" ? c.total * parte : null, comision = c.comision === null ? null : c.comision * parte;
       const gp = typeof c.gp === "number" ? total - (comision || 0) - p.coste : null;
+      // En un canje, el coste con que pasa cada compra; en una venta, el que sale.
       html += fiFilaH('class="fi-h-lote" data-de="' + ccEsc(id) + '"' + (abierto ? "" : " hidden"), { 1: "↳ " + ccEsc(p.texto),
-        2: cantidadEs(p.n), 6: fiCeldaEur(total), 7: fiCeldaEur(comision), 8: fiCeldaEur(p.coste), 9: fiCeldaEur(gp, true) });
+        2: fiCant(p.n), 5: fiCeldaEur(total), 6: fiCeldaEur(comision), 7: f.tipo === "canje" ? fiEur(p.coste) : fiCosteSigno(-p.coste),
+        8: fiCeldaEur(gp, true) });
     }
   }
-  html += fiFilaH('class="fi-h-suma"', { 1: "Total", 3: cantidadEs(a.quedan), 8: fiCeldaEur(a.costeQueda), 9: fiCeldaEur(a.gp, true) });
+  html += fiFilaH('class="fi-h-suma"', { 1: "Total", 2: fiCant(a.quedan), 7: fiCeldaEur(a.costeQueda), 8: fiCeldaEur(a.gp, true) });
   return fiTabla(FI_COLUMNAS, html) + fiPieSupuesto(a.filas.map(f => ({ supuesto: !!(f.cifras && f.cifras.supuesto) })));
 }
 
@@ -782,7 +799,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
         return '<details class="fi-h-activo' + (a.abierto ? "" : " fi-h-cerrado") + '" data-abierto="historial:' + ccEsc(a.nombre) + '">' +
           '<summary aria-label="' + ccEsc(etiqueta) + '">' +
           fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
-            cantidadEs(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
+            fiCant(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
           "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres, anio) + "</details>";
       }).join("") + "</div>";
   });

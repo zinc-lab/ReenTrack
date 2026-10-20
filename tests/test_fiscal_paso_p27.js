@@ -5,8 +5,8 @@
  * Bajo prueba: una fila por operación con su registro (el gas, del suyo,
  * no de la compra), rendimientos por mes, el canje en una fila ±0, la
  * venta con su desglose por compra (la de antes del canje), «Quedan x de
- * y» a 31/12 (también lo que pasa por un canje), «Tienes» que acaba en lo
- * que queda, la entrada a revisar que no cuenta, el subtotal de cada grupo
+ * y» a 31/12 (también lo que pasa por un canje), el coste con signo que
+ * suma lo que cuesta lo que queda, la entrada a revisar que no cuenta, el subtotal de cada grupo
  * igual al del Resumen, el interruptor de los que ya no tienes y que
  * fiCalcular deja el motor como estaba. Y, de la auditoría: lo que queda
  * de cada activo frente a la cartera del motor a 31/12, los arreglos A1-A10,
@@ -42,8 +42,8 @@ const R = JSON.parse(vm.runInContext(`state.config = { wallet: "${WALLET}", vaul
     const vuelven = [crearLote, consumirFifo, fiscAbrirLote].every((f, i) => f === antes[i]) && fiscEnCurso === null;
     const ver = anio => fiHistorial(res, anio, __cache).map(a => ({ nombre: a.nombre, quedan: a.quedan, coste: a.costeQueda, gp: a.gp, gpAnio: a.gpAnio,
       avisos: a.avisos, abierto: a.abierto,
-      filas: a.filas.map(f => ({ tipo: f.tipo, op: fiOperacion(f, a.nombre, res.nombres), tienes: f.tienes, regs: [...f.registros].map(r => r.clave),
-        c: f.cifras && { tokens: f.cifras.tokens, total: f.cifras.total, comision: f.cifras.comision, coste: f.cifras.coste, gp: f.cifras.gp,
+      filas: a.filas.map(f => ({ tipo: f.tipo, op: fiOperacion(f, a.nombre, res.nombres), regs: [...f.registros].map(r => r.clave),
+        c: f.cifras && { tokens: f.cifras.tokens, total: f.cifras.total, comision: f.cifras.comision, coste: f.cifras.coste, costeSigno: f.cifras.costeSigno, gp: f.cifras.gp,
           quedan: f.cifras.quedan, usd: f.cifras.usd, piezas: f.cifras.piezas } })) }));
     const resumen = anio => Object.fromEntries(res.informes[anio].resumen.filter(f => /^gp_(inmuebles|permutas)$/.test(f.clave)).map(f => [f.clave, f.importe]));
     const grupos = anio => { const h = fiHistorial(res, anio, __cache); return [fiGpDelGrupo(h.filter(a => !a.moneda), anio), fiGpDelGrupo(h.filter(a => a.moneda), anio)]; };
@@ -90,8 +90,9 @@ function pasada(regsCaso, anio, extra = {}) {
       return JSON.stringify({ motor, resumen, grupos: [fiGpDelGrupo(h.filter(a => !a.moneda), __anio), fiGpDelGrupo(h.filter(a => a.moneda), __anio)],
         html: fiHtmlHistorial(res, __anio, res.informes[__anio], res.informes[__anio]),
         h: h.map(a => ({ nombre: a.nombre, moneda: a.moneda, quedan: a.quedan, coste: a.costeQueda, gp: a.gp, abierto: a.abierto,
-          filas: a.filas.map(f => ({ tipo: f.tipo, op: fiOperacion(f, a.nombre, res.nombres), tienes: f.tienes, regs: [...f.registros].map(r => r.clave),
-            c: f.cifras && { tokens: f.cifras.tokens, total: f.cifras.total, coste: f.cifras.coste, quedan: f.cifras.quedan, sinLote: f.cifras.sinLote } })) })) });
+          filas: a.filas.map(f => ({ tipo: f.tipo, op: fiOperacion(f, a.nombre, res.nombres), regs: [...f.registros].map(r => r.clave),
+            c: f.cifras && { tokens: f.cifras.tokens, total: f.cifras.total, coste: f.cifras.coste, costeSigno: f.cifras.costeSigno, quedan: f.cifras.quedan,
+              sinLote: f.cifras.sinLote } })) })) });
     })();`, s));
 }
 /* Lo que queda de cada activo del historial = la cartera del motor a 31/12 (cantidad y coste). */
@@ -116,7 +117,7 @@ console.log("== 2024: hasta el 31/12 ==");
     c1.c.tokens === 5 && r2(c1.c.total) === 400 && r2(c1.c.comision) === 0.05, c1.c);
   assert("«Quedan» a 31/12: lo de cada compra pasa por el canje (5 de 5 y 5 de 5)", c1.c.quedan === 5 && c2.c.quedan === 5, [c1.c.quedan, c2.c.quedan]);
   assert("el canje: una fila ±0 con las compras que pasan al contrato nuevo",
-    k.c.tokens === 0 && k.tienes === 10 && igual(k.c.piezas.map(p => [p.texto, p.n]), [["Compra del 01/02/2024", 5], ["Compra externa del 01/03/2024", 5]]), k.c);
+    k.c.tokens === 0 && r2(k.c.costeSigno) === 0 && igual(k.c.piezas.map(p => [p.texto, p.n]), [["Compra del 01/02/2024", 5], ["Compra externa del 01/03/2024", 5]]), k.c);
   assert("Casa: quedan 10 con su coste (400,05 + 500) y sin ventas", casa.quedan === 10 && r2(casa.coste) === 900.05 && casa.gp === null && casa.abierto, casa);
   assert("USDT: ingreso, pago y los rendimientos de marzo en una fila",
     igual(usdt.filas.map(f => f.op), ["Ingreso de dinero", "Pago de Casa", "Rendimientos · 2 cobros"]), usdt.filas.map(f => f.op));
@@ -124,7 +125,8 @@ console.log("== 2024: hasta el 31/12 ==");
   assert("el pago: −500, su valor y su coste (permuta sin ganancia)", pago.c.tokens === -500 && r2(pago.c.total) === 400 && r2(pago.c.coste) === 400 && r2(pago.c.gp) === 0, pago.c);
   assert("los rendimientos del mes: +20, 16 € y 20 $, quedan 20", rend.c.tokens === 20 && r2(rend.c.total) === 16 && rend.c.usd === 20 && rend.c.quedan === 20, rend.c);
   assert("el ingreso: quedan 500 de 1000 (lo pagado sale de él)", ing.c.quedan === 500, ing.c);
-  assert("«Tienes» va sumando y acaba en lo que queda", usdt.filas.map(f => f.tienes).join() === "1000,500,520" && usdt.quedan === 520, usdt.filas.map(f => f.tienes));
+  assert("el coste con signo (+ entra, − sale) suma lo que cuesta lo que queda (800 − 400 + 16 = 416 €)",
+    igual(usdt.filas.map(f => r2(f.c.costeSigno)), [800, -400, 16]) && r2(usdt.coste) === 416 && usdt.quedan === 520, usdt.filas.map(f => f.c.costeSigno));
   assert("POL: el gas de febrero, en su fila del mes y con el registro del gas (no el de la compra)",
     pol.filas[1].tipo === "gas" && igual(pol.filas[1].regs, ["g1"]) && pol.filas[1].op === "Comisiones de red (gas) · 1" && r2(pol.filas[1].c.coste) === 0.05, pol.filas[1]);
   assert("2024: los subtotales dan lo mismo que el Resumen", igual(R.g24, [R.r24.gp_inmuebles, R.r24.gp_permutas]), [R.g24, R.r24]);
@@ -140,7 +142,7 @@ console.log("== 2025: la venta, la entrada a revisar y el que ya no tienes ==");
     igual(venta.c.piezas.map(p => [p.texto, p.n, r2(p.coste)]), [["Compra del 01/02/2024", 5, 400.05], ["Compra externa del 01/03/2024", 2, 200]]), venta.c.piezas);
   assert("«Quedan» de cada compra: 0 de 5 y 3 de 5", casa.filas[0].c.quedan === 0 && casa.filas[1].c.quedan === 3);
   const rev = casa.filas.at(-1);
-  assert("la compra a revisar sin lote: sale, sin cifras y sin sumar en «Tienes»", rev.tipo === "revisar" && rev.c === null && rev.tienes === 3 && casa.avisos === 1, rev);
+  assert("la compra a revisar sin lote: sale, sin cifras y no cuenta en lo que queda", rev.tipo === "revisar" && rev.c === null && casa.quedan === 3 && casa.avisos === 1, rev);
   assert("Casa: quedan 3, ganancia de 2025 y desde el principio", casa.quedan === 3 && r2(casa.gp) === 99.95 && r2(casa.gpAnio) === 99.95, casa);
   assert("Piso: vendido del todo, ya no lo tienes", piso.quedan === 0 && !piso.abierto && r2(piso.gp) === 40, piso);
   assert("2025: los subtotales dan lo mismo que el Resumen", igual(R.g25, [R.r25.gp_inmuebles, R.r25.gp_permutas]), [R.g25, R.r25]);
@@ -169,6 +171,11 @@ console.log("== Lo que queda, frente al motor ==");
   const R = pasada(regs, 2025, sb.__cache);
   assert("con los datos comunes, lo que queda de cada activo es la cartera del motor a 31/12 (cantidad y coste)", cuadraConMotor(R),
     [R.motor, R.h.map(a => [a.nombre, a.quedan, a.coste])]);
+  const sumaCostes = a => a.filas.reduce((s, f) => s + (f.c ? f.c.costeSigno || 0 : 0), 0);
+  assert("en cada activo, la columna «Coste EUR» (con signo) suma lo que cuesta lo que queda (la fila Total)",
+    R.h.every(a => Math.abs(sumaCostes(a) - a.coste) < 1e-6), R.h.map(a => [a.nombre, sumaCostes(a), a.coste]));
+  assert("cabeceras como IBKR: «Importe EUR» y «Coste EUR», sin «Tienes» ni «Coste de compra»",
+    R.html.includes(">Importe EUR<") && R.html.includes(">Coste EUR<") && !R.html.includes(">Tienes<") && !R.html.includes("Coste de compra"));
 }
 
 console.log("== A1: una compra de RNT sin precio no vale 0 ==");
@@ -199,8 +206,8 @@ console.log("== A5: la hora repetida de octubre ==");
     reg("c1", "2024-10-27 02:30:00", "COMPRA", "COSTE_BASE", CASA, 5, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 500, instante: "2024-10-27T00:30:00Z" }),
     reg("v1", "2024-10-27 02:10:00", "VENTA", "GPP_INMUEBLE", CASA, 5, { inmueble: "Casa", importe_usdt: 700, origen: WALLET, destino: OTRO, instante: "2024-10-27T01:10:00Z" })], 2024);
   const casa = de(R.h, "Casa");
-  assert("A5: la compra antes que la venta (por el instante, como el motor) y «Tienes» nunca baja de 0",
-    igual(casa.filas.map(f => [f.op, f.tienes]), [["Compra externa", 5], ["Venta", 0]]), casa.filas.map(f => [f.op, f.tienes]));
+  assert("A5: la compra antes que la venta (por el instante, como el motor)",
+    igual(casa.filas.map(f => f.op), ["Compra externa", "Venta"]), casa.filas.map(f => f.op));
 }
 
 console.log("== A6: el canje con decimales, ±0 ==");
@@ -319,8 +326,8 @@ console.log("== Lo que no probaba nadie (auditoría) ==");
     reg("c1", "2024-02-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 5, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 500 }),
     reg("v1", "2024-06-01 10:00:00", "VENTA", "GPP_INMUEBLE", CASA, 7, { inmueble: "Casa", importe_usdt: 875, origen: WALLET, destino: OTRO })], 2024);
   const venta = de(R.h, "Casa").filas[1];
-  assert("FIFO incompleto: la venta −7 con ⓘ «2 sin compra registrada», ⚠️ en el coste y «Tienes» −2; lo que queda, 0 como el motor",
-    venta.c.tokens === -7 && r2(venta.c.sinLote) === 2 && venta.c.coste === undefined && venta.tienes === -2 &&
+  assert("FIFO incompleto: la venta −7 con ⓘ «2 sin compra registrada» y ⚠️ en el coste; lo que queda, 0 como el motor",
+    venta.c.tokens === -7 && r2(venta.c.sinLote) === 2 && venta.c.coste === undefined && venta.c.costeSigno === undefined &&
     R.html.includes("2 sin compra registrada") && de(R.h, "Casa").quedan === 0 && cuadraConMotor(R), venta);
 }
 {
@@ -342,6 +349,14 @@ console.log("== A11: los mismos nombres que «Ventas y permutas» ==");
   const ops = de(R.h, "USDT").filas.map(f => f.op);
   assert("A11: «Cambio por otra moneda» y «Retirada», como en «Ventas y permutas» (y «Pago de <inmueble>» arriba)",
     igual(ops, ["Ingreso de dinero", "Cambio por otra moneda", "Retirada"]), ops);
+}
+
+console.log("== Tokens con 2 decimales ==");
+{
+  const fiCant = vm.runInContext("fiCant", sb);
+  assert("tokens con 2 decimales y enteros al pasar el ratón; lo muy pequeño, entero; sin decimales, tal cual",
+    fiCant(321.456789, true) === '<span title="+321,456789">+321,46</span>' && fiCant(0.000731) === "0,000731" && fiCant(5) === "5" &&
+    fiCant(-0.0457, true) === '<span title="-0,0457">-0,05</span>', [fiCant(321.456789, true), fiCant(0.000731), fiCant(5), fiCant(-0.0457, true)]);
 }
 
 console.log("\n" + ok + " OK, " + fallos + " fallos");
