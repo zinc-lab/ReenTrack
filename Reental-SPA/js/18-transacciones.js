@@ -264,8 +264,7 @@ function txOperacion(reg) {
 let txCanjeFoto = { registros: null, claves: null };
 function txEsCanje(reg) {
   if (reg.categoria === "COMPRA") return reg.via_compra === "CANJE";
-  if (reg.categoria !== "VENTA" || reg.subcategoria !== "GPP_INMUEBLE" || reg.destino !== BURN || reg.importe_usdt != null ||
-      reg.cobrado_eur != null) return false;
+  if (reg.categoria !== "VENTA" || reg.subcategoria !== "GPP_INMUEBLE" || reg.destino !== BURN || reg.importe_usdt != null) return false;
   const registros = txRegistros();
   if (txCanjeFoto.registros !== registros) {
     const pares = emparejarCanjes(registros.map(r => Object.assign({}, r)));

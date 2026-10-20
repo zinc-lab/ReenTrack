@@ -8,7 +8,7 @@
  * - Sin «Es una venta…» (no está a revisar o tiene un ajuste ajeno), el
  *   botón suelto de siempre; «➕ Añadir otro cobro», igual.
  * - «En euros (€)» / «En dólares (USD)»: la venta cobrada en € (cobrado_eur),
- *   de punta a punta: ajuste, clasificación, motor, informe, 📊 y 📒.
+ *   de punta a punta: ajuste, clasificación, motor, informe, Excel, PDF, 📊 y 📒.
  *
  * DATOS 100% SINTÉTICOS. Ejecución (desde la raíz): node tests/test_revision_paso_p25.js
  */
@@ -102,9 +102,10 @@ assert("una venta que ya trae lo cobrado en €: «✔ Venta», no «sin importe
 
 console.log("== 7. De punta a punta: motor, informe, 📊 y 📒 ==");
 const { sandbox } = require("./paridad_motor_fiscal_paso_51f.js");
-const sb = sandbox(["01-constantes.js", "02-utilidades.js", "05-cache.js", "07-bce.js", "09-sincronizacion.js",
+const { MODULOS_EXCEL } = require("./paridad_excel_paso_62.js");
+const sb = sandbox([...new Set(["01-constantes.js", "02-utilidades.js", "05-cache.js", "07-bce.js", "09-sincronizacion.js",
   "10-csv-descubrimiento.js", "14-clasificador.js", "15-correcciones.js", "16-dashboard.js", "18-transacciones.js",
-  "20-coste-compras.js", "21-fiscal.js", "22-informe-renta.js"]);
+  "20-coste-compras.js", "21-fiscal.js", "22-informe-renta.js", ...MODULOS_EXCEL, "23-fiscal-pestana.js", "27-informe-pdf.js"])]);
 const ev = x => vm.runInContext(x, sb);
 const STATE = ev("state");
 const W2 = "0x" + "1e".repeat(20), V2 = "0x" + "2f".repeat(20), REENTAL = "0x" + "77".repeat(20), COMPRADOR = "0x" + "88".repeat(20);
@@ -129,7 +130,16 @@ const clasificar = () => {
 };
 let regs = clasificar();
 const sal = regs.find(r => sb.normalizarDireccion(r.destino) === COMPRADOR);
-assert("la salida a revisar ofrece «Es una venta…»", sal && sb.ccOpcionesDecision(sal, sb.ccContextoCandidatos(cache, STATE.config, regs)).some(o => o.id === "venta"));
+const ctx0 = sb.ccContextoCandidatos(cache, STATE.config, regs);
+assert("la salida a revisar ofrece «Es una venta…»", sal && sb.ccOpcionesDecision(sal, ctx0).some(o => o.id === "venta"));
+// La lista de 🔍 tal como la pinta la app (con sus decisiones).
+const lista = abierta => sb.ccHtmlLista(regs, sb.ccColaRevision(regs, ctx0), ctx0, [],
+  { abierta, ajustes: cache.ajustes_usuario, tiposBce: {}, cache, dudas: 0 });
+const buscador = h => (h.match(/data-accion="abrir-buscador"/g) || []).length;
+const listaAbierta = lista({ clave: sal.clave, id: "venta", valor: "", enEur: false });
+assert("lista de 🔍: cerrada, sin el botón suelto; con «Es una venta…» abierta, «🔗 Elegir el cobro recibido…» en su formulario",
+  buscador(lista(null)) === 0 && buscador(listaAbierta) === 1 &&
+  /class="cc-dec-form"[^]*🔗 Elegir el cobro recibido…/.test(listaAbierta), [buscador(lista(null)), buscador(listaAbierta)]);
 cache.ajustes_usuario = sb.ccAjustesConDecision(cache.ajustes_usuario, sal, "venta", "450", F, true);
 const avisos = [], logAntes = sb.log;
 sb.log = (m, ...resto) => { if (/no existía en el registro/.test(String(m))) avisos.push(m); return logAntes && logAntes(m, ...resto); };
@@ -177,12 +187,27 @@ cache.tipos_bce = bce;
 const copia2 = structuredClone(regs);
 sb.__regs = copia2;
 sb.__op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
-ev("motorFiscal(__regs, __cache, state.config, __op)");
+const colas2 = ev("motorFiscal(__regs, __cache, state.config, __op)");
 const v2 = copia2.find(r => r.clave === sal.clave);
 const tabla2 = sb.informesRentaAnuales(copia2, sb.resumenFiscalAnual(copia2), STATE.config,
   Object.assign({}, sb.__op, { cache, hoy: "2026-10-15" }))[2024].detalle.ventas_inmuebles;
 assert("con tipo del BCE ese día: 450 € tal cual y en USD «—» (no 450 × 1,1)", v2.tipo_bce === 1.1 && v2.importe_eur === 450 &&
   tabla2.filas[0].valor_transmision_usd === null && tabla2.total.valor_transmision_usd === null, [v2.tipo_bce, v2.importe_eur, tabla2.filas[0]]);
+
+const resumen2 = sb.resumenFiscalAnual(copia2);
+const informes2 = sb.informesRentaAnuales(copia2, resumen2, STATE.config, Object.assign({}, sb.__op, { cache, hoy: "2026-10-15" }));
+const libro = sb.excelLibro(copia2, colas2, resumen2, cache, STATE.config, informes2, new Date("2026-10-15T10:00:00Z"), "2026-10-15");
+const hoja = libro.hojas.find(h => h.nombre === "Fiscal 2024");
+const celdas = n => [...(hoja.filas.get(n) || new Map())].map(([c, x]) => [c, x.valor]);
+const nCab = [...hoja.filas.keys()].find(n => celdas(n).some(([, v]) => v === "Valor de transmisión USD"));
+const colUsd = celdas(nCab).find(([, v]) => v === "Valor de transmisión USD")[0];
+const valor = (n, c) => (celdas(n).find(([k]) => k === c) || [])[1];
+assert("Excel: la venta con «—» en «Valor de transmisión USD», en su fila y en el total, y 450 en EUR",
+  valor(nCab + 1, colUsd) === "—" && valor(nCab + 1, colUsd + 1) === 450 && valor(nCab + 2, 1) === "Total" && valor(nCab + 2, colUsd) === "—",
+  [celdas(nCab + 1), celdas(nCab + 2)]);
+const pdf = sb.pdfHtml(informes2[2024], new Date("2026-10-15T10:00:00Z"));
+const trozo = pdf.slice(pdf.indexOf("pdf-transmisiones")).replace(/<[^>]+>/g, "|").replace(/\|+/g, "|");
+assert("PDF: la venta con «—» en USD y 450,00 en EUR", /\|—\|450,00\|/.test(trozo), trozo.slice(0, 400));
 
 console.log("== 8. Validación y canjes ==");
 assert("«Ajustes en JSON»: lo cobrado en € no puede ser negativo", /no puede ser negativo/.test(sb.errorAjustesUsuario({ k: { cobrado_eur: -5 } }) || ""));
@@ -190,6 +215,28 @@ const H = "0x" + "cd".repeat(32);
 const pares = sb.emparejarCanjes([{ clave: "a", hash: H, categoria: "COMPRA", via_compra: "CANJE", cantidad: 1, inmueble: "X" },
   { clave: "b", hash: H, categoria: "VENTA", subcategoria: "GPP_INMUEBLE", destino: vm.runInContext("BURN", sb), cantidad: 1, inmueble: "X", cobrado_eur: 10 }]);
 assert("una quema vendida en € no se toma por canje", pares.size === 0);
+const A = "0x" + "c1".repeat(20), B = "0x" + "c2".repeat(20), BURN_ = vm.runInContext("BURN", sb);
+const conCanje = [
+  { clave: "c", hash: "0x" + "01".repeat(32), fecha: "2024-01-15 09:00:00", categoria: "COMPRA", via_compra: "BANCARIA", inmueble: "X", contrato: A, cantidad: 2, coste_eur: 200 },
+  { clave: "v", hash: H, fecha: "2024-06-03 09:00:00", categoria: "VENTA", subcategoria: "GPP_INMUEBLE", inmueble: "X", contrato: A, cantidad: 2, destino: BURN_, cobrado_eur: 300 },
+  { clave: "k", hash: H, fecha: "2024-06-03 09:00:00", categoria: "COMPRA", via_compra: "CANJE", inmueble: "X", contrato: B, cantidad: 2 }];
+const invCanje = sb.dashDineroInvertido(conCanje, bce, {}, cache);
+assert("📊: tampoco (cuenta la venta y su ganancia: 300 € × 1,1 − 220)", invCanje.ventas === 1 && Math.abs(invCanje.gananciaVentas - 110) < 0.005,
+  [invCanje.ventas, invCanje.gananciaVentas]);
+
+const texto = JSON.parse(JSON.stringify(cache.ajustes_usuario));
+texto[sb.ccBuscarAjuste(texto, sal.clave).clave].cobrado_eur = "450";
+const cacheTexto = Object.assign({}, cache, { ajustes_usuario: texto });
+STATE.cache = cacheTexto;
+sb.descubrimientoDinamico(cacheTexto, csv.filas, csv.indicePorHash, W2, V2);
+const copia3 = structuredClone(sb.clasificarTransacciones(cacheTexto, csv.filas, csv.indicePorHash, STATE.config, {}));
+sb.__regs = copia3; sb.__cache = cacheTexto;
+sb.__op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
+ev("motorFiscal(__regs, __cache, state.config, __op)");
+const v3 = copia3.find(r => r.clave === sal.clave);
+assert("«Ajustes en JSON» con lo cobrado en € escrito como texto («450»): a revisar, sin valorar",
+  v3.revisar === true && !(v3.importe_eur > 0), [v3.revisar, v3.importe_eur, v3.nota]);
+STATE.cache = cache;
 
 console.log("\n  " + ok + "/" + (ok + fallos) + " comprobaciones OK -> " + (fallos ? "HAY FALLOS" : "TODO VERDE"));
 process.exit(fallos ? 1 : 0);

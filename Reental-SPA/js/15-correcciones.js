@@ -2996,8 +2996,8 @@ function ccInyectarEstilos() {
     ".cc-info .cc-burbuja{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:max-content;max-width:min(340px,72vw);background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:8px 11px;font-size:12.5px;font-weight:400;line-height:1.55;z-index:400;text-align:left;white-space:normal;cursor:auto}",
     ".cc-info:hover .cc-burbuja,.cc-info:focus .cc-burbuja,.cc-info:focus-within .cc-burbuja{display:block}",
     /* «ⓘ Qué es cada cosa»: arriba a la derecha de la tarjeta; abre su ventana. */
-    // En la barra de arriba (fija), solo en 🔍 y 📒, con el ámbar de los avisos de la lista de tareas de 🔍 (.rv-aviso) para que se vea.
-    ".top-right .cc-que-es{display:none;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
+    // En la barra de arriba (fija), en todas las pestañas, con el ámbar de los avisos de la lista de tareas de 🔍 (.rv-aviso) para que se vea.
+    ".top-right .cc-que-es{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
     "body:has(#view-revision.active,#view-transacciones.active) .top-right .cc-que-es{display:inline-flex}",
     ".cc-que-es .cc-info{margin:0;cursor:pointer}",
     ".cc-que-es:hover,.cc-que-es:focus-visible{color:var(--accent)}",
