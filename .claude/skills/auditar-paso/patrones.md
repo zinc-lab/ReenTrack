@@ -173,6 +173,10 @@ como antes? Hacer → editar → ¿se conservan los campos que no se editaron?
   mientras se anima. Y una ⓘ dentro de un `<label>`: el campo se llama como
   todo su texto.
 
+- Un botón que repinta un formulario a medias (cambiar la moneda) y le
+  devuelve el foco como al abrirlo, con todo seleccionado: la siguiente
+  tecla borraba lo escrito. Al volver, el cursor al final.
+
 **Mirar:** ¿qué pasa si se repinta, se reclasifica o se cambia de pestaña a
 mitad de la acción? ¿Y si se pulsa dos veces? ¿Y en el papel?
 
@@ -468,6 +472,11 @@ textos que el usuario o un ajuste pueden cambiar.
   con la descarga del BCE «solo lo que falta», el falso devolvía la serie
   entera y tapaba los días que la app ya no pedía. El falso responde solo
   a lo pedido, como el de verdad.
+
+- Quitar o mover un botón que pulsan los arneses: cada arnés tiene su
+  propio `clickCentrado`, se arreglaron seis y tres siguieron rotos sin
+  que nadie lo viera, porque la regresión corta no corre arneses. Buscar
+  (`grep`) el selector en todos los `tests/navegador/`.
 
 **Mirar:** para cada cambio del paso, ¿qué test fallaría si el cambio
 estuviera mal? Si ninguno, es un hueco.
