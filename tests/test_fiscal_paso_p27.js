@@ -119,7 +119,7 @@ console.log("== 2024: hasta el 31/12 ==");
     k.c.tokens === 0 && k.tienes === 10 && igual(k.c.piezas.map(p => [p.texto, p.n]), [["Compra del 01/02/2024", 5], ["Compra externa del 01/03/2024", 5]]), k.c);
   assert("Casa: quedan 10 con su coste (400,05 + 500) y sin ventas", casa.quedan === 10 && r2(casa.coste) === 900.05 && casa.gp === null && casa.abierto, casa);
   assert("USDT: ingreso, pago y los rendimientos de marzo en una fila",
-    igual(usdt.filas.map(f => f.op), ["Ingreso de dinero", "Pago · Casa", "Rendimientos · 2 cobros"]), usdt.filas.map(f => f.op));
+    igual(usdt.filas.map(f => f.op), ["Ingreso de dinero", "Pago de Casa", "Rendimientos · 2 cobros"]), usdt.filas.map(f => f.op));
   const [ing, pago, rend] = usdt.filas;
   assert("el pago: −500, su valor y su coste (permuta sin ganancia)", pago.c.tokens === -500 && r2(pago.c.total) === 400 && r2(pago.c.coste) === 400 && r2(pago.c.gp) === 0, pago.c);
   assert("los rendimientos del mes: +20, 16 € y 20 $, quedan 20", rend.c.tokens === 20 && r2(rend.c.total) === 16 && rend.c.usd === 20 && rend.c.quedan === 20, rend.c);
@@ -332,6 +332,16 @@ console.log("== Lo que no probaba nadie (auditoría) ==");
   const casa = de(R.h, "Casa");
   assert("restos de decimales: vendido todo, quedan 0 y ya no lo tienes (sin umbral propio: lo que el motor sacó de la cola)",
     casa.quedan === 0 && !casa.abierto && casa.filas[0].c.quedan === 0 && cuadraConMotor(R), [casa.quedan, casa.abierto, casa.filas[0].c.quedan]);
+}
+
+console.log("== A11: los mismos nombres que «Ventas y permutas» ==");
+{
+  const R = pasada([...base,
+    reg("s1", "2024-03-01 10:00:00", "VENTA", "GPP_SWAP", USDT, 100, { importe_usdt: 100, origen: WALLET, destino: OTRO }),
+    reg("w1", "2024-04-01 10:00:00", "RETIRADA", "GPP_RETIRADA", USDT, 50, { importe_usdt: 50, origen: WALLET, destino: OTRO })], 2024);
+  const ops = de(R.h, "USDT").filas.map(f => f.op);
+  assert("A11: «Cambio por otra moneda» y «Retirada», como en «Ventas y permutas» (y «Pago de <inmueble>» arriba)",
+    igual(ops, ["Ingreso de dinero", "Cambio por otra moneda", "Retirada"]), ops);
 }
 
 console.log("\n" + ok + " OK, " + fallos + " fallos");

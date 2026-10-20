@@ -429,9 +429,10 @@ function fiOperacion(f, nombre, nombres) {
     return inm ? " · " + inm : FI_MONEDAS.includes(a) && a !== nombre ? " · " + a : "";
   };
   if (f.sale.length) {
-    if (r.categoria === "VENTA") return r.subcategoria === "GPP_INMUEBLE" ? "Venta" : "Permuta";
-    if (r.categoria === "COMPRA") return "Pago" + deQue();
-    if (r.categoria === "RETIRADA") return stable ? "Salida de dinero" : "Salida";
+    // Los nombres de «Ventas y permutas» (rentaTablaTransmisiones, js/22).
+    if (r.categoria === "VENTA") return r.subcategoria === "GPP_INMUEBLE" ? "Venta" : "Cambio por otra moneda";
+    if (r.categoria === "COMPRA") return rentaInmuebleDe(r, nombres) ? "Pago de " + rentaInmuebleDe(r, nombres) : "Pago";
+    if (r.categoria === "RETIRADA") return "Retirada";
     return r.categoria === "MOVIMIENTO" ? "Pool (aportado)" : TX_OPERACIONES[r.subcategoria] || r.categoria;
   }
   const origen = f.entra.length ? f.entra[0].lote.origen
