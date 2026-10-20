@@ -200,5 +200,18 @@ console.log("== A5: la hora repetida de octubre ==");
     igual(casa.filas.map(f => [f.op, f.tienes]), [["Compra externa", 5], ["Venta", 0]]), casa.filas.map(f => [f.op, f.tienes]));
 }
 
+console.log("== A6: el canje con decimales, ±0 ==");
+{
+  const tot = 0.3 + 0.6 + 0.1;   // 0,9999999999999999
+  const R = pasada([...base,
+    reg("c1", "2024-02-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 0.3, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 30 }),
+    reg("c2", "2024-02-02 10:00:00", "COMPRA", "COSTE_BASE", CASA, 0.6, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 60 }),
+    reg("c5", "2024-02-03 10:00:00", "COMPRA", "COSTE_BASE", CASA, 0.1, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 10 }),
+    reg("k", "2024-06-01 10:00:00", "VENTA", "GPP_INMUEBLE", CASA, tot, { inmueble: "Casa", origen: WALLET, destino: BURN }),
+    Object.assign(reg("k", "2024-06-01 10:00:00", "COMPRA", "COSTE_BASE", NUEVO, tot, { inmueble: "Casa", via_compra: "CANJE" }), { clave: "k::1" })], 2024);
+  const canje = (R.html.match(/<tr class="fi-h-canje">[\s\S]*?<\/tr>/) || [""])[0];
+  assert("A6: el canje sale «±0» aunque la resta de decimales no dé 0 justo", canje.includes(">±0<"), canje.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

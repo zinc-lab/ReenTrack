@@ -695,7 +695,8 @@ function fiTablaHistorial(a, abiertos, nombres, anio) {
       ccEsc(fiOperacion(f, a.nombre, nombres)) + (nota && f.tipo !== "revisar" ? " ⓘ" : "") + "</span>" +
       (f.aviso ? " " + av : "");
     const n0 = c ? c.tokens : pyO(f.r.cantidad, 0), sinLote = c && c.sinLote > 1e-9 * Math.abs(n0 || 1) ? c.sinLote : 0;
-    const tokens = (n0 === 0 ? "±0" : numEs(n0, 6, true, true)) +
+    const conSigno = numEs(n0, 6, true, true);
+    const tokens = (/[1-9]/.test(conSigno) ? conSigno : "±0") +
       (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
     const quedan = c && fiscHay(c.quedan) ? cantidadEs(c.quedan) + " de " + cantidadEs(c.tokens) : "";
     html += '<tr class="fi-h-' + clase + (f.tipo === "revisar" ? " fi-h-nocuenta" : "") + '">' +
