@@ -246,5 +246,25 @@ console.log("== A8: los pools de liquidez ==");
     total.includes(enEur(R.resumen.gp_total)), [total, R.resumen]);
 }
 
+console.log("== A9 y A10: lo que queda de cada compra pasa por el canje, lote a lote ==");
+{
+  const OTRO2 = "0x" + "f".repeat(40);
+  const canje = (clave, fecha, de, a, n, na = n, inmueble = "Casa") => [
+    reg(clave, fecha, "VENTA", "GPP_INMUEBLE", de, n, { inmueble: "Casa", origen: WALLET, destino: BURN }),
+    Object.assign(reg(clave, fecha, "COMPRA", "COSTE_BASE", a, na, { inmueble, via_compra: "CANJE" }), { clave: clave + "::1" })];
+  const compra = (clave, fecha, n) => reg(clave, fecha, "COMPRA", "COSTE_BASE", CASA, n, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 100 * n });
+  const quedan = R => de(R.h, "Casa").filas.filter(f => f.op === "Compra externa").map(f => f.c.quedan);
+  let R = pasada([...base, compra("c1", "2024-02-01 00:00:00", 5), compra("c2", "2024-02-01 00:00:00", 3), ...canje("k", "2024-06-01 10:00:00", CASA, NUEVO, 8)], 2024);
+  assert("A10: dos compras del mismo instante, cada una con lo suyo (5 de 5 y 3 de 3), no el total cada una", igual(quedan(R), [5, 3]), quedan(R));
+  R = pasada([...base, compra("c1", "2024-02-01 10:00:00", 5), ...canje("k", "2024-06-01 10:00:00", CASA, NUEVO, 5, 6)], 2024);
+  assert("A9: un canje de 5 por 6 deja la compra con 5 de 5 (en sus tokens), no 6 de 5", igual(quedan(R), [5]), quedan(R));
+  R = pasada([...base, compra("c1", "2024-02-01 10:00:00", 5), compra("c2", "2024-03-01 10:00:00", 5), ...canje("k", "2024-06-01 10:00:00", CASA, NUEVO, 10),
+    reg("v1", "2024-07-01 10:00:00", "VENTA", "GPP_INMUEBLE", NUEVO, 4, { inmueble: "Casa", importe_usdt: 600, origen: WALLET, destino: OTRO })], 2024);
+  assert("canje y venta de 4 después: 1 de 5 y 5 de 5 (FIFO), como el motor", igual(quedan(R), [1, 5]) && cuadraConMotor(R), quedan(R));
+  R = pasada([...base, compra("c1", "2024-02-01 10:00:00", 5), ...canje("k", "2024-06-01 10:00:00", CASA, NUEVO, 5), ...canje("j", "2024-08-01 10:00:00", NUEVO, OTRO2, 5),
+    reg("v1", "2024-09-01 10:00:00", "VENTA", "GPP_INMUEBLE", OTRO2, 2, { inmueble: "Casa", importe_usdt: 300, origen: WALLET, destino: OTRO })], 2024);
+  assert("canje de un canje y venta de 2: la compra, 3 de 5", igual(quedan(R), [3]) && cuadraConMotor(R), quedan(R));
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

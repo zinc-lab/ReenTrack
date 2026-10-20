@@ -468,7 +468,6 @@ function fiCifrasFila(f, nombre, ctx) {
     // Lo que salió sin lote del que salir (el motor lo da sin coste): «Tienes» baja de más.
     sinLote: sale - pySuma(f.sale.flatMap(e => e.sacado.map(s => s.n))) };
   const costeLotes = pySuma(f.entra.map(x => x.inicial * x.lote.coste_unitario_eur));
-  const quedaDe = x => ctx.queda.get(x.lote) + (ctx.heredado.get(nombre + "\u0000" + x.lote.fecha + "\u0000" + x.lote.origen) || 0);
   if (f.tipo === "canje") {
     for (const e of f.sale) c.piezas.push(...fiPiezasDe(e.trozos, false));
     return c;
@@ -483,7 +482,7 @@ function fiCifrasFila(f, nombre, ctx) {
     c.comision = r && r.categoria === "COMPRA" && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
     // Un lote sin precio (RNT a la espera del suyo, en 💶): su valor no se sabe.
     c.total = f.entra.some(x => x.lote.sin_coste) ? undefined : costeLotes - (c.comision || 0);
-    c.quedan = pySuma(f.entra.map(quedaDe));
+    c.quedan = pySuma(f.entra.map(x => ctx.quedaConCanjes(x.lote)));
     // Rendimientos y lo que vuelve de un pool: el USD de sus lotes (sin comisión).
     c.usd = fiPorMes(f) || r.categoria === "MOVIMIENTO"
       ? pySuma(f.entra.map(x => fiscHay(x.lote.coste_unitario_usd) ? x.inicial * x.lote.coste_unitario_usd : NaN))
@@ -536,7 +535,7 @@ function fiHistorial(resultado, anio, cache = null) {
   const nombreDe = a => nombres.get(a) ?? (FI_MONEDAS.includes(a) ? a : null);
   const fechaDe = e => (e.entra ? e.lote.fecha : e.registro && e.registro.fecha);
   const eventos = (resultado.eventos || []).filter(e => { const f = fechaDe(e); return fiscFechaValida(f) && f <= corte; });
-  const ctx = { salidas: new Map(), queda: new Map(), heredado: new Map(), entradas: new Map(), salidasDe: new Map(), cache };
+  const ctx = { salidas: new Map(), queda: new Map(), entradas: new Map(), salidasDe: new Map(), cache };
   for (const e of eventos) {
     if (e.entra) {
       if (e.registro && e.lote.origen !== "CANJE") ctx.entradas.set(e.registro, (ctx.entradas.get(e.registro) || 0) + e.inicial);
@@ -546,16 +545,29 @@ function fiHistorial(resultado, anio, cache = null) {
     }
   }
   for (const x of eventos) if (x.entra) ctx.queda.set(x.lote, fiQueda(x, ctx.salidas));
-  // Lo que queda de una compra pasada por un canje sigue siendo suyo.
-  // ponytail: por fecha y origen de la compra (como el informe); dos del mismo instante y origen se lo repartirían.
-  for (const x of eventos) {
-    if (!x.entra || !x.procedencia) continue;
-    const total = pySuma(x.procedencia.map(p => p.cantidad)), queda = ctx.queda.get(x.lote);
-    for (const p of x.procedencia) {
-      const k = nombreDe(x.activo) + "\u0000" + p.fecha + "\u0000" + p.origen;
-      ctx.heredado.set(k, (ctx.heredado.get(k) || 0) + (total ? queda * p.cantidad / total : 0));
-    }
+  // Lo que queda de una compra pasada por un canje sigue siendo suyo: el motor
+  // abre un lote del canje por cada trozo de la venta al burn, en su orden, y
+  // cada trozo sale de un lote (los sin precio no dan trozo). Un canje a revisar
+  // (sin trozos) no hereda.
+  const burns = new Map(), llegadas = new Map(), hijos = new Map(), conCanjes = new Map();
+  for (const e of eventos) {
+    const r = e.registro;
+    if (!r) continue;
+    if (!e.entra && r.categoria === "VENTA" && pyVerdad(r.canje)) fiscListaDe(burns, r.hash).push(...e.sacado.filter(s => !s.lote.sin_coste));
+    else if (e.entra && e.lote.origen === "CANJE") fiscListaDe(llegadas, r.hash).push(e);
   }
+  for (const [h, xs] of llegadas) {
+    const ss = burns.get(h) || [];
+    if (ss.length === xs.length) xs.forEach((x, i) => fiscListaDe(hijos, ss[i].lote).push([x, ss[i].n]));
+  }
+  // Lo que queda de un lote más lo que queda de los que nacieron de él en un canje, en sus tokens.
+  ctx.quedaConCanjes = lote => {
+    if (!conCanjes.has(lote)) {
+      conCanjes.set(lote, ctx.queda.get(lote) +
+        pySuma((hijos.get(lote) || []).map(([x, n]) => (x.inicial ? ctx.quedaConCanjes(x.lote) / x.inicial * n : 0))));
+    }
+    return conCanjes.get(lote);
+  };
   const activos = new Map();
   const filaDe = (nombre, clave, tipo, fecha, r) => {
     if (!activos.has(nombre)) activos.set(nombre, { nombre, moneda: FI_MONEDAS.includes(nombre), filas: new Map() });
