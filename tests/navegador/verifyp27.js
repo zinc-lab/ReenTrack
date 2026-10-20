@@ -89,20 +89,23 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("H2 -> tras un repintado, el interruptor sigue encendido y Casa abierta", d.piso && d.encendido && d.casa, d);
 
   /* ============ H3 ============ */
-  const lotes = () => page.evaluate(() => {
-    const b = document.querySelector("#fiHistorial details[open] .fi-lotes");
+  // El botón de la fila de la venta (la de Casa; el del canje es otro).
+  const SEL_VENTA = "#fiHistorial details[open] tr.fi-h-sale .fi-lotes";
+  const lotes = () => page.evaluate(sel => {
+    const b = document.querySelector(sel);
     const filas = [...document.querySelectorAll("#fiHistorial tr[data-de]")].filter(tr => tr.dataset.de === b.dataset.desglose);
     return { texto: b.textContent, aria: b.getAttribute("aria-expanded"), visibles: filas.filter(tr => !tr.hidden).length, n: filas.length,
-      foco: document.activeElement === b, piezas: filas.map(tr => tr.cells[1].textContent) };
-  });
+      foco: document.activeElement === b, piezas: filas.map(tr => tr.cells[1].textContent),
+      fila: b.closest("tr").cells[1].querySelector(".fi-et").textContent };
+  }, SEL_VENTA);
   let l = await lotes();
-  assert("H3 -> la venta con «▸ 2 lotes», cerrada", l.texto === "▸ 2 lotes" && l.aria === "false" && l.visibles === 0 && l.n === 2, l);
-  await page.click("#fiHistorial details[open] .fi-lotes");
+  assert("H3 -> la venta con «▸ 2 lotes», cerrada", l.fila === "Venta" && l.texto === "▸ 2 lotes" && l.aria === "false" && l.visibles === 0 && l.n === 2, l);
+  await page.click(SEL_VENTA);
   await esperar(100);
   l = await lotes();
   assert("H3 -> al pulsarlo: «▾», aria-expanded y sus dos lotes (las compras de antes del canje)", l.texto === "▾ 2 lotes" && l.aria === "true" &&
     l.visibles === 2 && JSON.stringify(l.piezas) === JSON.stringify(["↳ Compra del 01/02/2024", "↳ Compra externa del 01/03/2024"]), l);
-  await page.focus("#fiHistorial details[open] .fi-lotes");
+  await page.focus(SEL_VENTA);
   await page.evaluate(() => renderPanel());
   await esperar(150);
   l = await lotes();
@@ -120,7 +123,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   }
   await page.setViewport({ width: 1366, height: 900 });
   // A3: al imprimir (📤 abre los desplegables), también los que ya no tienes y los lotes de cada venta.
-  await page.click("#fiHistorial label.rv-interruptor");   // apagado, como suele estar
+  await page.evaluate(() => { const s = document.querySelector("#fiVerTodos"); if (s.checked) s.click(); });   // apagado, como suele estar
   await page.evaluate(() => {
     document.querySelectorAll("#fiHistorial details").forEach(x => { x.open = true; });
     document.querySelectorAll("#fiHistorial tr.fi-h-lote").forEach(tr => { tr.hidden = true; });
@@ -134,7 +137,6 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await page.emulateMediaType(null);
   assert("H4 -> A3: al imprimir salen los que ya no tienes y las filas de los lotes", papel.apagado && papel.piso !== "none" &&
     papel.lotes.length > 0 && papel.lotes.every(d => d === "table-row"), papel);
-  await page.click("#fiHistorial label.rv-interruptor");
   await (await page.$("#fiHistorial")).screenshot({ path: path.join(OUT, "cap_p27_historial.png") });
 
   /* ============ H5 ============ */
