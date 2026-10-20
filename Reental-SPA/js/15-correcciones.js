@@ -2099,7 +2099,9 @@ function ccHtmlElegidosJuntos(elegidos, salida, precioCompra, yaCobrado, asignad
   const lejania = p => Math.abs(p / precioCompra - 1);
   const acerca = pYa === null || !(precioCompra > 0) || lejania(precio) < lejania(pYa);
   const cuadra = acerca && ccSenalesCobro({}, salida, precioCompra, total).includes("precio");
-  return ': <span title="' + (yaCobrado > 0 ? "(Ya cobrado + elegidos)" : "Elegidos") + ' ÷ tokens de la venta">' +
+  // La burbuja, como la de las filas (ccTituloPrecioFila): de un cobro que ya pagó otra venta solo cuenta lo que le queda.
+  const que = elegidos.some(c => resto(c) !== c.cantidad) ? "lo que queda de los elegidos" : "elegidos";
+  return ': <span title="' + (yaCobrado > 0 ? "(Ya cobrado + " + que + ")" : que.charAt(0).toUpperCase() + que.slice(1)) + ' ÷ tokens de la venta">' +
     ccEsc(numEs(precio, 2) + " USD/token" + ccTextoPct(precio, precioCompra)) + (cuadra ? " " + CC_ICONO_SENAL.precio : "") + "</span>";
 }
 

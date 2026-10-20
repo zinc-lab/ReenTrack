@@ -170,6 +170,8 @@ assert("B21-A11 A1: si los elegidos alejan la venta de lo que costó, sin 💲",
 assert("B21-A11 A1: si la acercan, con 💲", juntos([cob2("a", 20), cob2("b", 20)], salida, 110, 360, sinAsig).includes("100,00 USD/token (−9 %) 💲"));
 const parte = new Map([["a", { asignado: 120, enEstaVenta: false }]]);
 assert("de un cobro que pagó otra venta, solo lo que le queda", juntos([cob2("a", 340), cob2("b", 220)], salida, 110, 0, parte).includes("110,00 USD/token"));
+assert("B21-A11 A2: y la burbuja lo dice", juntos([cob2("a", 340), cob2("b", 220)], salida, 110, 0, parte).includes('title="Lo que queda de los elegidos ÷ tokens de la venta"') &&
+  juntos([cob2("a", 340), cob2("b", 100)], salida, 110, 100, parte).includes('title="(Ya cobrado + lo que queda de los elegidos) ÷ tokens de la venta"'));
 assert("un elegido sin cantidad legible: nada", juntos([cob2("a", 220), cob2("b", "x")], salida, 110, 0, sinAsig) === "");
 assert("sin lo que te costó: el precio, sin % ni 💲", juntos([cob2("a", 220), cob2("b", 220)], salida, null, 0, sinAsig).includes(">110,00 USD/token</span>"));
 assert("venta sin tokens: nada", juntos([cob2("a", 220), cob2("b", 220)], { ...salida, cantidad: 0 }, 110, 0, sinAsig) === "");
