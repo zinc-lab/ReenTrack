@@ -148,14 +148,15 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   });
   assert("sin wallet: «⚠ Falta tu wallet…» encima de la caja", sinWallet === "⚠ Falta tu wallet (tus datos de 🚀 Puesta en marcha).", sinWallet);
   assert("el número del menú es el mismo", await page.evaluate(() => document.getElementById("ccNavRevision").textContent) === "1");
-  assert("inmuebles: el aviso en ámbar; direcciones, RNT y POL: «Al día»; coste: «⚠ 1 sin coste»",
-    f1[0].estado === "⚠ 2 con dudas" && ["rvContratos", "rvPreciosRnt", "rvPreciosPol"].every(id => f1.find(f => f.id === id).estado === "Al día") &&
-    f1.find(f => f.id === "cbCoste").estado === "⚠ 1 sin coste", f1);
-  /* A4: una compra con otro ajuste (una nota en el JSON) y sin coste también
-     cuenta: el informe la marca igual con «**». */
-  await sembrar(2, true, { ["0x" + "ef".repeat(32) + "::0x" + "11".repeat(20)]: { nota: "a mano" } });
-  const conNota = (await filas()).find(f => f.id === "cbCoste").estado;
-  assert("A4: con una nota a mano y sin coste, sigue «⚠ 1 sin coste»", conNota === "⚠ 1 sin coste", conNota);
+  // La compra de un inmueble lleva los 100 €/token de por defecto: tiene coste, no avisa (solo avisa lo que no tiene precio).
+  assert("inmuebles: el aviso en ámbar; direcciones, RNT, POL y coste (a 100 €/token por defecto): «Al día»",
+    f1[0].estado === "⚠ 2 con dudas" && ["rvContratos", "rvPreciosRnt", "rvPreciosPol", "cbCoste"].every(id => f1.find(f => f.id === id).estado === "Al día"), f1);
+  /* Una compra de RNT sin precio sí avisa. */
+  await page.evaluate(() => { state.registros.push({ clave: "0x" + "fa".repeat(32) + "::" + RNT, hash: "0x" + "fa".repeat(32), contrato: RNT,
+    fecha: "2026-04-01 10:00:00", categoria: "COMPRA", via_compra: "BANCARIA", cantidad: 50, simbolo: "RNT", coste_eur: null, fuente: "ONCHAIN" });
+    renderCorrecciones(); });
+  const conRnt = (await filas()).find(f => f.id === "cbCoste").estado;
+  assert("una compra de RNT sin precio: «⚠ 1 sin precio»", conRnt === "⚠ 1 sin precio", conRnt);
   await sembrar(2, true);
   const colores = await page.evaluate(() => {
     const c = id => getComputedStyle(document.querySelector("#" + id + ">summary>.rv-aviso")).backgroundColor;

@@ -139,7 +139,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     !r3.revisar && r3.coste === null && (await escrituras()) === w1 + 1 && (await reg(4)).revisar, r3);
   assert("R3 -> 💶 desplegado en su fila abierta, la casilla de lo pagado vacía y con el cursor; debajo, «Calcular…»",
     f3 && f3.abierto && f3.pagado === "" && f3.precio === "" && /cb-valor/.test(f3.foco) && f3.calcular && f3.celdas[1] === "RNT" &&
-    f3.aviso === "⚠ 1 sin coste", f3);
+    f3.aviso === "⚠ 1 sin precio", f3);
   await page.keyboard.press("Escape");
   await esperar(100);
   const f3c = await fila(3);
@@ -180,7 +180,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     (await ajuste(3)).coste_eur === 300 && (await ajuste(3)).categoria === "COMPRA" && (await reg(3)).coste === 300 &&
     (await escrituras()) === w4 + 1, await ajuste(3));
   const f4c = await fila(3);
-  assert("R4 -> 💶: 300,00 € y 0,0600 € por token; sin «⚠ sin coste»", f4c.celdas[4] === "300,00 €" && f4c.celdas[5] === "0,0600 €" &&
+  assert("R4 -> 💶: 300,00 € y 0,0600 € por token; sin «⚠ sin precio»", f4c.celdas[4] === "300,00 €" && f4c.celdas[5] === "0,0600 €" &&
     f4c.aviso === "", f4c);
   assert("R4 -> 🚀: ninguna compra de RNT sin precio", (await page.evaluate(() => arrDatosResumen().rntSinPrecio)) === 0);
   // Lejos (como con muchos datos): relleno antes de «Ya decididos», cerrado.

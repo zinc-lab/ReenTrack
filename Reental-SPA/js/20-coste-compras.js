@@ -422,11 +422,12 @@ function renderCosteCompras() {
   }
   const n = $("cbCount");
   if (n) n.textContent = String(vivas.size);
-  // Su estado en la lista de tareas de 🔍 (P21): las que aún llevan el de
-  // por defecto (las que el informe marca con «**», también las de un ajuste ajeno).
-  const sin = filas.filter(f => f.supuesto).length;
+  // Su estado en la lista de tareas de 🔍 (P21): las que no tienen precio
+  // (un RNT a la espera del suyo). Las de por defecto (100 €/token) tienen
+  // coste: no avisan (el informe las marca con «**»).
+  const sin = filas.filter(f => !ccEsNumeroPositivo(f.coste)).length;
   const aviso = $("cbCosteAviso");
-  if (aviso) aviso.textContent = sin ? "⚠ " + sin + " sin coste" : "";
+  if (aviso) aviso.textContent = sin ? "⚠ " + sin + " sin precio" : "";
   cont.innerHTML = cbHtmlEditor(filas, cbBorrador);
 }
 function cbRenderSeguro() {
