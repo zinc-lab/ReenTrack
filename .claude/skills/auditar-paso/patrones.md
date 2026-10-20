@@ -98,6 +98,12 @@ como antes? Hacer → editar → ¿se conservan los campos que no se editaron?
 ## 4. Estado de la pantalla y repintados
 
 - Lo escrito a medias se borra al repintar.
+- Una clave con un carácter que el navegador cambia al leer el HTML
+  (`\u0000` en un atributo `data-…`) ya no casa con la guardada: lo
+  desplegado se cerraba en cada repintado.
+- Enlazar dos cosas por un texto que no es único (fecha y origen de una
+  compra): dos compras del mismo instante se llevaban cada una lo de las
+  dos. Enlazar por el objeto (el lote) cuando se tiene.
 - Algo cambia mientras el usuario escribe y al aplicar se pisa sin aviso.
 - Un diálogo con una lista congelada al abrirlo: se abre otro encima (Tab
   + Intro en un botón de debajo) o se deshace algo por debajo, y al
@@ -257,6 +263,10 @@ cambió?
   (el total de lo pagado frente a las filas de lo que queda en la cartera):
   con tokens enviados a otra wallet no sumaban lo mismo y nada lo decía.
   Una fila con «el resto».
+- Una vista que descarta lo que no sabe nombrar (un activo sin nombre en
+  el catálogo) deja su subtotal sin cuadrar con el informe, que sí lo
+  cuenta con un nombre de reserva, y el aviso de que no cuadra hace el
+  mismo descarte, así que calla. Usar el mismo nombre de reserva.
 
 **Mirar:** cada recuento nuevo o tocado, con cada filtro pulsado y con el
 spam, lo apartado y lo «a revisar» dentro y fuera.
