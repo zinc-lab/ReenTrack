@@ -266,5 +266,17 @@ console.log("== A9 y A10: lo que queda de cada compra pasa por el canje, lote a 
   assert("canje de un canje y venta de 2: la compra, 3 de 5", igual(quedan(R), [3]) && cuadraConMotor(R), quedan(R));
 }
 
+console.log("== Un inmueble sin nombre en el catálogo ==");
+{
+  // Hoy la clasificación no lo da (exige el inmueble confirmado), pero si llega, no se pierde.
+  const R = pasada([...base,
+    reg("c1", "2024-02-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 5, { via_compra: "BANCARIA", coste_eur: 500 }),
+    reg("v1", "2024-06-01 10:00:00", "VENTA", "GPP_INMUEBLE", CASA, 5, { importe_usdt: 875, origen: WALLET, destino: OTRO })], 2024);
+  const inm = R.h.filter(a => !a.moneda);
+  assert("sale con el nombre de reserva del Resumen (el contrato), con su compra y su venta, y el subtotal da lo del Resumen",
+    inm.length === 1 && inm[0].nombre === CASA && inm[0].filas.length === 2 && R.grupos[0] === R.resumen.gp_inmuebles && R.resumen.gp_inmuebles !== 0,
+    [inm.map(a => [a.nombre, a.filas.length]), R.grupos, R.resumen.gp_inmuebles]);
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

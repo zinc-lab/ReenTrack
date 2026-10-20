@@ -532,7 +532,15 @@ function fiPiezasDe(trozos, stable) {
    registros, entra, sale, cifras, tienes }. Abierto: le queda algún lote vivo. */
 function fiHistorial(resultado, anio, cache = null) {
   const corte = anio + "-12-31 23:59:59", nombres = resultado.nombres;
-  const nombreDe = a => nombres.get(a) ?? (FI_MONEDAS.includes(a) ? a : null);
+  // Un inmueble sin nombre en el catálogo, con el de reserva del Resumen
+  // (rentaInmuebleDe: el token o el contrato de su venta); si no, fuera.
+  const deReserva = new Map();
+  for (const e of resultado.eventos || []) {
+    if (!nombres.has(e.activo) && !FI_MONEDAS.includes(e.activo) && e.registro && rentaInmuebleDe(e.registro, nombres)) {
+      deReserva.set(e.activo, rentaInmuebleDe(e.registro, nombres));
+    }
+  }
+  const nombreDe = a => nombres.get(a) ?? (FI_MONEDAS.includes(a) ? a : deReserva.get(a) ?? null);
   const fechaDe = e => (e.entra ? e.lote.fecha : e.registro && e.registro.fecha);
   const eventos = (resultado.eventos || []).filter(e => { const f = fechaDe(e); return fiscFechaValida(f) && f <= corte; });
   const ctx = { salidas: new Map(), queda: new Map(), entradas: new Map(), salidasDe: new Map(), cache };
