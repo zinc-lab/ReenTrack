@@ -10,12 +10,15 @@ Lo más reciente, arriba. Una fila por versión o paso.
   año de cada grupo da lo mismo que el Resumen. La línea de cada activo
   dice lo que queda, su coste y la ganancia o pérdida desde el principio y
   del año. Los que ya no tienes, con «Ver también los que ya no tienes».
-- **Dentro, una tabla por activo:** fecha (la hora, debajo), operación,
-  tokens, «Tienes», precios en USD y en €, total, comisión, coste de
-  compra, ganancia o pérdida y «Quedan x de y» en cada compra. Rendimientos,
-  recompensas DeFi y gas, una fila por mes. El canje, una fila «±0». Cada
-  venta, «▸ n lotes» con las compras de las que sale. Lo que está a revisar
-  sale con ⚠️, y una compra a revisar sin lote no cuenta en «Tienes».
+- **Dentro, una tabla por activo**, como el extracto de un bróker: fecha (la
+  hora, debajo), operación, tokens (con 2 decimales; enteros al pasar el
+  ratón), precios en USD y en €, importe (lo pagado o cobrado), comisión,
+  coste con signo (+ lo que entra, − lo que sale; sumado, lo que cuesta lo
+  que queda), ganancia o pérdida y «Quedan x de y» en cada compra.
+  Rendimientos, recompensas DeFi y gas, una fila por mes. El canje, una
+  fila «±0». Cada venta, «▸ n lotes» con las compras de las que sale. Lo
+  que está a revisar sale con ⚠️, y una compra a revisar sin lote no cuenta
+  en lo que queda.
 - **«Ventas y permutas»:** igual, con los nombres en negro y la ganancia o
   pérdida en verde o rojo.
 - **Imprimir 🧾:** salen también los activos que ya no tienes y los lotes de
