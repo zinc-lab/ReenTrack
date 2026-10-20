@@ -183,6 +183,13 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("R4 -> 💶: 300,00 € y 0,0600 € por token; sin «⚠ sin coste»", f4c.celdas[4] === "300,00 €" && f4c.celdas[5] === "0,0600 €" &&
     f4c.aviso === "", f4c);
   assert("R4 -> 🚀: ninguna compra de RNT sin precio", (await page.evaluate(() => arrDatosResumen().rntSinPrecio)) === 0);
+  await page.evaluate(() => { document.getElementById("ccResueltos").open = false; });
+  await page.click('#cbCuerpo [data-cb="decidida"][data-clave="' + claves[3] + '"]');
+  await esperar(300);
+  const ir4 = await page.evaluate(c => ({ abierto: document.getElementById("ccResueltos").open,
+    foco: !!document.activeElement && document.activeElement.getAttribute("data-accion") === "deshacer-decision" &&
+      document.activeElement.getAttribute("data-clave") === c }), claves[3]);
+  assert("R4 -> «↩ Deshacer…» abre «Ya decididos» con el cursor en su «↩ Deshacer»", ir4.abierto && ir4.foco, ir4);
 
   /* ============ R5) otra entrega, en USD ============ */
   await pulsar(4, "compra");

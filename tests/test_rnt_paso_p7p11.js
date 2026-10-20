@@ -119,6 +119,9 @@ const [fSin] = S.cbFilas([comprado], { e1: dec }, 100);
 const hSin = S.cbHtmlFila(fSin, {});
 assert("💶 (D5): sin 100 €/token; «Falta el precio» y «—», cuenta como sin coste",
   !(fSin.coste > 0) && fSin.supuesto && fSin.estado === "decision" && hSin.includes("Falta el precio") && hSin.includes(">—<"), [fSin, hSin]);
+assert("💶: una decisión de 🔍 lleva «↩ Deshacer…» (a «Ya decididos»); una compra sin decisión, no",
+  hSin.includes('data-cb="decidida"') && hSin.includes("↩ Deshacer…") &&
+  !S.cbHtmlFila(S.cbFilas([casa], {}, 100)[0], {}).includes('data-cb="decidida"'));
 // Con tu precio en 💶: la decisión lleva el coste y «Ya decididos» lo dice.
 const conPrecio = S.cbAjustesConCostes({ e1: dec }, [{ clave: "e1", valor: 150 }], [comprado], 100, FECHA);
 assert("💶 guarda el coste en la decisión (sigue deshaciéndose en «Ya decididos»)", conPrecio.e1.coste_eur === 150 &&

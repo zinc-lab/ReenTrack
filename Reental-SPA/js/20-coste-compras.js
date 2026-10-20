@@ -123,10 +123,14 @@ function cbPagadoUsd(reg, ajustes) {
   const h = ccBuscarAjuste(ajustes, reg && reg.clave);
   return h ? ccPagadoUsd(h.ajuste, (state.cache && state.cache.tipos_bce) || {}, state.cache) : null;
 }
-/* Las filas del editor: [{ reg, estado, coste, supuesto, usd }]. */
+/* Las filas del editor: [{ reg, estado, coste, supuesto, usd, decidida }]
+   (decidida: una decisión de 🔍, que se deshace en «Ya decididos»). */
 function cbFilas(registros, ajustes, precio) {
-  return cbComprasBancarias(registros).map(reg => ({ reg, estado: cbEstadoCoste(reg, ajustes),
-    coste: cbCosteVisto(reg, ajustes, precio), supuesto: cbSupuesto(reg, ajustes), usd: cbPagadoUsd(reg, ajustes) }));
+  return cbComprasBancarias(registros).map(reg => {
+    const h = ccBuscarAjuste(ajustes, reg.clave);
+    return { reg, estado: cbEstadoCoste(reg, ajustes), coste: cbCosteVisto(reg, ajustes, precio), supuesto: cbSupuesto(reg, ajustes),
+      usd: cbPagadoUsd(reg, ajustes), decidida: !!h && ccEsAjusteDecision(h.ajuste) };
+  });
 }
 
 /* Lo escrito, leído como número (NaN si está vacío o no se entiende). */
@@ -326,7 +330,8 @@ function cbHtmlFila(f, borrador) {
   } else {
     // El de por defecto ya no lo dice la fila (lo dice la explicación de arriba; en el informe lleva «**»).
     pagado = fijo;
-    acciones = cbBoton("editar", r.clave, "✏️ Editar");
+    acciones = cbBoton("editar", r.clave, "✏️ Editar") +
+      (f.decidida ? cbBoton("decidida", r.clave, "↩ Deshacer…", false, "Se deshace en «Movimientos ya decididos».") : "");
   }
   return '<tr class="cb-fila' + (abierta ? " abierta" : "") + '" data-clave="' + ccEsc(r.clave) + '">' +
     "<td>" + ccEsc(fecha || "sin fecha") + "</td>" +
@@ -467,6 +472,19 @@ function cbIrACompras() {
   if (location.hash === "#revision") return ir();
   location.hash = "#revision";
   setTimeout(ir, 150); // tras pintar la pestaña (como irAFechasSinPrecio)
+}
+/* «↩ Deshacer…»: abre «Movimientos ya decididos» en su decisión, resaltada
+   y con el cursor en su «↩ Deshacer». */
+function cbIrADecidida(clave) {
+  const det = $("ccResueltos");
+  if (det) det.open = true;
+  const card = document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + CSS.escape(clave) + '"]');
+  if (!card) return;
+  card.scrollIntoView({ block: "center" });
+  card.classList.add("cc-destacada");
+  setTimeout(() => card.classList.remove("cc-destacada"), 2500);
+  const boton = card.querySelector('[data-accion="deshacer-decision"]');
+  if (boton) boton.focus({ preventScroll: true });
 }
 /* «Calcular el precio por token»: en la moneda de la fila; «Usar» lo
    pone en su casilla de precio (y lo pagado se recalcula con el precio
@@ -666,6 +684,7 @@ function cbMontarEventos() {
     else if (accion === "guardar") cbGuardar(clave);
     else if (accion === "usdt") cbAbrirUsdt(clave);
     else if (accion === "calcular") cbAbrirCalculadora(clave, btn);
+    else if (accion === "decidida") cbIrADecidida(clave);
   });
 }
 
