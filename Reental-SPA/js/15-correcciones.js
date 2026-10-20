@@ -2930,8 +2930,8 @@ function ccInyectarEstilos() {
     ".card:has(>.cc-que-es){position:relative}",
     ".card>.cc-que-es{position:absolute;top:30px;right:22px;display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--muted);background:none;border:0;padding:0;min-height:0;box-shadow:none;cursor:pointer}",
     // En 🔍, pegado arriba al bajar (la página es larga): a la derecha del
-    // título y, fijo, con fondo para leerse sobre las tarjetas.
-    "#view-revision>.card>.cc-que-es{position:sticky;top:calc(var(--alto-topbar,0px) + 10px);float:right;margin:-57px -8px 0 0;z-index:12;padding:5px 10px;border-radius:999px;background:var(--panel)}",
+    // título y, fijo, con fondo y borde verdes para verse sobre las tarjetas.
+    "#view-revision>.card>.cc-que-es{position:sticky;top:calc(var(--alto-topbar,0px) + 10px);float:right;margin:-57px -8px 0 0;z-index:12;padding:5px 12px;border-radius:999px;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);box-shadow:var(--shadow)}",
     ".cc-que-es .cc-info{margin:0;cursor:pointer}",
     ".cc-que-es:hover,.cc-que-es:focus-visible{color:var(--accent)}",
     ".cc-que-es:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}",
