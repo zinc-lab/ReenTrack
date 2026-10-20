@@ -785,7 +785,7 @@ function ccOpcionesDecision(reg, ctx) {
   }
   if (!(dejar && cat === "MOVIMIENTO")) ops.push({ id: "neutro", etiqueta: "Movimiento neutro", sugerida: false, pide: null,
     ayuda: sentido === "entrada" ? CC_AYUDA_NEUTRO_ENTRADA : CC_AYUDA_NEUTRO });
-  if (reg.hash && reg.fuente !== "CSV_REENTAL" && ccPuedeSerSpam(reg, ctx, sentido, contrato, esInmueble)) {
+  if (reg.hash && reg.fuente !== "CSV_REENTAL" && ccSpamPermitido(reg, ctx)) {
     ops.push({ id: "spam", etiqueta: "🚫 Es spam", sugerida: false, pide: null, ayuda: CC_AYUDA_SPAM });
   }
   return ops;
@@ -801,6 +801,13 @@ function ccPuedeSerSpam(reg, ctx, sentido, contrato, esInmueble) {
   if (!conocido) return true;
   if (sentido !== "entrada") return false;
   return !(ctx && ctx.direcciones) || clasificarDireccion(reg.origen || "", ctx.direcciones) === "DESCONOCIDA";
+}
+/* La misma regla para un movimiento, con su sentido y su token sacados como
+   en ccOpcionesDecision: la usan 🔍 («🚫 Es spam») y 📒 («🚫 Mandar al spam»). */
+function ccSpamPermitido(reg, ctx) {
+  const contrato = normalizarDireccion(reg.contrato || "");
+  const esInmueble = !!reg.inmueble || !!(ctx && ctx.inmuebles && ctx.inmuebles.has(contrato));
+  return ccPuedeSerSpam(reg, ctx, ccSentidoBasico(reg, ctx), contrato, esInmueble);
 }
 
 /* El ajuste de una decisión (lanza si falta el importe). `antes` =

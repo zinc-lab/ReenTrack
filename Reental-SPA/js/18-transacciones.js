@@ -941,8 +941,10 @@ function txEsAjusteSacarSpam(ajuste) {
    - "regla":    es spam porque mandaste su dirección o su token entero
                  → ↩ los quita.
    - "ajeno":    es spam por un ajuste de otro origen → ↩ inactivo.
-   - "":         nada. opts = { pendiente, vinculo, regla } de la fila
-                 (regla = txReglaSpam). */
+   - "":         nada. opts = { pendiente, vinculo, regla, ctx } de la fila
+                 (regla = txReglaSpam; ctx = ccContextoCandidatos: con él, 🚫
+                 sigue la regla de «🚫 Es spam» de 🔍, ccSpamPermitido: con un
+                 token conocido, solo lo que llega de una dirección desconocida). */
 function txEstadoSpam(reg, ajustes, opts = {}) {
   if (!reg) return "";
   const hallado = ccBuscarAjuste(ajustes, reg.clave);
@@ -951,6 +953,7 @@ function txEstadoSpam(reg, ajustes, opts = {}) {
   if (!hallado && opts.regla) return "regla";
   if (reg.categoria === "SPAM") return hallado ? "ajeno" : "sacar";
   if (hallado || opts.pendiente === "salida" || opts.vinculo) return "";
+  if (opts.ctx && !ccSpamPermitido(reg, opts.ctx)) return "";
   return TX_CATEGORIAS_A_SPAM.includes(reg.categoria) ? "mandar" : "";
 }
 
@@ -1460,7 +1463,7 @@ function txPintarCuerpo(registros) {
         const notaP = txTextoNota(f.notas, r.clave);
         const editando = !!(ed && ed.clave === r.clave);
         const regla = txReglaSpam(r, ctxMotor);
-        const estadoSpam = state.cache ? txEstadoSpam(r, ajustes, { pendiente, vinculo, regla }) : "";
+        const estadoSpam = state.cache ? txEstadoSpam(r, ajustes, { pendiente, vinculo, regla, ctx }) : "";
         const opciones = estadoSpam === "mandar" ? txOpcionesApartar(r, ctxMotor) : null;
         const conOpciones = !!(opciones && (opciones.direccion || opciones.token));
         const apartarAbierto = conOpciones && !!txApartarAbierto && txApartarAbierto.clave === r.clave;

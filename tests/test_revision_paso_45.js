@@ -87,6 +87,16 @@ assert("inmueble de una dirección desconocida: con spam", tieneSpam(reg("id", "
 assert("POL de una dirección desconocida: con spam", tieneSpam(reg("pol", "REVISAR", { contrato: "pol", simbolo: "POL", origen: DESC })));
 assert("token desconocido: con spam, también en una salida (como hoy)",
   tieneSpam(reg("rr", "REVISAR", { contrato: RARO, origen: DEFI })) && tieneSpam(reg("rs", "REVISAR", { contrato: RARO, origen: W, destino: DESC })));
+// P22: «🚫 Mandar al spam» de 📒 sigue la misma regla (ccSpamPermitido).
+const mandaSpam = r => S.txEstadoSpam(r, {}, { ctx: ctxD9 }) === "mandar";
+assert("P22 📒: salida de USDT, sin 🚫", !mandaSpam(reg("su", "RETIRADA", { origen: W, destino: DESC })));
+assert("P22 📒: USDT de un comprador P2P, con 🚫", mandaSpam(reg("p2p", "DEPOSITO", { origen: DESC })));
+assert("P22 📒: RNT del staking, sin 🚫", !mandaSpam(reg("df", "REWARD", { contrato: RNT_, simbolo: "RNT", origen: DEFI })));
+assert("P22 📒: RNT de una dirección desconocida (polvo), con 🚫", mandaSpam(reg("pv", "REVISAR", { contrato: RNT_, simbolo: "RNT", origen: DESC })));
+assert("P22 📒: inmueble que llega de Reental, sin 🚫", !mandaSpam(reg("ic", "REVISAR", { contrato: INM, inmueble: "Cáceres 8", origen: DIST })));
+assert("P22 📒: token desconocido, con 🚫 también en una salida",
+  mandaSpam(reg("rr", "REVISAR", { contrato: RARO, origen: DEFI })) && mandaSpam(reg("rs", "RETIRADA", { contrato: RARO, origen: W, destino: DESC })));
+assert("P22 📒: el spam ya puesto se quita igual (↩)", S.txEstadoSpam(reg("x", "SPAM", { contrato: RNT_, origen: DEFI }), {}, { ctx: ctxD9 }) === "sacar");
 const rend = reg("rd", "RENDIMIENTO", { fuente: "CSV_REENTAL" });
 assert("rendimiento del archivo: Dejar como Rendimiento y Neutro (sin spam: no es de la blockchain)",
   JSON.stringify(ids(rend)) === JSON.stringify(["dejar*", "neutro"]), ids(rend));
