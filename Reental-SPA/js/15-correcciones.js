@@ -2928,7 +2928,7 @@ function ccInyectarEstilos() {
     ".cc-info:hover .cc-burbuja,.cc-info:focus .cc-burbuja,.cc-info:focus-within .cc-burbuja{display:block}",
     /* «ⓘ Qué es cada cosa»: arriba a la derecha de la tarjeta; abre su ventana. */
     // En la barra de arriba (fija), solo en 🔍 y 📒, con fondo amarillo para que se vea.
-    ".top-right .cc-que-es{display:none;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);background:color-mix(in srgb,#f5c400 24%,var(--panel));border:1px solid color-mix(in srgb,#f5c400 45%,transparent);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
+    ".top-right .cc-que-es{display:none;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);background:color-mix(in srgb,var(--resalte) 24%,var(--panel));border:1px solid color-mix(in srgb,var(--resalte) 45%,transparent);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
     "body:has(#view-revision.active,#view-transacciones.active) .top-right .cc-que-es{display:inline-flex}",
     ".cc-que-es .cc-info{margin:0;cursor:pointer}",
     ".cc-que-es:hover,.cc-que-es:focus-visible{color:var(--accent)}",
