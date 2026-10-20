@@ -125,7 +125,7 @@ function marcarRntNoDisponible(cache, fecha, motivo) {
 /* Lo que cambia de un token a otro. marcarFuera: qué hacer con
    una fecha de más de 365 días (RNT la apunta en noDisp; POL no). sufijo:
    el de los ids de su bloque de 🔍 Revisión (js/11); webId: su página en
-   coingecko.com (POL era MATIC hasta el 04/09/2024). */
+   coingecko.com (la de POL, «polygon», lleva también MATIC). */
 const CG_RNT = { nombre: "RNT", url: COINGECKO_HISTORY_URL, campo: "precios_rnt", serie: "serie",
                  marcarFuera: marcarRntNoDisponible, noDisp: "precios_rnt_no_disponibles",
                  sufijo: "Rnt", webId: () => "reental" };

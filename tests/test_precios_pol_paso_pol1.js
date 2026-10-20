@@ -303,6 +303,9 @@ function cacheCon(normales, internas) {
     assert("POL desde el 04/09/2024: polygon", R(sb, "pnUrlCoingeckoDia('2024-09-04', CG_POL)") ===
       "https://www.coingecko.com/en/coins/polygon/historical_data?start=2024-09-04&end=2024-09-04");
     assert("POL antes (MATIC): polygon", /coins\/polygon\/historical_data\?start=2024-09-03&end=2024-09-03$/.test(R(sb, "pnUrlCoingeckoDia('2024-09-03', CG_POL)")));
+    const indexPol = require("fs").readFileSync(require("path").join(__dirname, "..", "Reental-SPA", "index.html"), "utf8");
+    assert("RETOQUES R5: el enlace general de la ayuda de POL también va a «polygon»",
+      indexPol.includes('href="https://www.coingecko.com/en/coins/polygon"') && !indexPol.includes("polygon-ecosystem-token"));
     assert("RNT como siempre (también sin token)", /coins\/reental\/historical_data/.test(R(sb, "pnUrlCoingeckoDia('2024-09-03')")) &&
       /coins\/reental\//.test(R(sb, "pnUrlCoingeckoDia('2026-01-01', CG_RNT)")));
 
