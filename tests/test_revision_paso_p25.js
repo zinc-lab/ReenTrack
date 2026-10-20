@@ -165,8 +165,12 @@ assert("📊: la ganancia, en USD con el BCE del día (450 € × 1,1 − 330)",
 // Sin tipos de dos meses antes de la venta (la compra sí lo tiene).
 const bceSinVenta = Object.fromEntries(Object.entries(bce).filter(([d]) => d < "2024-04-01" || d > "2024-06-03"));
 const invSin = sb.dashDineroInvertido(regs, bceSinVenta, cache.ajustes_usuario, cache);
-assert("📊: sin el tipo del BCE del día de la venta, fuera del dinero invertido (no «sin cobrar»)",
-  invSin.sinCambio === 1 && invSin.ventasSinCobro === 0 && invSin.gananciaVentas === 0, [invSin.sinCambio, invSin.ventasSinCobro, invSin.gananciaVentas]);
+assert("📊: sin el tipo del BCE del día de la venta, en el gráfico sin su ganancia (ni «compra» ni «sin cobrar»)",
+  invSin.ventasSinCambio === 1 && invSin.sinCambio === 0 && invSin.ventasSinCobro === 0 && invSin.gananciaVentas === 0 &&
+  invSin.movimientos.length === 2 && !/compra/.test(sb.dashAvisosInvertido(invSin)),
+  [invSin.ventasSinCambio, invSin.sinCambio, invSin.ventasSinCobro, invSin.movimientos.length, sb.dashAvisosInvertido(invSin)]);
+const rentSin = sb.dashRentabilidadMedia(invSin, sb.dashSerieMensual(invSin.movimientos), { total: 10 }, "2026-10-20");
+assert("📊: la rentabilidad dice por qué no sale: «1 venta en € sin tipo del BCE.»", rentSin.motivo === "1 venta en € sin tipo del BCE.", rentSin);
 
 // Con el tipo del BCE del día de la venta, el informe tampoco se inventa sus USD.
 cache.tipos_bce = bce;

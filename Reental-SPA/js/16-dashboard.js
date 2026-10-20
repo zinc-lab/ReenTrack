@@ -153,7 +153,8 @@ function dashSerieMensual(movimientos) {
    repartir), una compra en € sin tipo del BCE o una fecha que no existe o
    es imposible no se inventa: queda fuera y se cuenta. Devuelve
    { movimientos: [{ fecha, delta, invertido }] (con fecha, en orden),
-   compras, ventas, sinImporte, sinCambio, sinFecha } y lo que queda, en la
+   compras, ventas, sinImporte, sinCambio, sinFecha, ventasSinCambio (cobradas
+   en € sin tipo del BCE: en el gráfico, sin su ganancia) } y lo que queda, en la
    moneda en que se pagó: eurBanco (por transferencia, en €) y usdStable (en USDT o USDC,
    también desde el vault, y las de transferencia pagadas en USD: el
    pagado_usd de su ajuste, «En USD…» de 💶, que cuenta tal cual).
@@ -192,7 +193,7 @@ function dashDineroInvertido(registros, tiposBce, ajustes, cache) {
   const canjes = new Map();
   for (const r of lista) if (r.categoria === "COMPRA" && r.via_compra === "CANJE") canjes.set(r.hash, (canjes.get(r.hash) || []).concat(r));
   const res = { movimientos: [], compras: 0, ventas: 0, sinImporte: 0, sinCambio: 0, sinFecha: 0, eurBanco: 0, usdStable: 0,
-    sinCalcular: new Map(), gananciaVentas: 0, ventasSinCobro: 0 };
+    sinCalcular: new Map(), gananciaVentas: 0, ventasSinCobro: 0, ventasSinCambio: 0 };
   // Con dos claves iguales tras normalizar, la primera (como ccBuscarAjuste).
   const porClave = new Map();
   for (const [c, a] of Object.entries(ajustes || {})) if (!porClave.has(ccClaveAjuste(c))) porClave.set(ccClaveAjuste(c), a);
@@ -261,7 +262,7 @@ function dashDineroInvertido(registros, tiposBce, ajustes, cache) {
       let cobrado = positivo(r.importe_usdt) ? r.importe_usdt : null;
       if (cobrado === null && positivo(r.cobrado_eur)) {
         const tipo = tipoDia(r.fecha.slice(0, 10));
-        if (tipo === null) { res.sinCambio++; continue; }
+        if (tipo === null) { res.ventasSinCambio++; continue; } // su coste ya salió del gráfico; falta su ganancia
         cobrado = r.cobrado_eur * tipo;
       }
       if (cobrado !== null && r.revisar !== true) res.gananciaVentas += cobrado * vendidos / r.cantidad - coste;
@@ -395,6 +396,7 @@ function dashRentabilidadMedia(invertido, mensual, rendimientos, hoy = hoyEspana
   const fuera = invertido.sinImporte + invertido.sinCambio + invertido.sinFecha;
   if (fuera) return { motivo: dashCuantos(fuera, "compra o venta", "compras o ventas") + " fuera del dinero invertido (ver 💼)." };
   if (invertido.ventasSinCobro) return { motivo: dashCuantos(invertido.ventasSinCobro, "venta", "ventas") + " sin cobrar del todo (ver 🔍 Revisión)." };
+  if (invertido.ventasSinCambio) return { motivo: dashCuantos(invertido.ventasSinCambio, "venta", "ventas") + " en € sin tipo del BCE." };
   if (mensual[mensual.length - 1].etiqueta > hoy.slice(0, 7)) return { motivo: "Un movimiento con fecha después de hoy." };
   const primera = invertido.movimientos[0].fecha.slice(0, 10);
   const [a, m, d] = primera.split("-").map(Number);
