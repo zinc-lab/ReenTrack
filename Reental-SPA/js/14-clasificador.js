@@ -1605,7 +1605,8 @@ function pdAuditarBloque(pagosDiferidos, registros, ajustesNorm) {
               marcador.venta_id !== null) {
             emitir(`venta ${vidTxt}: la salida ya esta vinculada a ${pdRepr(marcador.venta_id)} (marcador pago_diferido en el registro ${pdStr(salida.clave)})`);
           } else if (salida.categoria === "VENTA" && salida.destino === BURN &&
-                     (salida.importe_usdt === null || salida.importe_usdt === undefined)) {
+                     (salida.importe_usdt === null || salida.importe_usdt === undefined) &&
+                     (salida.cobrado_eur === null || salida.cobrado_eur === undefined)) {
             // El burn sin cobro en su hash no tiene contraprestacion;
             // se valora con «Es una venta...», no con un vinculo.
             emitir(`venta ${vidTxt}: la salida ya es una VENTA sin importe (cierre sin cobro en su hash); se valora con 'Es una venta...' en Revision, no con un vinculo (clave ${pdStr(salida.clave)})`);
@@ -1916,7 +1917,7 @@ function aplicarPagosDiferidos(registros, cache) {
   if (auditoria.ventasOk.length === 0) return info;
 
   const camposSalida = new Set(["categoria", "subcategoria", "importe_usdt",
-                                "revisar", "pago_diferido"]);
+                                "cobrado_eur", "revisar", "pago_diferido"]);
   // El cobro en parte tambien pasa a DEPOSITO, asi que un
   // ajuste que le cambie la categoria se avisa; su revisar si lo decide el
   // usuario («Dejar como deposito»: el resto es dinero suyo).
@@ -2042,6 +2043,9 @@ function sellosAjustes(cache) {
 /* Datos de un ajuste que solo usa la pantalla (💶 y 📊: lo pagado en USD de
    una compra por transferencia, P15): no pasan al registro ni al motor. */
 const AJUSTE_SOLO_PANTALLA = new Set(["pagado_usd", "fecha_pago_usd"]);
+/* Datos que solo trae un ajuste (no salen de la clasificación): se añaden
+   sin aviso. Lo cobrado en € de «Es una venta…» (P25). */
+const AJUSTE_SOLO_DEL_AJUSTE = new Set(["cobrado_eur"]);
 function aplicarAjustesUsuario(registros, cache, silencioso, movidos) {
   // silencioso: sin avisos en el registro (la simulacion del formulario de
   // vinculos lo llama en cada tecla).
@@ -2099,7 +2103,7 @@ function aplicarAjustesUsuario(registros, cache, silencioso, movidos) {
         // Cambiaría el prototipo del registro.
         avisar("AVISO: ajuste " + clave + ": campo '__proto__' no válido, se ignora", "warn");
       } else if (campo !== "clave") {
-        if (!(campo in registro)) {
+        if (!(campo in registro) && !AJUSTE_SOLO_DEL_AJUSTE.has(campo)) {
           avisar("AVISO: ajuste " + clave + ": campo '" + campo +
               "' no existía en el registro, se añade", "warn");
         }

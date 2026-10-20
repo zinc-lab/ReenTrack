@@ -264,7 +264,8 @@ function txOperacion(reg) {
 let txCanjeFoto = { registros: null, claves: null };
 function txEsCanje(reg) {
   if (reg.categoria === "COMPRA") return reg.via_compra === "CANJE";
-  if (reg.categoria !== "VENTA" || reg.subcategoria !== "GPP_INMUEBLE" || reg.destino !== BURN || reg.importe_usdt != null) return false;
+  if (reg.categoria !== "VENTA" || reg.subcategoria !== "GPP_INMUEBLE" || reg.destino !== BURN || reg.importe_usdt != null ||
+      reg.cobrado_eur != null) return false;
   const registros = txRegistros();
   if (txCanjeFoto.registros !== registros) {
     const pares = emparejarCanjes(registros.map(r => Object.assign({}, r)));
@@ -312,7 +313,7 @@ function txEsRendimiento(reg) {
 function txImporteValor(reg) {
   if (!reg) return null;
   if (txEsRendimiento(reg) && txEsNumero(reg.integro_usdt)) return { v: Number(reg.integro_usdt), unidad: " USD" };
-  for (const [v, unidad] of [[reg.importe_usdt, " USD"], [reg.coste_eur, " €"]]) {
+  for (const [v, unidad] of [[reg.importe_usdt, " USD"], [reg.cobrado_eur, " €"], [reg.coste_eur, " €"]]) {
     if (txEsNumero(v)) return { v: Number(v), unidad };
   }
   return null;

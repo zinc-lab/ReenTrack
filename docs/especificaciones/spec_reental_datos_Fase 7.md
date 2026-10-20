@@ -68,6 +68,7 @@ Array de registros clasificados. Cada registro representa un evento on-chain o C
 | `retencion_usdt` | float | `1.9` | Solo en un RENDIMIENTO del CSV: lo retenido por Reental (`retained`); 0 si no hay |
 | `fecha_cobro` | string/null | `"2024-04-02 10:00:00"` | Solo en un RENDIMIENTO del CSV: fecha de la transferencia casada con la fila, o `null` |
 | `coste_eur` | float/null | `50.0` | Coste de adquisición en EUR (compras) |
+| `cobrado_eur` | float | `950.0` | Solo en una VENTA de «Es una venta…» cobrada en €: lo cobrado, que es el valor de transmisión tal cual (sin tipo del BCE ni importe en USD) |
 | `via_compra` | string/null | `"BANCARIA"` | Método de compra (ver §3.4) |
 | `origen` | string hex | `"0x2222bbbb..."` | Dirección de origen (from) |
 | `destino` | string hex | `"0x1111aaaa..."` | Dirección de destino (to) |

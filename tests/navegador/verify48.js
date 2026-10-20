@@ -117,6 +117,10 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     await esperar(300);
   }
   const clickCentrado = async sel => {
+    /* P25: en una tarjeta con «Es una venta…», «🔗 Vincular cobro…» sale al abrirla. */
+    const venta = sel.endsWith('[data-accion="abrir-buscador"]') && !sel.includes("ccListaResueltos") &&
+      await page.$(sel) === null && sel.replace('[data-accion="abrir-buscador"]', '[data-opcion="venta"]');
+    if (venta && await page.$(venta)) await clickCentrado(venta);
     /* Sin avisos: «Ya decididos» va al final de 🔍 y el de abajo a la derecha taparía sus botones. */
     await page.evaluate(s => { document.querySelectorAll("#toasts .toast").forEach(t => t.remove());
       const el = document.querySelector(s); if (el) el.scrollIntoView({ block: "center", behavior: "instant" }); }, sel);

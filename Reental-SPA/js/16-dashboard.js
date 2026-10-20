@@ -234,7 +234,7 @@ function dashDineroInvertido(registros, tiposBce, ajustes, cache) {
       !!String(r.inmueble || "").trim() && !STABLECOINS.has(normalizarDireccion(r.contrato || ""));
     const venta = r.categoria === "VENTA" && r.subcategoria === "GPP_INMUEBLE";
     if (!compra && !venta) continue;
-    if (venta && !positivo(r.importe_usdt) && (canjes.get(r.hash) || []).length) {
+    if (venta && !positivo(r.importe_usdt) && !positivo(r.cobrado_eur) && (canjes.get(r.hash) || []).length) {
       const nuevo = canjes.get(r.hash).shift();
       const viejoK = normalizarDireccion(r.contrato || ""), nuevoK = normalizarDireccion(nuevo.contrato || "");
       for (const l of sinCantidad) if (l.contrato === viejoK) l.contrato = nuevoK;
@@ -256,8 +256,15 @@ function dashDineroInvertido(registros, tiposBce, ajustes, cache) {
       res.movimientos.push({ fecha: r.fecha, instante: r.instante, delta: -coste });
       // Lo ganado: lo cobrado (por los tokens con compra contada) menos lo
       // que costaron. Sin lo cobrado, o a revisar (un pago diferido cobrado
-      // a medias), no se sabe: no suma y se cuenta.
-      if (positivo(r.importe_usdt) && r.revisar !== true) res.gananciaVentas += r.importe_usdt * vendidos / r.cantidad - coste;
+      // a medias), no se sabe: no suma y se cuenta. Cobrada en € (P25), en
+      // USD con el BCE del día, como una compra en €.
+      let cobrado = positivo(r.importe_usdt) ? r.importe_usdt : null;
+      if (cobrado === null && positivo(r.cobrado_eur)) {
+        const tipo = tipoDia(r.fecha.slice(0, 10));
+        if (tipo === null) { res.sinCambio++; continue; }
+        cobrado = r.cobrado_eur * tipo;
+      }
+      if (cobrado !== null && r.revisar !== true) res.gananciaVentas += cobrado * vendidos / r.cantidad - coste;
       else res.ventasSinCobro++;
       continue;
     }

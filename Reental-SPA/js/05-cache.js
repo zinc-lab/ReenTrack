@@ -243,7 +243,7 @@ function errorCache(obj) {
    objeto se rechazan antes de guardar nada. Devuelve el motivo, o "" si vale. */
 // Importes que no pueden ser negativos (gp_eur si: un pool puede perder).
 // Los usa también el motor (js/21, fiscValidarRegistro).
-const CAMPOS_NO_NEGATIVOS = ["importe_usdt", "coste_eur", "integro_usdt", "retencion_usdt"];
+const CAMPOS_NO_NEGATIVOS = ["importe_usdt", "coste_eur", "cobrado_eur", "integro_usdt", "retencion_usdt"];
 function errorAjustesUsuario(obj) {
   if (!pdEsObjeto(obj)) return "Debe ser un objeto JSON {clave: {...}}";
   const mala = Object.keys(obj).find(k => !pdEsObjeto(obj[k]));

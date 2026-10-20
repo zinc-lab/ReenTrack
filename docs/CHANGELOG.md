@@ -2,6 +2,20 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## La venta por vincular y la venta cobrada en € (20/10/2026)
+
+- **🔍 Revisión:** la tarjeta de una venta por vincular lleva solo «Es una
+  venta…» y «Movimiento neutro», con «🔗 Por vincular» a la derecha, debajo
+  de «A revisar». «Es una venta…» abre lo cobrado (en USD) con Guardar,
+  Cancelar, «En euros (€)» y «🔗 Elegir el cobro recibido…», que abre la
+  ventana de vincular de siempre. El «≈ … € (BCE del …)» va debajo de la
+  casilla.
+- **Venta cobrada en €:** con «En euros (€)», lo cobrado es el valor de
+  transmisión tal cual, sin tipo del BCE. El informe y el Excel la llevan en
+  € y con «—» en USD (fila y total); 📒 enseña «… €» y 📊 la suma en USD con
+  el BCE del día, como una compra en €.
+- **Cálculo:** no cambia lo ya guardado (las ventas en USD, igual).
+
 ## Compra externa (18/10/2026)
 
 - **Palabras:** «compra bancaria» pasa a **«compra externa»** en toda la app:

@@ -217,7 +217,7 @@ function fiscAEur(registro, importeUsd) {
 const CAMPOS_SOLO_MOTOR = ["lotes_consumidos", "canje", "colas_stable",
   "partes_stable", "coste_por_cola", "gas_eur", "gas_sin_coste_pol"];
 // Campos numericos de un registro que un ajuste del usuario puede escribir.
-const CAMPOS_NUMERICOS = ["cantidad", "importe_usdt", "coste_eur", "gp_eur",
+const CAMPOS_NUMERICOS = ["cantidad", "importe_usdt", "coste_eur", "cobrado_eur", "gp_eur",
   "integro_usdt", "retencion_usdt"];
 // Los importes que no pueden ser negativos, CAMPOS_NO_NEGATIVOS: en js/05
 // (también los rechaza «Ajustes en JSON»).
@@ -401,7 +401,7 @@ function emparejarCanjes(registros) {
     if (r.categoria === "COMPRA" && r.via_compra === "CANJE") {
       fiscListaDe(llegadas, r.hash).push(r);
     } else if (r.categoria === "VENTA" && r.subcategoria === "GPP_INMUEBLE" &&
-               r.destino === BURN && !fiscHay(r.importe_usdt) &&
+               r.destino === BURN && !fiscHay(r.importe_usdt) && !fiscHay(r.cobrado_eur) &&
                !pyVerdad(r.pago_diferido)) {
       fiscListaDe(burns, r.hash).push(r);
     }
@@ -437,7 +437,9 @@ function emparejarCanjes(registros) {
 function necesitaTipoBce(registro) {
   const cat = registro.categoria;
   if (cat === "COMPRA" && ["BANCARIA", "CANJE"].includes(registro.via_compra)) return false;
-  if (cat === "VENTA" && (registro.subcategoria === "GPP_POOL" || pyVerdad(registro.canje))) return false;
+  // Una venta cobrada en € («Es una venta…», P25) tampoco.
+  if (cat === "VENTA" && (registro.subcategoria === "GPP_POOL" || pyVerdad(registro.canje) ||
+      fiscHay(registro.cobrado_eur))) return false;
   if (cat === "DEPOSITO" && registro.contrato === "pol" &&
       fiscHay(registro.coste_eur)) return false;
   // Un traspaso (vault -> wallet) no se valora (si no, quedaria a revisar
@@ -1361,7 +1363,9 @@ function motorFiscal(registros, cache, config, opciones = {}) {
           return;
         }
       }
-      const precio = fiscAEur(r, r.importe_usdt);
+      // Cobrada en € («Es una venta…», P25): lo cobrado, tal cual.
+      const enEur = fiscHay(r.cobrado_eur);
+      const precio = enEur ? r.cobrado_eur : fiscAEur(r, r.importe_usdt);
       if (precio === null) {
         fiscMarcarRevisar(r, "venta sin precio valorable");
         return;
@@ -1377,6 +1381,9 @@ function motorFiscal(registros, cache, config, opciones = {}) {
         // del cobro. Se decide por el marcador pago_diferido, NUNCA por el
         // texto de la nota: la rama "venta P2P" de abajo abriria un lote de
         // USDT fijo.
+      } else if (enEur) {
+        // Cobrada en € fuera de la blockchain: no hay stablecoin que abrir.
+        fiscAnadirNota(r, "cobrado en € fuera de esta transacción: no abre lote de stablecoin");
       } else if (sub === "GPP_INMUEBLE" && (!stables.has(r.hash) || stables.get(r.hash).entra.length)) {
         // Venta P2P o liquidacion por settlement: la stablecoin cobrada (la
         // que llego de verdad) abre lote por el precio. Sin la transaccion

@@ -333,7 +333,8 @@ function rentaTablaTransmisiones(registros, esVentaInmueble, nombres) {
     const esPago = r.categoria === "COMPRA";
     const cantidadTotal = pyO(esPago ? r.importe_usdt : r.cantidad, 0);
     const transmEur = pyO(r.importe_eur, 0);
-    let transmUsd = fiscHay(r.importe_usdt) ? r.importe_usdt : rentaAUsd(r, transmEur);
+    // Cobrada en € («Es una venta…», P25): sin USD («—»), no se inventan.
+    let transmUsd = fiscHay(r.importe_usdt) ? r.importe_usdt : fiscHay(r.cobrado_eur) ? null : rentaAUsd(r, transmEur);
     if (!esPago && pyVerdad(r.gas_eur) && fiscHay(transmUsd) && fiscHay(r.importe_usdt)) {
       // El gas de la venta, restado tambien en USD.
       // Sin importe en USD (una retirada de POL), el USD sale del
@@ -394,7 +395,9 @@ function rentaTablaTransmisiones(registros, esVentaInmueble, nombres) {
       const parte = pyVerdad(cantidadTotal) ? p.cantidad / cantidadTotal : 0;
       const filaUsd = fiscHay(transmUsd) ? transmUsd * parte : null;
       const filaEur = transmEur * parte;
-      if (filaUsd !== null) tTransmUsd += filaUsd;
+      // Una fila sin USD (cobrada en €) deja el total sin USD, como la adquisición.
+      if (filaUsd === null) tTransmUsd = null;
+      else if (tTransmUsd !== null) tTransmUsd += filaUsd;
       if (!fiscHay(p.coste_usd)) tAdqUsd = null;
       else if (tAdqUsd !== null) tAdqUsd += p.coste_usd;
       filas.push({

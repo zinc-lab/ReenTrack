@@ -501,7 +501,7 @@ function ccColaRevision(registros, ctx) {
    Cada tarjeta a revisar ofrece primero «✔ …» (lo que dice la app, con su
    nombre de 📒 y la etiqueta «Sugerida») y después solo las alternativas que
    tienen sentido para ese movimiento:
-   - «Es una venta…» (importe cobrado en USD): salidas de un inmueble.
+   - «Es una venta…» (lo cobrado, en USD o en €): salidas de un inmueble.
    - «Compra externa…» (sin precio: lo pagado se pone en 💶): entradas de
      un inmueble, y RNT que te llega.
    - «Regalo (airdrop)» y «Recompensa DeFi»: RNT que te llega.
@@ -611,7 +611,7 @@ const CC_NOMBRE_CATEGORIA = {
   RENDIMIENTO: "Rendimiento", REWARD: "Recompensa DeFi", RETIRADA: "Retirada",
   COMISION: "Comisión de red", SPAM: "Spam",
 };
-const CC_CAMPOS_DECISION = ["categoria", "subcategoria", "revisar", "nota", "importe_usdt", "coste_eur", "via_compra", ...CC_CAMPOS_USD];
+const CC_CAMPOS_DECISION = ["categoria", "subcategoria", "revisar", "nota", "importe_usdt", "cobrado_eur", "coste_eur", "via_compra", ...CC_CAMPOS_USD];
 
 function ccNombreCategoria(cat) {
   return CC_NOMBRE_CATEGORIA[cat] || categoriaAMostrar(cat);
@@ -756,7 +756,7 @@ function ccOpcionesDecision(reg, ctx) {
      blockchain) solo se deja o se marca neutro. */
   const onchain = reg.fuente !== "CSV_REENTAL";
   const cat = reg.categoria;
-  const sinImporte = cat === "VENTA" && !ccEsNumeroPositivo(reg.importe_usdt);
+  const sinImporte = cat === "VENTA" && !ccEsNumeroPositivo(reg.importe_usdt) && !ccEsNumeroPositivo(reg.cobrado_eur);
   const ops = [];
   /* Un token con dudas del catálogo: confirmarlo aquí, como en el catálogo. */
   if (onchain && direccionValida(contrato) && ctx && ctx.dudas && ctx.dudas.has(contrato)) {
@@ -852,7 +852,7 @@ function ccLeerColaAntes(nota, antes) {
   const m = CC_RE_COLA.exec(resto);
   return { fecha: m && m[1] ? m[1] : "", motivo: m && m[3] ? m[3] : "", coste: m && m[2] ? ccLeerImporte(m[2]) : null };
 }
-function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo) {
+function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo, enEur) {
   const dia = ccDiaNota(fechaISO);
   const cola = ccColaAntes(antes, previo);
   const nota = que => CC_MARCA_DECISION + dia + ": " + que + cola;
@@ -865,9 +865,10 @@ function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo) {
       // vuelve regalo cuando no ve una posición DeFi que lo respalde.
       return reg.categoria === "REWARD" && reg.subcategoria ? Object.assign({ subcategoria: reg.subcategoria }, aj) : aj;
     }
-    case "venta":
-      return { categoria: "VENTA", subcategoria: "GPP_INMUEBLE", importe_usdt: pideValor(), revisar: false,
-               nota: nota("venta cobrada aparte") };
+    case "venta": // en USD (al BCE del día de la venta, en el motor) o en € tal cual (P25)
+      return Object.assign({ categoria: "VENTA", subcategoria: "GPP_INMUEBLE" },
+        enEur ? { cobrado_eur: pideValor() } : { importe_usdt: pideValor() },
+        { revisar: false, nota: nota("venta cobrada aparte") });
     case "compra": // sin precio: se pone en 💶 (un inmueble lleva el de por defecto)
       return { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", revisar: false,
                nota: nota("compra externa") };
@@ -892,7 +893,7 @@ function ccAjusteDecision(reg, id, valor, fechaISO, antes, previo) {
    ajuste que solo pedía revisión; lanza si hay otro. Si ese ajuste llevaba
    un coste y la decisión es «✔ Dejar como …» o «Compra externa…», el
    coste sigue (las demás decisiones cambian la categoría). */
-function ccAjustesConDecision(ajustes, reg, id, valor, fechaISO) {
+function ccAjustesConDecision(ajustes, reg, id, valor, fechaISO, enEur) {
   const base = pdEsObjeto(ajustes) ? ajustes : {};
   const k = ccClaveAjuste(reg && reg.clave);
   if (!k) throw new Error("Registro sin clave.");
@@ -901,7 +902,7 @@ function ccAjustesConDecision(ajustes, reg, id, valor, fechaISO) {
   if (h && !antes) throw new Error("Ya tiene un ajuste manual: se cambia en «✏️ Ajustes en JSON».");
   const copia = Object.assign({}, base);
   if (h) delete copia[h.clave];
-  copia[k] = ccAjusteDecision(reg, id, valor, fechaISO, antes, h && h.ajuste);
+  copia[k] = ccAjusteDecision(reg, id, valor, fechaISO, antes, h && h.ajuste, enEur);
   if (h && "coste_eur" in h.ajuste) {
     if (id === "dejar" || id === "compra") copia[k].coste_eur = h.ajuste.coste_eur;
     // Lo pagado en USD va con la decisión, para devolverlo al deshacer (con
@@ -953,7 +954,8 @@ function ccDecimalesPrecio(v) {
    su movimiento, para nombrar la categoría que se deja. */
 function ccResumenDecision(ajuste, reg) {
   if (!pdEsObjeto(ajuste)) return "";
-  if (ajuste.categoria === "VENTA") return "Venta · " + numEs(ajuste.importe_usdt, 2) + " USD";
+  if (ajuste.categoria === "VENTA") return "Venta · " + (ccEsNumeroPositivo(ajuste.cobrado_eur)
+    ? numEs(ajuste.cobrado_eur, 2) + " €" : numEs(ajuste.importe_usdt, 2) + " USD");
   if (ajuste.categoria === "COMPRA") {
     // Sin tu precio: un inmueble, el de por defecto (el del registro, como en 💶); el RNT no tiene.
     if (ccEsNumeroPositivo(ajuste.coste_eur)) return "Compra externa · " + numEs(ajuste.coste_eur, 2) + " €";
@@ -1651,10 +1653,17 @@ function ccHtmlRegCorto(reg) {
     " · " + (ccFechaVer(reg) || "sin fecha")) + " · " + ccEnlaceHash(reg.hash);
 }
 
+/* El botón que abre el buscador de cobros de una venta (tarjeta, «Es una
+   venta…» y «Ya decididos»). */
+function ccBotonBuscador(clave, texto) {
+  return '<button type="button" class="cc-accion" data-accion="abrir-buscador" data-clave="' + ccEsc(clave) + '">' + texto + "</button>";
+}
+
 /* Botones de decisión de una tarjeta y, si hay una abierta que pide
    importe, su formulario corto debajo. d = { estado, opciones, abierta:
-   {id, valor}|null, eur: {eur, fecha}|null }. */
-function ccHtmlDecisiones(reg, d) {
+   {id, valor, enEur}|null, eur: {eur, fecha}|null }. vincular: la venta está
+   por vincular, y su formulario lleva el botón del buscador de cobros (P25). */
+function ccHtmlDecisiones(reg, d, vincular = false) {
   if (!d) return "";
   if (d.estado === "ajeno") {
     return '<div class="cc-decision help">Ajuste manual: se cambia en «✏️ Ajustes en JSON».</div>';
@@ -1678,14 +1687,20 @@ function ccHtmlDecisiones(reg, d) {
   html += "</div>";
   const op = ab && (d.opciones || []).find(o => o.id === ab.id && o.pide);
   if (op) {
-    const unidad = op.id === "dinero" ? (reg.simbolo || "USD") : "USD";
+    // Una venta, en USD o en € («En euros (€)», P25); lo recibido, en su token.
+    const enEur = op.id === "venta" && !!ab.enEur;
+    const unidad = op.id === "dinero" ? (reg.simbolo || "USD") : enEur ? "€" : "USD";
     const etiqueta = op.id === "venta" ? "Cobrado" : "Recibido";
     html += '<div class="cc-dec-form" data-clave="' + clave + '">' +
       '<label>' + etiqueta + ' <input type="text" inputmode="decimal" class="cc-dec-valor" data-clave="' + clave +
       '" value="' + ccEsc(ab.valor ?? "") + '" aria-label="' + ccEsc(etiqueta + " en " + unidad) + '"> ' + ccEsc(unidad) + "</label>" +
       '<button type="button" class="cc-accion primary" data-accion="decidir-aplicar" data-clave="' + clave + '">Guardar</button>' +
       '<button type="button" class="cc-accion" data-accion="decidir-cerrar" data-clave="' + clave + '">Cancelar</button>' +
-      '<span class="cc-dec-eur help">' + ccEsc(ccTextoEurOrientativo(d.eur)) + "</span></div>";
+      (op.id === "venta" ? '<button type="button" class="cc-accion" data-accion="decidir-moneda" data-clave="' + clave + '">' +
+        (enEur ? "En dólares (USD)" : "En euros (€)") + "</button>" +
+        (vincular ? ccBotonBuscador(reg.clave, "🔗 Elegir el cobro recibido…") : "") : "") +
+      // El ≈ €, lo último: va en su línea, debajo de la casilla (CSS).
+      '<span class="cc-dec-eur help">' + (enEur ? "" : ccEsc(ccTextoEurOrientativo(d.eur))) + "</span></div>";
   }
   return html;
 }
@@ -1694,7 +1709,8 @@ function ccHtmlDecisiones(reg, d) {
    vincular (opts.candidatura), marca «🔗 vinculada» con el id de la venta
    si tiene vínculo CONFIRMADO (opts.vinculada), categoría con la nota del
    motor en su ⓘ, fecha, inmueble, ruta y hash. Botón según el estado: «🔗 Vincular cobro…» en las salidas
-   pendientes y «➕ Añadir otro cobro» en las ya vinculadas
+   pendientes (si la tarjeta ofrece «Es una venta…», al abrirla, junto a
+   Guardar: «🔗 Elegir el cobro recibido…», P25) y «➕ Añadir otro cobro» en las ya vinculadas
    (un pago que llega en varias transferencias). */
 function ccHtmlTarjeta(reg, opts = {}) {
   const cand = opts.candidatura === "salida" ? "salida" : null; // salida PENDIENTE de vincular
@@ -1711,9 +1727,6 @@ function ccHtmlTarjeta(reg, opts = {}) {
      (todo lo de la lista está por decidir). */
   let top = '<div class="cc-item-top">';
   top += '<span class="cc-sym">' + (Number.isFinite(reg.cantidad) ? ccEsc(cant) + " " : "") + '<span class="cc-tok">' + ccEsc(sim) + "</span></span>";
-  if (cand === "salida") {
-    top += '<span class="cc-cand salida" title="Venta sin su cobro vinculado.">🔗 Por vincular</span>';
-  }
   if (vinc) {
     const detalle = vinc.rol === "salida"
       ? "Ver el vínculo."
@@ -1736,16 +1749,18 @@ function ccHtmlTarjeta(reg, opts = {}) {
   if (reg.origen || reg.destino) {
     meta += '<span title="' + ccTituloRuta(reg) + '">' + ccTextoRuta(reg) + "</span>";
   }
+  if (cand === "salida") meta += '<span class="cc-cand salida" title="Venta sin su cobro vinculado.">🔗 Por vincular</span>';
   meta += "</div>";
 
   const hash = '<div class="cc-hash">' + ccEnlaceHash(reg.hash) + "</div>";
 
   /* Una salida con contraprestación en su propio hash no lleva botón: el
      motor rechaza vincularla. */
-  const botonBuscador = texto => '<div class="cc-acciones"><button type="button" class="cc-accion" ' +
-    'data-accion="abrir-buscador" data-clave="' + ccEsc(reg.clave) + '">' + texto + "</button></div>";
+  const botonBuscador = texto => '<div class="cc-acciones">' + ccBotonBuscador(reg.clave, texto) + "</div>";
   let acciones = "";
-  if (cand === "salida") {
+  const d = opts.decision;
+  const conVenta = !!d && d.estado !== "ajeno" && (d.opciones || []).some(o => o.id === "venta");
+  if (cand === "salida" && !conVenta) {
     acciones = botonBuscador("🔗 Vincular cobro…");
   } else if (vinc && vinc.rol === "salida") {
     acciones = botonBuscador("➕ Añadir otro cobro");
@@ -1754,7 +1769,7 @@ function ccHtmlTarjeta(reg, opts = {}) {
          '" data-hash="' + ccEsc(reg.hash || "") + '" data-categoria="' + ccEsc(reg.categoria) +
          '" data-cand="' + (cand || "") + '"' +
          ' data-vinc="' + (vinc ? ccEsc(vinc.ventaIds.join(",")) : "") + '">' +
-         top + meta + hash + acciones + ccHtmlDecisiones(reg, opts.decision) + "</div>";
+         top + meta + hash + acciones + ccHtmlDecisiones(reg, opts.decision, cand === "salida") + "</div>";
 }
 
 /* Cabecera de la lista: las ventas por vincular (cuántos hay por decidir
@@ -1796,7 +1811,8 @@ function ccHtmlLista(registros, visibles, ctx, ventas, dec) {
     if (dec && r.revisar) {
       const abierta = dec.abierta && dec.abierta.clave === r.clave ? dec.abierta : null;
       decision = { estado: ccEstadoDecision(r, dec.ajustes), opciones: ccOpcionesDecision(r, ctx), abierta,
-        eur: abierta ? ccEurOrientativo(abierta.valor, r.fecha, dec.tiposBce, dec.cache) : null };
+        // Lo escrito, con su coma (como al teclear): si no, al repintar se perdería el ≈ €.
+        eur: abierta ? ccEurOrientativo(ccLeerImporte(String(abierta.valor ?? "")), r.fecha, dec.tiposBce, dec.cache) : null };
     }
     html += ccHtmlTarjeta(r, {
       candidatura: ccPendienteDeVincular(r, ctx, false),
@@ -2738,8 +2754,7 @@ function ccHtmlVenta(venta, resumen, opts = {}) {
      no está anulado. Los botones, en columna a la derecha. */
   html += '</div><div class="cc-vinc-acciones">' +
     (!anulado && resumen.salida
-      ? '<button type="button" class="cc-accion" data-accion="abrir-buscador" data-clave="' +
-        ccEsc(resumen.salida.clave) + '">➕ Añadir otro cobro</button>'
+      ? ccBotonBuscador(resumen.salida.clave, "➕ Añadir otro cobro")
       : "") +
     (!anulado
       ? '<button type="button" class="cc-accion" data-accion="editar-vinculo" data-venta="' + ccEsc(venta.id) +
@@ -2818,12 +2833,12 @@ async function ccGuardarAjustesDecision(nuevos, mensaje, accionToast) {
   if (enDisco === null) return;
   toast(mensaje + (enDisco ? "" : " " + CC_SIN_DISCO), enDisco ? "ok" : "warn", accionToast);
 }
-async function ccDecidir(clave, id, valor) {
+async function ccDecidir(clave, id, valor, enEur) {
   if (!state.cache) return toast(CC_SIN_CACHE, "warn");
   const reg = ccRegistrosSesion().find(r => r.clave === clave);
   if (!reg) return;
   let nuevos;
-  try { nuevos = ccAjustesConDecision(state.cache.ajustes_usuario, reg, id, valor, ahoraLocalISO()); }
+  try { nuevos = ccAjustesConDecision(state.cache.ajustes_usuario, reg, id, valor, ahoraLocalISO(), enEur); }
   catch (e) { return toast(e.message, "error"); }
   ccDecisionAbierta = null;
   await ccGuardarAjustesDecision(nuevos, "Decidido. Está en «Movimientos ya decididos».");
@@ -2831,7 +2846,19 @@ async function ccDecidir(clave, id, valor) {
   if (id === "compra" && typeof cbIrACompra === "function") cbIrACompra(clave);
 }
 function ccAplicarDecisionAbierta() {
-  return ccDecidir(ccDecisionAbierta.clave, ccDecisionAbierta.id, ccDecisionAbierta.valor);
+  return ccDecidir(ccDecisionAbierta.clave, ccDecisionAbierta.id, ccDecisionAbierta.valor, !!ccDecisionAbierta.enEur);
+}
+/* «En euros (€)» / «En dólares (USD)» de «Es una venta…»: lo escrito se queda. */
+function ccCambiarMonedaVenta() {
+  if (!ccDecisionAbierta || ccDecisionAbierta.id !== "venta") return;
+  const clave = ccDecisionAbierta.clave;
+  ccDecisionAbierta.enEur = !ccDecisionAbierta.enEur;
+  ccRenderSeguro();
+  ccEnfocarValor(clave);
+}
+function ccEnfocarValor(clave) {
+  const input = document.querySelector('#ccLista .cc-dec-valor[data-clave="' + (typeof CSS !== "undefined" && CSS.escape ? CSS.escape(clave) : clave) + '"]');
+  if (input) { input.focus(); input.select(); }
 }
 function ccCerrarDecisionAbierta() {
   ccDecisionAbierta = null;
@@ -2860,13 +2887,13 @@ function ccPulsarDecision(clave, id) {
   if (!op.pide) return ccDecidir(clave, id, null);
   if (ccDecisionAbierta && ccDecisionAbierta.clave === clave && ccDecisionAbierta.id === id) ccDecisionAbierta = null;
   else {
-    const previo = id === "dinero" && ccEsNumeroPositivo(reg.cantidad) ? String(reg.cantidad).replace(".", ",") :
-      id === "venta" && ccEsNumeroPositivo(reg.importe_usdt) ? String(reg.importe_usdt).replace(".", ",") : "";
-    ccDecisionAbierta = { clave, id, valor: previo };
+    // Una venta que ya trae lo cobrado en € abre en €.
+    const enEur = id === "venta" && ccEsNumeroPositivo(reg.cobrado_eur);
+    const v = id === "dinero" ? reg.cantidad : id === "venta" ? (enEur ? reg.cobrado_eur : reg.importe_usdt) : null;
+    ccDecisionAbierta = { clave, id, valor: ccEsNumeroPositivo(v) ? String(v).replace(".", ",") : "", enEur };
   }
   ccRenderSeguro();
-  const input = document.querySelector('#ccLista .cc-dec-valor[data-clave="' + (typeof CSS !== "undefined" && CSS.escape ? CSS.escape(clave) : clave) + '"]');
-  if (input) { input.focus(); input.select(); }
+  ccEnfocarValor(clave);
 }
 
 /* Saltos entre los movimientos de un vínculo (también los usa js/18).
@@ -2974,7 +3001,8 @@ function ccInyectarEstilos() {
     "#ccLista .cc-cat{margin-left:auto;display:inline-flex;align-items:center;font-size:13.5px;font-weight:700;color:var(--muted)}",
     /* La ⓘ de la nota va en el borde derecho: su burbuja se abre hacia dentro. */
     "#ccLista .cc-cat .cc-burbuja{left:auto;right:-6px;transform:none}",
-    "#ccLista .cc-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:5px}",
+    "#ccLista .cc-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--muted);margin-top:5px}",
+    "#ccLista .cc-meta .cc-cand{margin-left:auto}",
     "#ccLista .cc-hash{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:14px;color:var(--muted)}",
     /* Botón de la card y diálogos (buscador y formulario). */
     "#ccLista .cc-acciones{margin-top:8px}",
@@ -3059,6 +3087,9 @@ function ccInyectarEstilos() {
     ".cc-sugerida{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;font-size:12px;font-weight:700;background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-bd)}",
     "#ccLista .cc-dec-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;padding:8px 10px;background:var(--tarjeta);border:1px solid var(--border);border-radius:10px;font-size:14px}",
     "#ccLista .cc-dec-form input{width:130px;margin:0 4px;font-size:14px;padding:5px 8px}",
+    /* El ≈ € en su línea, debajo de la casilla (P25): a la vista y sin mover los botones al escribir. */
+    "#ccLista .cc-dec-eur{flex-basis:100%;margin-top:-2px;padding-left:66px}",
+    "#ccLista .cc-dec-eur:empty{display:none}",
     "#ccListaResueltos .cc-decidida{border-left-color:var(--info)}",
   ].join("\n");
   document.head.appendChild(estilo);
@@ -3084,6 +3115,7 @@ function ccMontarEventos() {
       else if (accion === "decidir") ccPulsarDecision(btn.getAttribute("data-clave"), btn.getAttribute("data-opcion"));
       else if (accion === "decidir-aplicar" && ccDecisionAbierta) ccAplicarDecisionAbierta();
       else if (accion === "decidir-cerrar") ccCerrarDecisionAbierta();
+      else if (accion === "decidir-moneda") ccCambiarMonedaVenta();
       else if (accion === "deshacer-decision") ccDeshacerDecision(btn.getAttribute("data-clave"));
     };
     /* El importe que se escribe: se recuerda (sobrevive a un repintado) y
@@ -3096,7 +3128,7 @@ function ccMontarEventos() {
         reg.fecha, (state.cache && state.cache.tipos_bce) || {}, state.cache) : null;
       const caja = e.target.closest(".cc-dec-form");
       const span = caja && caja.querySelector(".cc-dec-eur");
-      if (span && ccDecisionAbierta.id !== "compra") span.textContent = ccTextoEurOrientativo(eur);
+      if (span && ccDecisionAbierta.id !== "compra" && !ccDecisionAbierta.enEur) span.textContent = ccTextoEurOrientativo(eur);
     });
     lista.addEventListener("keydown", e => {
       if (!ccDecisionAbierta || !e.target.classList || !e.target.classList.contains("cc-dec-valor")) return;
