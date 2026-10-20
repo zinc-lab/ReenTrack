@@ -2,6 +2,26 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Historial de cada activo en 🧾 (20/10/2026)
+
+- **🧾 Fiscal:** «Lotes de cada inmueble» pasa a ser el **historial de cada
+  activo** (inmuebles, RNT, POL, USDT y USDC), hasta el 31/12 del ejercicio
+  elegido. Va en dos grupos, con los nombres del Resumen, y el subtotal del
+  año de cada grupo da lo mismo que el Resumen. La línea de cada activo
+  dice lo que queda, su coste y la ganancia o pérdida desde el principio y
+  del año. Los que ya no tienes, con «Ver también los que ya no tienes».
+- **Dentro, una tabla por activo:** fecha (la hora, debajo), operación,
+  tokens, «Tienes», precios en USD y en €, total, comisión, coste de
+  compra, ganancia o pérdida y «Quedan x de y» en cada compra. Rendimientos,
+  recompensas DeFi y gas, una fila por mes. El canje, una fila «±0». Cada
+  venta, «▸ n lotes» con las compras de las que sale. Lo que está a revisar
+  sale con ⚠️, y una compra a revisar sin lote no cuenta en «Tienes».
+- **«Ventas y permutas»:** igual, con los nombres en negro y la ganancia o
+  pérdida en verde o rojo.
+- **Imprimir 🧾:** salen también los activos que ya no tienes y los lotes de
+  cada venta.
+- **Cálculo:** no cambia ninguna cifra.
+
 ## La venta por vincular y la venta cobrada en € (20/10/2026)
 
 - **🔍 Revisión:** la tarjeta de una venta por vincular lleva solo «Es una
