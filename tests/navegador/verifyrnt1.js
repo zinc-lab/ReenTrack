@@ -189,12 +189,14 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await page.click('#cbCuerpo [data-cb="decidida"][data-clave="' + claves[3] + '"]');
   await esperar(1000);
   const ir4 = await page.evaluate(c => ({ abierto: document.getElementById("ccResueltos").open,
+    brillo: document.getElementById("ccResueltos").classList.contains("cb-brillo"),
     aLaVista: (r => r.top >= 0 && r.bottom <= innerHeight)(document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + c + '"]').getBoundingClientRect()),
     foco: !!document.activeElement && document.activeElement.getAttribute("data-accion") === "deshacer-decision" &&
       document.activeElement.getAttribute("data-clave") === c }), claves[3]);
+  await page.screenshot({ path: path.join(OUT, "cap_rnt1_brillo.png") });
   await page.evaluate(() => document.getElementById("rellenoR4").remove());
   assert("R4 -> «↩ Deshacer…» (con «Ya decididos» cerrado) lo abre y, al primer clic, deja su decisión a la vista con el cursor en «↩ Deshacer»",
-    ir4.abierto && ir4.aLaVista && ir4.foco, ir4);
+    ir4.abierto && ir4.aLaVista && ir4.foco && ir4.brillo, ir4);
 
   /* ============ R5) otra entrega, en USD ============ */
   await pulsar(4, "compra");

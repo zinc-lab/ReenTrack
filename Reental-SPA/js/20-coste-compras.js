@@ -486,6 +486,9 @@ function cbIrADecidida(clave) {
     card.scrollIntoView({ block: "center" });
     card.classList.add("cc-destacada");
     setTimeout(() => card.classList.remove("cc-destacada"), 2500);
+    // «Ya decididos» brilla un momento: es ahí donde se deshace.
+    det.classList.add("cb-brillo");
+    setTimeout(() => det.classList.remove("cb-brillo"), 3600);
     const boton = card.querySelector('[data-accion="deshacer-decision"]');
     if (boton) boton.focus({ preventScroll: true });
   }, cerrado ? 650 : 0);
@@ -724,6 +727,10 @@ function cbInyectarEstilos() {
     // Un botón con aspecto de enlace, a la derecha.
     ".cb-calcular,.cb-calcular:hover{background:none;border:0;box-shadow:none;padding:2px 0;margin-left:auto;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:13px}",
     ".cb-calc-dlg{width:min(460px,100%)}",
+    // El pulso verde de los botones destacados (index.html), tres veces.
+    "#ccResueltos.cb-brillo{border-radius:12px;animation:pulso 1.2s ease 3}",
+    "body.dark #ccResueltos.cb-brillo{animation-name:pulso-dark}",
+    "#ccResueltos.cb-brillo>summary{color:var(--accent);border-bottom-color:var(--accent)}",
     ".cb-calc-campos{display:flex;flex-direction:column;gap:10px;margin-top:12px;font-size:14px}",
     ".cb-calc-campos label{display:flex;justify-content:space-between;align-items:center;gap:12px}",
     ".cb-calc-campos input{width:150px;text-align:right}",
