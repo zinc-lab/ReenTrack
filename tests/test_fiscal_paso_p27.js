@@ -223,5 +223,28 @@ console.log("== A7: un grupo con todo vendido ==");
     igual(grupos.map(g => g.includes("fi-h-cerrado")), [true, false]), grupos);
 }
 
+console.log("== A8: los pools de liquidez ==");
+{
+  const POOL = "0x" + "e".repeat(40);
+  const m = (clave, hash, fecha, contrato, cantidad, origen, destino) =>
+    Object.assign(reg(clave, fecha, "MOVIMIENTO", "NEUTRO", contrato, cantidad, { origen, destino }), { hash });
+  const R = pasada([...base,
+    reg("rn", "2024-01-06 10:00:00", "DEPOSITO", "COSTE_BASE", RNT, 100, { importe_usdt: 100 }),
+    m("a0", "0xh1", "2024-02-01 10:00:00", POOL, 10, POOL, WALLET),
+    m("a1", "0xh1", "2024-02-01 10:00:00", USDT, 100, WALLET, POOL),
+    m("a2", "0xh1", "2024-02-01 10:00:00", RNT, 50, WALLET, POOL),
+    m("b0", "0xh2", "2024-05-01 10:00:00", POOL, 10, WALLET, POOL),
+    m("b1", "0xh2", "2024-05-01 10:00:00", USDT, 120, POOL, WALLET),
+    m("b2", "0xh2", "2024-05-01 10:00:00", RNT, 40, POOL, WALLET)], 2024,
+  { contratos_aprendidos: { DEFI_POOL: { [POOL]: { nombre: "Pool" } } }, precios_rnt: { "2024-05-01": 1.1, "2024-01-06": 1 } });
+  const usdt = de(R.h, "USDT"), total = (R.html.match(/<div class="fi-h-linea fi-h-total">([\s\S]*?)<\/div>/) || [, ""])[1];
+  assert("A8: lo aportado y lo que vuelve, en dos filas con su registro (el recibo)",
+    igual(usdt.filas.map(f => f.op), ["Ingreso de dinero", "Pool (aportado)", "Pool (vuelve)"]) && cuadraConMotor(R), usdt.filas.map(f => f.op));
+  const enEur = x => vm.runInContext("fiEur", sb)(x, true);
+  assert("A8: una línea «Pools de liquidez» con su resultado, y el Total del año = el del Resumen",
+    R.html.includes("fi-h-pools") && R.html.includes("Pools de liquidez") && R.resumen.gp_otros_elementos !== undefined &&
+    total.includes(enEur(R.resumen.gp_total)), [total, R.resumen]);
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

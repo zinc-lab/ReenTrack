@@ -740,12 +740,14 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
   const grupos = [[titulo("gp_inmuebles"), "Tokens de cada inmueble.", activos.filter(a => !a.moneda)],
     [titulo("gp_permutas"), "RNT, POL, USDT y USDC.", activos.filter(a => a.moneda)]].filter(g => g[2].length);
   const sub = grupos.map(([, , as]) => fiGpDelGrupo(as, anio));
+  // Los pools de liquidez: su resultado no es de un activo; va con el del Resumen.
+  const pools = informe.detalle.otros_elementos ? informe.detalle.otros_elementos.total.importe_eur : null;
   const total = as => [fiCeldaEur(as.some(a => a.costeQueda === undefined) ? undefined : pySuma(as.map(a => a.costeQueda))),
     fiCeldaEur(pySuma(as.map(a => a.gp || 0)), true)];
   let html = '<p class="help">' + hasta + ", en orden FIFO: al vender salen primero los más antiguos." + interruptor + "</p>" + aviso +
     '<div class="fi-historial' + (fiEstado.verTodos ? " fi-todos" : "") + '">' +
     fiLineaHistorial("fi-h-cab", ["Activo", "Quedan", "Coste de lo que queda", "Ganancia o pérdida (desde el principio)", "Ganancia o pérdida de " + anio]) +
-    fiLineaHistorial("fi-h-total", ["Total", "", ...total(activos), fiCeldaEur(pySuma(sub), true)]);
+    fiLineaHistorial("fi-h-total", ["Total", "", ...total(activos), fiCeldaEur(pySuma(sub) + (pools || 0), true)]);
   grupos.forEach(([titulo, nota, as], i) => {
     // Un grupo sin nada que tengas, oculto con ellos.
     html += '<div class="fi-h-grupo' + (as.some(a => a.abierto) ? "" : " fi-h-cerrado") + '">' +
@@ -762,6 +764,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
           "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres, anio) + "</details>";
       }).join("") + "</div>";
   });
+  if (pools !== null) html += fiLineaHistorial("fi-h-subtotal fi-h-pools", [ccEsc(titulo("gp_otros_elementos")), "", "", "", fiCeldaEur(pools, true)]);
   return html + "</div>";
 }
 
@@ -919,6 +922,7 @@ function fiInyectarEstilos() {
     ".fi-h-total{font-weight:700;border-bottom:1px solid var(--border2)}",
     ".fi-h-subtotal{font-weight:700;background:var(--panel2);border-radius:8px}",
     ".fi-historial .fi-subgrupo{margin-top:18px}",
+    ".fi-h-pools{margin-top:18px}",
     ".fi-historial .fi-subgrupo+.fi-pie{margin:0 0 4px}",
     ".fi-h-activo{margin:0;border-bottom:1px solid var(--border)}",
     ".fi-h-activo>summary{list-style:none;cursor:pointer;color:var(--text);font-weight:400}",
