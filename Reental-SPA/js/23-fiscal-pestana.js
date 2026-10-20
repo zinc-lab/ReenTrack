@@ -904,9 +904,10 @@ function fiInyectarEstilos() {
     /* Historial: las líneas de cada activo, alineadas en columnas como una
        tabla de posiciones; dentro, la tabla del activo. */
     ".fi-historial{overflow-x:auto}",
-    ".fi-h-linea{display:grid;grid-template-columns:minmax(170px,1fr) 110px 170px 230px 190px;gap:0 10px;align-items:baseline;padding:7px 12px;font-size:14px}",
+    ".fi-h-linea{display:grid;grid-template-columns:minmax(150px,1fr) 100px 150px 200px 180px;gap:0 10px;align-items:baseline;padding:7px 12px;font-size:14px}",
     ".fi-h-linea>span:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}",
-    ".fi-h-cab{font-weight:700;font-size:13px;color:var(--muted);border-bottom:2px solid var(--border)}",
+    ".fi-h-cab{font-weight:700;font-size:13px;color:var(--muted);border-bottom:2px solid var(--border);align-items:end}",
+    ".fi-h-cab>span:not(:first-child){white-space:normal}",
     ".fi-h-total{font-weight:700;border-bottom:1px solid var(--border2)}",
     ".fi-h-subtotal{font-weight:700;background:var(--panel2);border-radius:8px}",
     ".fi-historial .fi-subgrupo{margin-top:18px}",

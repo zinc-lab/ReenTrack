@@ -8,7 +8,7 @@
  *      cierra lo desplegado.
  *  H3) «▸ 2 lotes» enseña las filas de la venta (aria-expanded), sin
  *      repintar; un repintado las deja a la vista y el foco en el botón.
- *  H4) a 1366 px las tablas abiertas no se desplazan de lado.
+ *  H4) a 1366 y a 1280 px ni las tablas abiertas ni las líneas se desplazan de lado.
  *  H5) la fecha con las dos horas también con el teclado; oscuro; 0 errores.
  *
  * Ejecución (desde la raíz, con NODE_PATH al node_modules del arnés):
@@ -110,8 +110,15 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
 
   /* ============ H4 ============ */
   await page.evaluate(() => document.querySelectorAll("#fiHistorial details.fi-h-activo").forEach(x => { x.open = true; }));
-  const desborde = await page.evaluate(() => Math.max(...[...document.querySelectorAll("#fiHistorial .fi-tablawrap")].map(w => w.scrollWidth - w.clientWidth)));
-  assert("H4 -> a 1366 px ninguna tabla se desplaza de lado", desborde <= 0, desborde);
+  // A2: también a 1280 px (un portátil), ni las tablas ni las líneas de los activos.
+  for (const ancho of [1366, 1280]) {
+    await page.setViewport({ width: ancho, height: 900 });
+    await esperar(150);
+    const desborde = await page.evaluate(() => Math.max(...[...document.querySelectorAll("#fiHistorial .fi-tablawrap, #fiHistorial .fi-historial")]
+      .map(w => w.scrollWidth - w.clientWidth)));
+    assert("H4 -> a " + ancho + " px ni las tablas ni las líneas se desplazan de lado", desborde <= 0, desborde);
+  }
+  await page.setViewport({ width: 1366, height: 900 });
   await (await page.$("#fiHistorial")).screenshot({ path: path.join(OUT, "cap_p27_historial.png") });
 
   /* ============ H5 ============ */
