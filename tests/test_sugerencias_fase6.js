@@ -78,6 +78,10 @@ assert("solo dirección (precio +50 %)", s(COMPRADOR, 4 * 165) === "direccion");
 assert("solo precio (otra dirección)", s(OTRO, 4 * 100) === "precio");
 assert("borde +35 % entra", s(OTRO, 4 * 148.5) === "precio");
 assert("−36 % no entra", s(OTRO, 4 * 70.4) === "");
+// B21 A9: la fila redondea el % y el 💲 también («−35 %» siempre con 💲).
+assert("B21 A9: −35,4 % (la fila dice «−35 %») entra", s(OTRO, 4 * 71.06) === "precio" &&
+  ccHtmlFilaCobro(cobro(OTRO, 4 * 71.06), false, salida, [], 110).includes("(−35 %)"));
+assert("B21 A9: −35,6 % (la fila dice «−36 %») no entra", s(OTRO, 4 * 70.84) === "");
 assert("sin precio de compra: solo la dirección cuenta",
   ccSenalesCobro(cobro(COMPRADOR, 400), salida, null).join(",") === "direccion");
 assert("salida sin destino: no hay señal de dirección",

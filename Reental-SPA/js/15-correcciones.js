@@ -208,7 +208,8 @@ function ccSenalesCobro(cobro, salida, precioCompra, importe) {
   const dest = normalizarDireccion(salida && salida.destino);
   if (dest && normalizarDireccion(cobro.origen) === dest) out.push("direccion");
   const p = ccPrecioPorTokenImplicito(importe === undefined ? cobro.cantidad : importe, salida && salida.cantidad);
-  if (p !== null && precioCompra > 0 && Math.abs(p / precioCompra - 1) <= CC_SUG_MARGEN + 1e-9) out.push("precio");
+  // Con el % redondeado, como lo enseña la fila (ccHtmlFilaCobro): «−35 %» siempre lleva 💲.
+  if (p !== null && precioCompra > 0 && Math.abs(Math.round((p / precioCompra - 1) * 100)) <= Math.round(CC_SUG_MARGEN * 100)) out.push("precio");
   return out;
 }
 
@@ -2927,8 +2928,8 @@ function ccInyectarEstilos() {
     ".cc-info .cc-burbuja{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:max-content;max-width:min(340px,72vw);background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:8px 11px;font-size:12.5px;font-weight:400;line-height:1.55;z-index:400;text-align:left;white-space:normal;cursor:auto}",
     ".cc-info:hover .cc-burbuja,.cc-info:focus .cc-burbuja,.cc-info:focus-within .cc-burbuja{display:block}",
     /* «ⓘ Qué es cada cosa»: arriba a la derecha de la tarjeta; abre su ventana. */
-    // En la barra de arriba (fija), solo en 🔍 y 📒, con el amarillo de rotulador de la app (--resalte) para que se vea.
-    ".top-right .cc-que-es{display:none;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);background:var(--resalte);border:1px solid color-mix(in srgb,var(--resalte) 80%,var(--text) 20%);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
+    // En la barra de arriba (fija), solo en 🔍 y 📒, con el ámbar de los avisos de la lista de tareas de 🔍 (.rv-aviso) para que se vea.
+    ".top-right .cc-que-es{display:none;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
     "body:has(#view-revision.active,#view-transacciones.active) .top-right .cc-que-es{display:inline-flex}",
     ".cc-que-es .cc-info{margin:0;cursor:pointer}",
     ".cc-que-es:hover,.cc-que-es:focus-visible{color:var(--accent)}",
