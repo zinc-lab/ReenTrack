@@ -305,22 +305,27 @@ function txEsRendimiento(reg) {
 }
 
 /* Importe legible: importe_usdt en USD nominal (USDT/USDC 1:1) o, si no
-   hay, el coste en € de una compra bancaria. Vacío si no hay ninguno (no
-   se inventa). En un rendimiento del archivo de Reental es su íntegro
-   (integro_usdt), nunca el neto que llegó: importe_usdt sigue siendo lo que llegó, aquí solo se enseña
-   otra cosa. */
+   hay, el coste en € de una compra bancaria. En un rendimiento del archivo
+   de Reental es su íntegro (integro_usdt), nunca el neto que llegó:
+   importe_usdt sigue siendo lo que llegó, aquí solo se enseña otra cosa.
+   Una recompensa DeFi sin importe, como la valora el motor (js/21): USDT
+   o USDC 1 = 1 USD; el resto, al precio de RNT del día (estimado: «≈»).
+   Vacío si no hay nada de eso (no se inventa). */
 function txImporteValor(reg) {
   if (!reg) return null;
   if (txEsRendimiento(reg) && txEsNumero(reg.integro_usdt)) return { v: Number(reg.integro_usdt), unidad: " USD" };
   for (const [v, unidad] of [[reg.importe_usdt, " USD"], [reg.cobrado_eur, " €"], [reg.coste_eur, " €"]]) {
     if (txEsNumero(v)) return { v: Number(v), unidad };
   }
-  return null;
+  if (reg.categoria !== "REWARD" || !txEsNumero(reg.cantidad)) return null;
+  if (STABLECOINS.has(reg.contrato)) return { v: reg.cantidad, unidad: " USD" };
+  const precio = fiscPrecioDelDia((state.cache || {}).precios_rnt, reg.fecha);
+  return precio === null ? null : { v: reg.cantidad * precio, unidad: " USD", estimado: true };
 }
 /* La cifra exacta (para la ayuda). */
 function txImporte(reg) {
   const i = txImporteValor(reg);
-  return i ? ccCantidad(i.v) + i.unidad : "";
+  return i ? (i.estimado ? "≈ " : "") + ccCantidad(i.v) + i.unidad : "";
 }
 
 /* Cifra de la tabla con 2 decimales; la exacta va en la ayuda.
@@ -346,7 +351,7 @@ function txCifraExacta(x) {
 /* Importe tal como se ve en la tabla: 2 decimales y su unidad. */
 function txImporteCorto(reg) {
   const i = txImporteValor(reg);
-  return i ? txCifra(i.v) + i.unidad : "";
+  return i ? (i.estimado ? "≈ " : "") + txCifra(i.v) + i.unidad : "";
 }
 
 /* Retención de Reental en un rendimiento, tal como viene en su archivo
@@ -372,7 +377,9 @@ function txRetencionCorta(reg) {
    el importe tal cual. */
 function txLineasImporte(reg) {
   const imp = txImporte(reg);
-  if (!txEsRendimiento(reg) || !txEsNumero(reg.integro_usdt)) return imp ? [imp] : [];
+  if (!txEsRendimiento(reg) || !txEsNumero(reg.integro_usdt)) {
+    return !imp ? [] : txImporteValor(reg).estimado ? [imp, "Al precio de RNT del día"] : [imp];
+  }
   const ret = txEsNumero(reg.retencion_usdt) ? Number(reg.retencion_usdt) : 0;
   const neto = Math.round((Number(reg.integro_usdt) - ret) * 1e6) / 1e6;
   return ["Rendimiento íntegro: " + imp, "Retención: " + txRetencion(reg),

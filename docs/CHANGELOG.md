@@ -2,6 +2,15 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Recompensas DeFi con importe en 📒 (20/10/2026)
+
+- **📒 Transacciones:** cada recompensa DeFi de RNT (también los regalos)
+  lleva su importe: «≈ 1,23 USD», la cantidad por el precio de RNT de ese
+  día, el mismo que usa 🧾. El «≈» y la ayuda («Al precio de RNT del día»)
+  dicen que no viene de la blockchain. Sin precio ese día, vacío. El gas,
+  los movimientos neutros y el spam siguen sin importe: ahí no se paga ni
+  se cobra nada (el gas, en POL; su coste en €, en 🧾).
+
 ## «Ventas y permutas» más simple (20/10/2026)
 
 - **🧾 Fiscal, «Ventas y permutas»:** para puntear el informe fila a fila.
