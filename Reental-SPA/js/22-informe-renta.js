@@ -596,7 +596,7 @@ function rentaInversionesActivas(cierre, corte, anioCerrado, nombres, cache,
     vault.aviso = [vault.aviso, texto].filter(pyVerdad).join(" ");
   }
   const otros = [];
-  let subtotalOtros = 0;
+  let subtotalOtros = 0, otrosSinCoste = false;
   for (const [activo, nombre] of OTROS_CRIPTOACTIVOS) {
     if (!fiscTiene(cierre, activo)) continue;
     const [cantidadCola, costeCola] = cierre[activo];
@@ -612,10 +612,12 @@ function rentaInversionesActivas(cierre, corte, anioCerrado, nombres, cache,
       const parte = pyVerdad(cantidadCola) ? cantidad / cantidadCola : 0;
       const usd = enUsd(activo);
       if (usd.coste_usd !== null) usd.coste_usd = rentaEur2(usdCola * parte);
+      // Sin coste (una compra de RNT sin precio): «—», y sin subtotal ni total.
       otros.push({ activo, nombre: filaNombre,
         cantidad: pyRedondeo(cantidad, 6), ...usd,
-        coste_eur: rentaEur2(costeCola * parte) });
-      subtotalOtros += costeCola * parte;
+        coste_eur: costeCola === null ? null : rentaEur2(costeCola * parte) });
+      if (costeCola === null) otrosSinCoste = true;
+      else subtotalOtros += costeCola * parte;
     }
   }
   // Otros tokens con coste (no son inmuebles ni los de arriba).
@@ -625,12 +627,13 @@ function rentaInversionesActivas(cierre, corte, anioCerrado, nombres, cache,
       nombre: nombresTokens ? pyO(nombresTokens.get(activo), activo) : activo,
       cantidad: pyRedondeo(cantidad, 6), ...enUsd(activo),
       coste_eur: rentaEur2(coste) });
-    subtotalOtros += coste;
+    if (coste === null) otrosSinCoste = true;
+    else subtotalOtros += coste;
   }
-  bloque.otros = { filas: otros, subtotal_eur: rentaEur2(subtotalOtros) };
-  // Sin el vault en euros no hay total: uno sin el vault pareceria
-  // completo.
-  const sinEuros = !fiscHay(vault.saldo_eur) && pyVerdad(vault.saldo_usd);
+  bloque.otros = { filas: otros, subtotal_eur: otrosSinCoste ? null : rentaEur2(subtotalOtros) };
+  // Sin el vault en euros (o sin el coste de algo) no hay total: uno sin
+  // ello pareceria completo.
+  const sinEuros = (!fiscHay(vault.saldo_eur) && pyVerdad(vault.saldo_usd)) || otrosSinCoste;
   bloque.total_eur = sinEuros ? null
     : rentaEur2(subtotalInm + subtotalOtros + pyO(vault.saldo_eur, 0));
   return bloque;

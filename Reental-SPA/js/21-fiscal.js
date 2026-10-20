@@ -1595,12 +1595,14 @@ function resumenFiscalAnual(registros) {
   return anios;   // claves de ano: JavaScript ya las recorre en orden
 }
 
-/* Lotes FIFO no consumidos: {activo: [cantidad, coste_eur_total]}. */
+/* Lotes FIFO no consumidos: {activo: [cantidad, coste_eur_total]}. Con
+   un lote sin coste abierto (una compra de RNT sin precio), el coste es
+   null: no se sabe (sumarlo como 0 parecería completo). */
 function posicionAbierta(colas) {
   const posicion = Object.create(null);   // un contrato «__proto__» es una clave mas
   for (const [activo, lotes] of colas) {
     const cantidad = pySuma(lotes.map(l => l.cantidad));
-    const coste = pySuma(lotes.map(l => l.cantidad * l.coste_unitario_eur));
+    const coste = lotes.some(l => l.sin_coste && l.cantidad > 1e-9) ? null : pySuma(lotes.map(l => l.cantidad * l.coste_unitario_eur));
     if (cantidad > 1e-9) posicion[activo] = [cantidad, coste];
   }
   return posicion;

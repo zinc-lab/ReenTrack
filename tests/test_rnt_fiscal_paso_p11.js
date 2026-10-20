@@ -114,6 +114,24 @@ console.log("== 1c. 🧾 Fiscal con una compra de RNT sin precio (fiCalcular: no
     r.ok && JSON.stringify(r.lotes) === "[[1000,true,true]]", r);
 }
 
+console.log("== 1d. RETOQUES R1: con una compra de RNT sin precio, su coste no se sabe (ni 0 en el informe ni en el Excel) ==");
+{
+  const sinPrecio = { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", revisar: false,
+    nota: "Decidido por ti en Revisión (2025-12-01): compra externa" };
+  const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100);
+  const r = correr([premio, entrega("e1", "2025-01-10 10:00:00", 1000)], { e1: sinPrecio, p1: { subcategoria: "GPP_REGALO" } },
+    { "2025-01-05": 0.05 });
+  const fila = r.inf.inversiones_activas.otros.filas.find(f => f.activo === "RNT");
+  assert("informe: la fila del RNT con su cantidad y el coste en € sin poner («—»), sin subtotal ni total",
+    fila && fila.cantidad === 1100 && fila.coste_eur === null && r.inf.inversiones_activas.otros.subtotal_eur === null &&
+    r.inf.inversiones_activas.total_eur === null, [fila, r.inf.inversiones_activas.otros.subtotal_eur, r.inf.inversiones_activas.total_eur]);
+  assert("Excel: «No disponible (falta el precio de una compra)» y no 5 €", r.excel.includes("No disponible (falta el precio de una compra)"));
+  const conPrecio = correr([premio, entrega("e1", "2025-01-10 10:00:00", 1000)],
+    { e1: Object.assign({}, sinPrecio, { coste_eur: 40 }), p1: { subcategoria: "GPP_REGALO" } }, { "2025-01-05": 0.05 });
+  assert("con su precio, el coste vuelve a salir (5 + 40 = 45 €)", conPrecio.inf.inversiones_activas.otros.filas.find(f => f.activo === "RNT").coste_eur === 45 &&
+    !conPrecio.excel.includes("falta el precio de una compra"));
+}
+
 console.log("== 2. Venta de RNT después: la encuentra, mezcla con un premio ==");
 {
   const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100, { nota: "regalo" });

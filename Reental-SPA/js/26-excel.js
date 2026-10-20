@@ -63,6 +63,7 @@ const EXCEL_RENTA_ANCHOS = [46, 30, 16, 20, 16, 16, 16, 16, 16, 16, 16];
 const EXCEL_RENTA_COLUMNAS = EXCEL_RENTA_ANCHOS.length;
 const EXCEL_NOMBRE_RENDIMIENTO = { ...TIPO_RENDIMIENTO, RCM_MIXTO: "Rendimiento mixto (a revisar)" };
 const EXCEL_NO_COTIZA = "No disponible: los tokens no cotizan; cartera valorada a su coste de compra";
+const EXCEL_FALTA_PRECIO = "No disponible (falta el precio de una compra)";
 const EXCEL_COMO_DECLARAR = "El íntegro y la retención se declaran por separado, sin restar una del otro.";
 
 function excelColorCategoria(categoria) {
@@ -190,7 +191,10 @@ function excelHojaResumen(libro, registros, colas, resumen, cache, config, ahora
   const posicion = posicionAbierta(colas);
   excelCelda(hoja, fila++, 1, "Cartera (lo que tienes hoy)", { negrita: true, relleno: EXCEL_COLOR.SECCION });
   excelCelda(hoja, fila, 1, "Coste de compra de lo que tienes");
-  excelCelda(hoja, fila++, 2, pySuma(Object.values(posicion).map(p => p[1])), { formato: EXCEL_FMT.EUR });
+  // Con el coste de algo sin saber (una compra de RNT sin precio), sin total.
+  const costes = Object.values(posicion).map(p => p[1]);
+  excelCelda(hoja, fila++, 2, costes.some(c => c === null) ? EXCEL_FALTA_PRECIO : pySuma(costes),
+    costes.some(c => c === null) ? {} : { formato: EXCEL_FMT.EUR });
   excelCelda(hoja, fila, 1, "Valor de la cartera hoy");
   excelCelda(hoja, fila++, 2, EXCEL_NO_COTIZA);
   excelCelda(hoja, fila, 1, "Ganancia o pérdida sin vender");
@@ -365,6 +369,7 @@ function excelSeccionCartera(hoja, fila, activo, etiqueta, registros, ordenados,
   const cierre = pySuma(lotes.map(l => l.cantidad));
   const base = pySuma(lotes.map(l => l.cantidad * l.coste_unitario_eur));
   const laTienes = cierre > 1e-9;
+  const sinPrecio = lotes.some(l => l.sin_coste && l.cantidad > 1e-9);
   const seccion = { negrita: true, relleno: EXCEL_COLOR.SECCION };
 
   excelCelda(hoja, fila, 1, etiqueta, seccion);
@@ -374,9 +379,9 @@ function excelSeccionCartera(hoja, fila, activo, etiqueta, registros, ordenados,
   excelCelda(hoja, fila, 1, "Ahora");
   excelCelda(hoja, fila++, 2, cierre, { formato: EXCEL_FMT.TOKENS });
   excelCelda(hoja, fila, 1, "Coste medio de compra");
-  excelCelda(hoja, fila++, 2, laTienes ? base / cierre : "-", laTienes ? { formato: EXCEL_FMT.EUR } : {});
+  excelCelda(hoja, fila++, 2, sinPrecio ? EXCEL_FALTA_PRECIO : laTienes ? base / cierre : "-", laTienes && !sinPrecio ? { formato: EXCEL_FMT.EUR } : {});
   excelCelda(hoja, fila, 1, "Coste de compra");
-  excelCelda(hoja, fila++, 2, base, { formato: EXCEL_FMT.EUR });
+  excelCelda(hoja, fila++, 2, sinPrecio ? EXCEL_FALTA_PRECIO : base, sinPrecio ? {} : { formato: EXCEL_FMT.EUR });
   excelCelda(hoja, fila, 1, "Ganancia o pérdida de lo vendido");
   excelCelda(hoja, fila++, 2, gpRealizada, { formato: EXCEL_FMT.EUR });
   excelCelda(hoja, fila, 1, "Ganancia o pérdida sin vender");
