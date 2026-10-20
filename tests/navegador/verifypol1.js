@@ -107,8 +107,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("P1 -> el bloque de POL se abre solo con «⚠ 3 sin precio»", b1.abierto && b1.aviso === "⚠ 3 sin precio" && !b1.tablaOculta, b1);
   assert("P1 -> tres fechas, en orden, cada una con su enlace a CoinGecko",
     JSON.stringify(b1.filas.map(f => f.fecha)) === JSON.stringify(["07/02/2024 ↗", "23/04/2026 ↗", "01/08/2026 ↗"]) &&
-    /coins\/matic-network\/historical_data\?start=2024-02-07/.test(b1.filas[0].href) &&
-    /coins\/polygon-ecosystem-token\/historical_data\?start=2026-04-23/.test(b1.filas[1].href), b1.filas);
+    /coins\/polygon\/historical_data\?start=2024-02-07/.test(b1.filas[0].href) &&
+    /coins\/polygon\/historical_data\?start=2026-04-23/.test(b1.filas[1].href), b1.filas);
   const sinForm = await page.evaluate(() => !document.getElementById("btnAddPrecioPol") && !document.getElementById("inpPrecioPolFecha"));
   assert("P1 -> sin formulario libre de fecha y precio", sinForm);
   await page.evaluate(() => document.getElementById("rvPreciosPol").scrollIntoView());

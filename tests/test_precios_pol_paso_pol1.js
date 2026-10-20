@@ -299,9 +299,10 @@ function cacheCon(normales, internas) {
     assert("cache vieja sin precios_pol: no rompe", R(sb, `pnFechasSinPrecioPol(__c5, __regs, ${AHORA})`).length === 5);
 
     console.log("== 5. Enlaces a CoinGecko ==");
-    assert("POL desde el 04/09/2024: polygon-ecosystem-token", R(sb, "pnUrlCoingeckoDia('2024-09-04', CG_POL)") ===
-      "https://www.coingecko.com/en/coins/polygon-ecosystem-token/historical_data?start=2024-09-04&end=2024-09-04");
-    assert("POL antes: matic-network", /coins\/matic-network\/historical_data\?start=2024-09-03&end=2024-09-03$/.test(R(sb, "pnUrlCoingeckoDia('2024-09-03', CG_POL)")));
+    // La página «polygon» lleva MATIC y POL (matic-network y polygon-ecosystem-token redirigen y pierden la fecha).
+    assert("POL desde el 04/09/2024: polygon", R(sb, "pnUrlCoingeckoDia('2024-09-04', CG_POL)") ===
+      "https://www.coingecko.com/en/coins/polygon/historical_data?start=2024-09-04&end=2024-09-04");
+    assert("POL antes (MATIC): polygon", /coins\/polygon\/historical_data\?start=2024-09-03&end=2024-09-03$/.test(R(sb, "pnUrlCoingeckoDia('2024-09-03', CG_POL)")));
     assert("RNT como siempre (también sin token)", /coins\/reental\/historical_data/.test(R(sb, "pnUrlCoingeckoDia('2024-09-03')")) &&
       /coins\/reental\//.test(R(sb, "pnUrlCoingeckoDia('2026-01-01', CG_RNT)")));
 
@@ -313,7 +314,7 @@ function cacheCon(normales, internas) {
     assert("la tabla de fechas sin precio se ve, con 4 filas", el.rvPolFaltantes.hidden === false &&
       el.tablaPreciosPolFaltantes.children.length === 4 && el.nPreciosPolFaltantes.textContent === 4);
     const fila = el.tablaPreciosPolFaltantes.children[3];
-    assert("cada fila enlaza a su día en CoinGecko", /polygon-ecosystem-token\/historical_data\?start=2026-04-23/.test(fila.children[0].innerHTML), fila.children[0].innerHTML);
+    assert("cada fila enlaza a su día en CoinGecko", /coins\/polygon\/historical_data\?start=2026-04-23/.test(fila.children[0].innerHTML), fila.children[0].innerHTML);
     assert("los precios guardados, aparte", el.nPreciosPol.textContent === 3 && el.tablaPreciosPol.children.length === 3);
     assert("RNT, sin fechas: cerrado y sin aviso", el.rvPreciosRnt.open === false && el.rvPreciosRntAviso.textContent === "");
     // Guardar el que falta: sale de la lista; el bloque no se vuelve a abrir solo.

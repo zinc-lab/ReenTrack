@@ -131,7 +131,7 @@ const CG_RNT = { nombre: "RNT", url: COINGECKO_HISTORY_URL, campo: "precios_rnt"
                  sufijo: "Rnt", webId: () => "reental" };
 const CG_POL = { nombre: "POL", url: COINGECKO_HISTORY_URL.replace("/reental/", "/polygon-ecosystem-token/"),
                  campo: "precios_pol", serie: "seriePol", marcarFuera: null, noDisp: null,
-                 sufijo: "Pol", webId: fecha => fecha < "2024-09-04" ? "matic-network" : "polygon-ecosystem-token" };
+                 sufijo: "Pol", webId: () => "polygon" };   // la web de MATIC y POL (las otras dos redirigen y pierden la fecha)
 
 // Serie diaria del último año en UNA llamada (memorizada unos minutos).
 // Solo se aceptan los puntos de las 00:00:00 UTC (el último es «ahora»).
