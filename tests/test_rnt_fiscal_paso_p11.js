@@ -94,6 +94,26 @@ console.log("== 1b. COMPRA-EXTERNA A1: una compra sin precio no deja que la vent
     cola2.length === 1 && cola2[0].cantidad === 1000 && cola2[0].sin_coste === true, cola2);
 }
 
+console.log("== 1c. 🧾 Fiscal con una compra de RNT sin precio (fiCalcular: no se para) ==");
+{
+  const sb = sandbox(MODULOS, HORA_APP);
+  sb.structuredClone = structuredClone;
+  sb.__regs = [entrega("e1", "2025-01-10 10:00:00", 1000)];
+  sb.__cache = { tipos_bce: { "2025-01-10": 1 }, precios_rnt: {}, contratos_aprendidos: {},
+    ajustes_usuario: { e1: { categoria: "COMPRA", subcategoria: "COSTE_BASE", via_compra: "BANCARIA", revisar: false,
+      nota: "Decidido por ti en Revisión (2025-12-01): compra externa" } } };
+  const r = vm.runInContext(`state.config = { wallet: "${WALLET}", vault: "" };
+    (() => {
+      aplicarAjustesUsuario(__regs, __cache, true);
+      try {
+        const res = fiCalcular(__regs, __cache, state.config, { hoy: "2025-12-31", diaReal: null, descargaIncompleta: false });
+        return { ok: true, lotes: res.lotes.filter(x => x.activo === "RNT").map(x => [x.inicial, x.vivo, x.lote.sin_coste === true]) };
+      } catch (e) { return { ok: false, error: e.message }; }
+    })();`, sb);
+  assert("fiCalcular no falla («no se pudieron leer los lotes del motor») y ve el lote sin coste",
+    r.ok && JSON.stringify(r.lotes) === "[[1000,true,true]]", r);
+}
+
 console.log("== 2. Venta de RNT después: la encuentra, mezcla con un premio ==");
 {
   const premio = reg("p1", "2025-01-05 10:00:00", "REWARD", "GPP_REGALO", 100, { nota: "regalo" });

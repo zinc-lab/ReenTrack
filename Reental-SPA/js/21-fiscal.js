@@ -1222,8 +1222,9 @@ function motorFiscal(registros, cache, config, opciones = {}) {
           // siempre lleva el de por defecto):
           // entra en la cola sin coste, para que lo que se venda de ella
           // salga sin coste registrado y no se lleve otro lote.
-          fiscListaDe(colas, nombreActivoFifo(r.contrato)).push({ cantidad: r.cantidad, coste_unitario_eur: 0, fecha: r.fecha,
-            origen: "COMPRA_BANCO", coste_unitario_usd: null, sin_coste: true });
+          // Por crearLote, como todos (🧾 cuenta los lotes que nacen ahí).
+          const lote = crearLote(colas, nombreActivoFifo(r.contrato), r.cantidad, 0, r.fecha, "COMPRA_BANCO");
+          if (lote) lote.sin_coste = true;
           fiscMarcarRevisar(r, "compra sin precio: se pone en Revisión, en Coste de las compras externas");
           return;
         }
