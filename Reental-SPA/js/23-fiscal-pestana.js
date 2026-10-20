@@ -481,7 +481,8 @@ function fiCifrasFila(f, nombre, ctx) {
     // La comisión de una compra va en el coste de sus lotes: aparte, su parte.
     const parte = r && ctx.entradas.get(r) ? entra / ctx.entradas.get(r) : 1;
     c.comision = r && r.categoria === "COMPRA" && pyVerdad(r.gas_eur) ? r.gas_eur * parte : null;
-    c.total = costeLotes - (c.comision || 0);
+    // Un lote sin precio (RNT a la espera del suyo, en 💶): su valor no se sabe.
+    c.total = f.entra.some(x => x.lote.sin_coste) ? undefined : costeLotes - (c.comision || 0);
     c.quedan = pySuma(f.entra.map(quedaDe));
     // Rendimientos y lo que vuelve de un pool: el USD de sus lotes (sin comisión).
     c.usd = fiPorMes(f) || r.categoria === "MOVIMIENTO"
@@ -607,7 +608,7 @@ function fiHistorial(resultado, anio, cache = null) {
     const suma = fs => (fs.length ? pySuma(fs.map(f => f.cifras.gp)) : null);
     return { nombre: a.nombre, moneda: a.moneda, filas,
       quedan: pySuma(vivos.map(x => ctx.queda.get(x.lote))),
-      costeQueda: pySuma(vivos.map(x => ctx.queda.get(x.lote) * x.lote.coste_unitario_eur)),
+      costeQueda: vivos.some(x => x.lote.sin_coste) ? undefined : pySuma(vivos.map(x => ctx.queda.get(x.lote) * x.lote.coste_unitario_eur)),
       gp: suma(gps), gpAnio: suma(gps.filter(f => f.fecha.slice(0, 4) === String(anio))),
       avisos: filas.filter(f => f.aviso).length, abierto: vivos.length > 0 };
   });
@@ -707,7 +708,7 @@ function fiTablaHistorial(a, abiertos, nombres) {
         2: cantidadEs(p.n), 6: fiCeldaEur(total), 7: fiCeldaEur(comision), 8: fiCeldaEur(p.coste), 9: fiCeldaEur(gp, true) });
     }
   }
-  html += fiFilaH('class="fi-h-suma"', { 1: "Total", 3: cantidadEs(a.quedan), 8: fiEur(a.costeQueda), 9: fiCeldaEur(a.gp, true) });
+  html += fiFilaH('class="fi-h-suma"', { 1: "Total", 3: cantidadEs(a.quedan), 8: fiCeldaEur(a.costeQueda), 9: fiCeldaEur(a.gp, true) });
   return fiTabla(FI_COLUMNAS, html) + fiPieSupuesto(a.filas.map(f => ({ supuesto: !!(f.cifras && f.cifras.supuesto) })));
 }
 
@@ -733,7 +734,8 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
   const grupos = [[titulo("gp_inmuebles"), "Tokens de cada inmueble.", activos.filter(a => !a.moneda)],
     [titulo("gp_permutas"), "RNT, POL, USDT y USDC.", activos.filter(a => a.moneda)]].filter(g => g[2].length);
   const sub = grupos.map(([, , as]) => fiGpDelGrupo(as, anio));
-  const total = as => [fiEur(pySuma(as.map(a => a.costeQueda))), fiCeldaEur(pySuma(as.map(a => a.gp || 0)), true)];
+  const total = as => [fiCeldaEur(as.some(a => a.costeQueda === undefined) ? undefined : pySuma(as.map(a => a.costeQueda))),
+    fiCeldaEur(pySuma(as.map(a => a.gp || 0)), true)];
   let html = '<p class="help">' + hasta + ", en orden FIFO: al vender salen primero los más antiguos." + interruptor + "</p>" + aviso +
     '<div class="fi-historial' + (fiEstado.verTodos ? " fi-todos" : "") + '">' +
     fiLineaHistorial("fi-h-cab", ["Activo", "Quedan", "Coste de lo que queda", "Ganancia o pérdida (desde el principio)", "Ganancia o pérdida de " + anio]) +
@@ -748,7 +750,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
         return '<details class="fi-h-activo' + (a.abierto ? "" : " fi-h-cerrado") + '" data-abierto="historial:' + ccEsc(a.nombre) + '">' +
           '<summary aria-label="' + ccEsc(etiqueta) + '">' +
           fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
-            cantidadEs(a.quedan), fiEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
+            cantidadEs(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
           "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres) + "</details>";
       }).join("");
   });

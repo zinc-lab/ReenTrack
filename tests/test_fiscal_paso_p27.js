@@ -54,6 +54,50 @@ const R = JSON.parse(vm.runInContext(`state.config = { wallet: "${WALLET}", vaul
 const de = (h, nombre) => h.find(a => a.nombre === nombre);
 const r2 = x => Math.round(x * 100) / 100;
 
+/* Un caso suelto por el mismo camino (VM nueva): el historial de anio,
+   el Resumen, los subtotales, el HTML y la cartera del motor a 31/12
+   (cierres: [cantidad, coste] por cola) por nombre de activo. */
+const RNT = vm.runInContext("RNT", sb), CASA = "0x" + "a".repeat(40), NUEVO = "0x" + "b".repeat(40), OTRO = "0x" + "c".repeat(40);
+function reg(clave, fecha, categoria, subcategoria, contrato, cantidad, campos = {}) {
+  return Object.assign({ clave, fecha, hash: "0x" + clave, contrato, token: null, simbolo: null, cantidad,
+    categoria, subcategoria, inmueble: null, periodo_fiscal: null, importe_usdt: null, coste_eur: null,
+    via_compra: null, origen: OTRO, destino: WALLET, fuente: "PRUEBA", nota: "", revisar: false }, campos);
+}
+function pasada(regsCaso, anio, extra = {}) {
+  const s = sandbox(MODULOS_PDF.concat(["18-transacciones.js"]), HORA_APP);
+  s.structuredClone = structuredClone;
+  const tiposCaso = {};
+  for (const r of regsCaso) if (/^\d{4}-\d{2}-\d{2}/.test(r.fecha)) tiposCaso[r.fecha.slice(0, 10)] = 1.25;
+  s.__regs = regsCaso;
+  s.__cache = Object.assign({ tipos_bce: tiposCaso, precios_rnt: {}, precios_pol: {}, ajustes_usuario: {}, contratos_aprendidos: {} }, extra);
+  s.__anio = anio;
+  return JSON.parse(vm.runInContext(`state.config = { wallet: "${WALLET}", vault: "" }; state.cache = __cache;
+    (() => {
+      const res = fiCalcular(__regs, __cache, state.config, { hoy: __anio + "-12-31", diaReal: "2026-10-20", descargaIncompleta: false });
+      const h = fiHistorial(res, __anio, __cache);
+      const op = { cierres: {} };
+      motorFiscal(structuredClone(__regs), __cache, state.config, op);
+      const motor = {};
+      for (const [activo, [n, coste]] of Object.entries(op.cierres[__anio] || {})) {
+        const nombre = res.nombres.get(activo) || activo, antes = motor[nombre] || [0, 0];
+        motor[nombre] = [antes[0] + n, coste === null || antes[1] === null ? null : antes[1] + coste];
+      }
+      const resumen = Object.fromEntries(res.informes[__anio].resumen.filter(f => /^gp_/.test(f.clave)).map(f => [f.clave, f.importe]));
+      fiEstado.verTodos = false;
+      return JSON.stringify({ motor, resumen, grupos: [fiGpDelGrupo(h.filter(a => !a.moneda), __anio), fiGpDelGrupo(h.filter(a => a.moneda), __anio)],
+        html: fiHtmlHistorial(res, __anio, res.informes[__anio], res.informes[__anio]),
+        h: h.map(a => ({ nombre: a.nombre, moneda: a.moneda, quedan: a.quedan, coste: a.costeQueda, gp: a.gp, abierto: a.abierto,
+          filas: a.filas.map(f => ({ tipo: f.tipo, op: fiOperacion(f, a.nombre, res.nombres), tienes: f.tienes,
+            c: f.cifras && { tokens: f.cifras.tokens, total: f.cifras.total, coste: f.cifras.coste, quedan: f.cifras.quedan, sinLote: f.cifras.sinLote } })) })) });
+    })();`, s));
+}
+/* Lo que queda de cada activo del historial = la cartera del motor a 31/12 (cantidad y coste). */
+const cuadraConMotor = R => R.h.every(a => {
+  const m = R.motor[a.nombre] || [0, 0];
+  return Math.abs(a.quedan - m[0]) < 1e-9 && (a.coste === undefined ? m[1] === null : Math.abs(a.coste - m[1]) < 1e-6);
+}) && Object.keys(R.motor).every(n => R.h.some(a => a.nombre === n));
+const base = [reg("d1", "2024-01-05 10:00:00", "DEPOSITO", "COSTE_BASE", USDT, 1000, { importe_usdt: 1000 })];
+
 console.log("== fiCalcular deja el motor como estaba ==");
 assert("crearLote, consumirFifo y fiscAbrirLote vuelven a ser los de js/21, y fiscEnCurso a null", R.vuelven);
 
@@ -115,6 +159,24 @@ console.log("== La pantalla ==");
   assert("la compra externa con el coste de por defecto (Piso) lleva «**» y su nota; con el tuyo (Casa), no",
     R.html.includes("200,00 € **") && R.html.includes("** Incluye compras") && !R.html.includes("500,00 € **"));
   assert("la ganancia con su color", R.html.includes('class="fi-pos">+99,95 €'));
+}
+
+console.log("== Lo que queda, frente al motor ==");
+{
+  const R = pasada(regs, 2025, sb.__cache);
+  assert("con los datos comunes, lo que queda de cada activo es la cartera del motor a 31/12 (cantidad y coste)", cuadraConMotor(R),
+    [R.motor, R.h.map(a => [a.nombre, a.quedan, a.coste])]);
+}
+
+console.log("== A1: una compra de RNT sin precio no vale 0 ==");
+{
+  const R = pasada([...base,
+    reg("b1", "2024-02-01 10:00:00", "COMPRA", "COSTE_BASE", RNT, 100, { via_compra: "BANCARIA" }),
+    reg("s1", "2024-05-01 10:00:00", "VENTA", "GPP_SWAP", RNT, 40, { importe_usdt: 50, origen: WALLET, destino: OTRO })], 2024);
+  const rnt = de(R.h, "RNT"), compra = rnt.filas[0];
+  assert("A1: la compra sin precio, con ⚠️ en el total (no 0,00 €) y lo que queda sin coste conocido, como el motor",
+    compra.op === "Compra externa" && compra.c.total === undefined && rnt.quedan === 60 && rnt.coste === undefined && cuadraConMotor(R), [compra, rnt.coste, R.motor]);
+  assert("A1: en la línea de RNT, ⚠️ en «Coste de lo que queda»", /data-abierto="historial:RNT"[\s\S]*?<span>60<\/span><span><a href="#fiAvisos"/.test(R.html));
 }
 
 console.log("\n" + ok + " OK, " + fallos + " fallos");
