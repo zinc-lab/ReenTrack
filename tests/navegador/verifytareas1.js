@@ -261,8 +261,18 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await page.emulateMediaType("print");
   // Va en la barra de arriba, que no se imprime.
   const impreso = await page.evaluate(() => { const b = document.querySelector(".top-right .cc-que-es"); return b && b.offsetParent === null; });
+  // B21 A14: la columna de botones de «Ya decididos» tampoco (dejaba un hueco con su raya).
+  const sinHueco = await page.evaluate(() => {
+    const d = document.createElement("div");
+    d.className = "cc-vinc-acciones";
+    document.getElementById("ccListaResueltos").appendChild(d);
+    const r = getComputedStyle(d).display;
+    d.remove();
+    return r;
+  });
   await page.emulateMediaType(null);
   assert("al imprimir, sin «ⓘ Qué es cada cosa» (en 🔍 y en 📒)", impreso === true, impreso);
+  assert("B21 A14: al imprimir, sin la columna de botones de «Ya decididos»", sinHueco === "none", sinHueco);
 
   /* Al salir de 🔍 se pliega todo menos «Por decidir», que con algo se
      vuelve a abrir; un enlace a un bloque lo abre igual. */
