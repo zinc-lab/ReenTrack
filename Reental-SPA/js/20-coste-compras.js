@@ -203,7 +203,7 @@ function cbAjustesConCostes(ajustes, cambios, registros, precio, fechaISO) {
    de ese día (o el último anterior, como el motor): { eur, fecha } (la del
    tipo usado) o { error } (vacío mientras no hay nada escrito). */
 const CB_SIN_TIPO = "Sin tipo del BCE para ese día.";
-const CB_SIN_TIPO_HOY = "El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.";
+const CB_SIN_TIPO_HOY = "El BCE aún no tiene el cambio de hoy. Vuelve mañana.";
 let cbEsperaBce = null;
 function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   const t = String(texto || "").trim();
@@ -212,8 +212,8 @@ function cbEurDeUsd(texto, fecha, tiposBce, cache) {
   if (!ccEsNumeroPositivo(usd)) return { error: ccAvisoImporte(t) };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ""))) return { error: "Pon el día del pago." };
   // Un sábado o un domingo no tiene tipo propio: vale el del viernes.
-  // ponytail: los festivos del BCE no se miran (un pago de hoy en festivo
-  // dice «Vuelve mañana»); se pone el día anterior a mano.
+  // ponytail: los festivos del BCE no se miran: un pago de hoy en festivo
+  // dice «Vuelve mañana» (cierto: mañana toma el del día hábil anterior).
   const dia = new Date(fecha + "T12:00:00Z").getUTCDay();
   const habil = dia === 6 ? sumarDias(fecha, -1) : dia === 0 ? sumarDias(fecha, -2) : fecha;
   // Hoy (día hábil), o pasado lo descargado (un pago de ayer), el último

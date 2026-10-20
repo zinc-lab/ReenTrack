@@ -161,8 +161,8 @@ console.log("== 6. «En USD…» con el pago de hoy (D8) ==");
 const hoy = vm.runInContext("hoyEspana()", S);
 // Entre semana, el aviso de hoy; en sábado o domingo (A5), el de siempre (no hay tipo del viernes en la prueba).
 const finde = [0, 6].includes(new Date(hoy + "T12:00:00Z").getUTCDay());
-assert("hoy sin tipo: «El BCE aún no ha publicado el cambio de hoy. Vuelve mañana.» (en fin de semana, no)",
-  S.cbEurDeUsd("100", hoy, {}, {}).error === (finde ? "Sin tipo del BCE para ese día." : "El BCE aún no ha publicado el cambio de hoy. Vuelve mañana."),
+assert("hoy sin tipo: «El BCE aún no tiene el cambio de hoy. Vuelve mañana.» (en fin de semana, no)",
+  S.cbEurDeUsd("100", hoy, {}, {}).error === (finde ? "Sin tipo del BCE para ese día." : "El BCE aún no tiene el cambio de hoy. Vuelve mañana."),
   S.cbEurDeUsd("100", hoy, {}, {}));
 assert("hoy con el tipo ya publicado: vale", S.cbEurDeUsd("110", hoy, { [hoy]: 1.1 }, {}).eur === 100);
 // COMPRA-EXTERNA A5: un sábado o un domingo, el tipo del viernes (aunque lo descargado acabe el viernes).
