@@ -9,8 +9,8 @@
  *  B) «Es una venta…» abre «Cobrado [ ] USD», Guardar, Cancelar, «En euros
  *     (€)» y «🔗 Elegir el cobro recibido…» en una línea, y el ≈ € con su
  *     BCE debajo de la casilla; al escribir, los botones no se mueven.
- *  C) «En euros (€)»: la casilla en €, sin ≈ €, lo escrito se queda y
- *     «En dólares (USD)» vuelve.
+ *  C) «En euros (€)»: la casilla en €, sin ≈ €, lo escrito se queda (con
+ *     el cursor al final) y «En dólares (USD)» vuelve.
  *  D) guardada en €: el ajuste lleva cobrado_eur (sin importe_usdt), la
  *     tarjeta se va, «Ya decididos» dice «Venta · 410,50 €» y 📒 enseña
  *     «410,50 €».
@@ -155,6 +155,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("en €: la casilla en €, lo escrito se queda, sin ≈ € y con el foco",
     r.unidad === "€" && r.valor === "410,5" && !r.eurVisible && r.foco && r.botones[2] === "En dólares (USD)", r);
   await (await page.$(tarjeta(k1))).screenshot({ path: path.join(OUT, "cap_p25_eur.png") });
+  r = await page.$eval(tarjeta(k1) + " .cc-dec-valor", i => [i.selectionStart, i.selectionEnd, i.value.length]);
+  assert("tras cambiar de moneda, el cursor al final (seguir escribiendo no borra lo escrito)", r[0] === r[2] && r[1] === r[2], r);
   await clickCentrado(tarjeta(k1) + ' [data-accion="decidir-moneda"]');
   r = await forma();
   assert("«En dólares (USD)» vuelve, con su ≈ €", r.unidad === "USD" && r.valor === "410,5" && r.eurVisible && r.botones[2] === "En euros (€)", r);

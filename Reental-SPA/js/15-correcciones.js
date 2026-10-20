@@ -2854,11 +2854,16 @@ function ccCambiarMonedaVenta() {
   const clave = ccDecisionAbierta.clave;
   ccDecisionAbierta.enEur = !ccDecisionAbierta.enEur;
   ccRenderSeguro();
-  ccEnfocarValor(clave);
+  ccEnfocarValor(clave, true);
 }
-function ccEnfocarValor(clave) {
+/* El foco en la casilla: al abrir, con lo escrito seleccionado; al cambiar
+   de moneda (alFinal), con el cursor al final, para seguir escribiendo. */
+function ccEnfocarValor(clave, alFinal) {
   const input = document.querySelector('#ccLista .cc-dec-valor[data-clave="' + (typeof CSS !== "undefined" && CSS.escape ? CSS.escape(clave) : clave) + '"]');
-  if (input) { input.focus(); input.select(); }
+  if (!input) return;
+  input.focus();
+  if (alFinal) input.setSelectionRange(input.value.length, input.value.length);
+  else input.select();
 }
 function ccCerrarDecisionAbierta() {
   ccDecisionAbierta = null;
