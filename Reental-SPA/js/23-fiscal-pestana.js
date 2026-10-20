@@ -747,7 +747,9 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
     fiLineaHistorial("fi-h-cab", ["Activo", "Quedan", "Coste de lo que queda", "Ganancia o pérdida (desde el principio)", "Ganancia o pérdida de " + anio]) +
     fiLineaHistorial("fi-h-total", ["Total", "", ...total(activos), fiCeldaEur(pySuma(sub), true)]);
   grupos.forEach(([titulo, nota, as], i) => {
-    html += '<div class="fi-subgrupo">' + ccEsc(titulo) + '</div><p class="fi-pie">' + nota + "</p>" +
+    // Un grupo sin nada que tengas, oculto con ellos.
+    html += '<div class="fi-h-grupo' + (as.some(a => a.abierto) ? "" : " fi-h-cerrado") + '">' +
+      '<div class="fi-subgrupo">' + ccEsc(titulo) + '</div><p class="fi-pie">' + nota + "</p>" +
       fiLineaHistorial("fi-h-subtotal", ["Total", "", ...total(as), fiCeldaEur(sub[i], true)]) +
       as.map(a => {
         const etiqueta = a.nombre + ": quedan " + cantidadEs(a.quedan) + ", coste de lo que queda " + fiEur(a.costeQueda) +
@@ -758,7 +760,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
           fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
             cantidadEs(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
           "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres, anio) + "</details>";
-      }).join("");
+      }).join("") + "</div>";
   });
   return html + "</div>";
 }

@@ -213,5 +213,15 @@ console.log("== A6: el canje con decimales, ±0 ==");
   assert("A6: el canje sale «±0» aunque la resta de decimales no dé 0 justo", canje.includes(">±0<"), canje.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
 }
 
+console.log("== A7: un grupo con todo vendido ==");
+{
+  const R = pasada([...base,
+    reg("c1", "2024-02-01 10:00:00", "COMPRA", "COSTE_BASE", CASA, 5, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 500 }),
+    reg("v1", "2024-06-01 10:00:00", "VENTA", "GPP_INMUEBLE", CASA, 5, { inmueble: "Casa", importe_usdt: 700, origen: WALLET, destino: OTRO })], 2024);
+  const grupos = R.html.match(/<div class="fi-h-grupo[^"]*"><div class="fi-subgrupo">[^<]*/g) || [];
+  assert("A7: el grupo de inmuebles, todo vendido, se oculta con ellos; el de monedas, no",
+    igual(grupos.map(g => g.includes("fi-h-cerrado")), [true, false]), grupos);
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);
