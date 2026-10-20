@@ -183,13 +183,18 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("R4 -> 💶: 300,00 € y 0,0600 € por token; sin «⚠ sin coste»", f4c.celdas[4] === "300,00 €" && f4c.celdas[5] === "0,0600 €" &&
     f4c.aviso === "", f4c);
   assert("R4 -> 🚀: ninguna compra de RNT sin precio", (await page.evaluate(() => arrDatosResumen().rntSinPrecio)) === 0);
-  await page.evaluate(() => { document.getElementById("ccResueltos").open = false; });
+  // Lejos (como con muchos datos): relleno antes de «Ya decididos», cerrado.
+  await page.evaluate(() => { const r = document.getElementById("ccResueltos"); r.open = false;
+    const d = document.createElement("div"); d.id = "rellenoR4"; d.style.height = "2500px"; r.before(d); });
   await page.click('#cbCuerpo [data-cb="decidida"][data-clave="' + claves[3] + '"]');
-  await esperar(300);
+  await esperar(1000);
   const ir4 = await page.evaluate(c => ({ abierto: document.getElementById("ccResueltos").open,
+    aLaVista: (r => r.top >= 0 && r.bottom <= innerHeight)(document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + c + '"]').getBoundingClientRect()),
     foco: !!document.activeElement && document.activeElement.getAttribute("data-accion") === "deshacer-decision" &&
       document.activeElement.getAttribute("data-clave") === c }), claves[3]);
-  assert("R4 -> «↩ Deshacer…» abre «Ya decididos» con el cursor en su «↩ Deshacer»", ir4.abierto && ir4.foco, ir4);
+  await page.evaluate(() => document.getElementById("rellenoR4").remove());
+  assert("R4 -> «↩ Deshacer…» (con «Ya decididos» cerrado) lo abre y, al primer clic, deja su decisión a la vista con el cursor en «↩ Deshacer»",
+    ir4.abierto && ir4.aLaVista && ir4.foco, ir4);
 
   /* ============ R5) otra entrega, en USD ============ */
   await pulsar(4, "compra");

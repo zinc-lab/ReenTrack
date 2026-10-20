@@ -477,14 +477,18 @@ function cbIrACompras() {
    y con el cursor en su «↩ Deshacer». */
 function cbIrADecidida(clave) {
   const det = $("ccResueltos");
-  if (det) det.open = true;
   const card = document.querySelector('#ccListaResueltos .cc-decidida[data-clave="' + CSS.escape(clave) + '"]');
-  if (!card) return;
-  card.scrollIntoView({ block: "center" });
-  card.classList.add("cc-destacada");
-  setTimeout(() => card.classList.remove("cc-destacada"), 2500);
-  const boton = card.querySelector('[data-accion="deshacer-decision"]');
-  if (boton) boton.focus({ preventScroll: true });
+  if (!det || !card) return;
+  // Cerrado, se despliega en 0,6 s: se va a la tarjeta cuando ya está en su sitio.
+  const cerrado = !det.open;
+  det.open = true;
+  setTimeout(() => {
+    card.scrollIntoView({ block: "center" });
+    card.classList.add("cc-destacada");
+    setTimeout(() => card.classList.remove("cc-destacada"), 2500);
+    const boton = card.querySelector('[data-accion="deshacer-decision"]');
+    if (boton) boton.focus({ preventScroll: true });
+  }, cerrado ? 650 : 0);
 }
 /* «Calcular el precio por token»: en la moneda de la fila; «Usar» lo
    pone en su casilla de precio (y lo pagado se recalcula con el precio
