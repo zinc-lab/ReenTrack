@@ -189,5 +189,16 @@ console.log("== A4: el aviso de una fila de otro año ==");
     fila.includes("su aviso, en los de 2024") && !fila.includes('href="#fiAvisos"'), fila);
 }
 
+console.log("== A5: la hora repetida de octubre ==");
+{
+  // 02:30 de verano (00:30 UTC) va antes que 02:10 de invierno (01:10 UTC).
+  const R = pasada([...base,
+    reg("c1", "2024-10-27 02:30:00", "COMPRA", "COSTE_BASE", CASA, 5, { inmueble: "Casa", via_compra: "BANCARIA", coste_eur: 500, instante: "2024-10-27T00:30:00Z" }),
+    reg("v1", "2024-10-27 02:10:00", "VENTA", "GPP_INMUEBLE", CASA, 5, { inmueble: "Casa", importe_usdt: 700, origen: WALLET, destino: OTRO, instante: "2024-10-27T01:10:00Z" })], 2024);
+  const casa = de(R.h, "Casa");
+  assert("A5: la compra antes que la venta (por el instante, como el motor) y «Tienes» nunca baja de 0",
+    igual(casa.filas.map(f => [f.op, f.tienes]), [["Compra externa", 5], ["Venta", 0]]), casa.filas.map(f => [f.op, f.tienes]));
+}
+
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

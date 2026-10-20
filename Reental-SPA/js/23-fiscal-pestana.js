@@ -593,8 +593,10 @@ function fiHistorial(resultado, anio, cache = null) {
     if (nombre) filaDe(nombre, "rev:" + r.clave, "revisar", r.fecha, r).filas.get("rev:" + r.clave).registros.add(r);
   }
   const lista = [...activos.values()].map(a => {
-    // En orden de fecha (con la misma, el del motor).
-    const filas = [...a.filas.values()].sort((x, y) => cmpTexto(x.fecha, y.fecha));
+    // En orden de fecha, por el instante como el motor (la hora repetida de
+    // octubre); con la misma, el del motor.
+    for (const f of a.filas.values()) f.orden = fechaParaOrdenar({ fecha: f.fecha, instante: f.r && f.r.fecha === f.fecha ? f.r.instante : undefined });
+    const filas = [...a.filas.values()].sort((x, y) => cmpTexto(x.orden, y.orden));
     let tienes = 0;
     for (const f of filas) {
       f.cifras = f.tipo === "revisar" ? null : fiCifrasFila(f, a.nombre, ctx);
