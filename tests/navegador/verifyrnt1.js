@@ -204,7 +204,7 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   assert("R4 -> «↩ Deshacer…» (con «Ya decididos» cerrado) lo abre y, al primer clic, deja su decisión a la vista con el cursor en «↩ Deshacer»",
     ir4.abierto && ir4.aLaVista && ir4.foco && ir4.brillo, ir4);
 
-  /* Huecos de la auditoría de los retoques: «ⓘ Qué es cada cosa», en la barra, solo en 🔍 y 📒. */
+  /* Huecos de la auditoría de los retoques: «ⓘ Qué es cada cosa», en la barra de todas las pestañas. */
   const verQueEs = await page.evaluate(async () => {
     const r = {};
     for (const v of ["revision", "transacciones", "dashboard", "fiscal", "inicio"]) {
@@ -216,8 +216,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     await new Promise(x => setTimeout(x, 500));
     return r;
   });
-  assert("«ⓘ Qué es cada cosa» se ve en 🔍 y 📒 y no en 📊, 🧾 ni 🚀",
-    verQueEs.revision && verQueEs.transacciones && !verQueEs.dashboard && !verQueEs.fiscal && !verQueEs.inicio, verQueEs);
+  assert("«ⓘ Qué es cada cosa» se ve en todas las pestañas (🔍, 📒, 📊, 🧾 y 🚀)",
+    Object.values(verQueEs).every(Boolean), verQueEs);
   await page.evaluate(() => { document.getElementById("cbCoste").open = true; });
   await esperar(800);
 

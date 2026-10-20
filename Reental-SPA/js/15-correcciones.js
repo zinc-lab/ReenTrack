@@ -685,7 +685,7 @@ const CC_AYUDA_RECOMPENSA = "Premio del staking o farming de RNT." + CC_MAS_QUE_
 const CC_AYUDA_COMPRA = "La app no encuentra el pago: por banco, en un exchange, desde otra wallet, " +
   "o pagado antes y enviado después. Lo pagado se edita en «💶 Coste de las compras externas», justo debajo." + CC_MAS_QUE_ES;
 
-/* «ⓘ Qué es cada cosa», en la barra de arriba en 🔍 y 📒 (su hueco [data-que-es]): al
+/* «ⓘ Qué es cada cosa», en la barra de arriba de todas las pestañas (su hueco [data-que-es]): al
    pulsarlo, una ventana con una línea por tipo de movimiento, de lo que hace
    la app, para quien sabe poco de impuestos y de cripto. */
 const CC_QUE_ES_CADA_COSA = [
@@ -2998,7 +2998,6 @@ function ccInyectarEstilos() {
     /* «ⓘ Qué es cada cosa»: arriba a la derecha de la tarjeta; abre su ventana. */
     // En la barra de arriba (fija), en todas las pestañas, con el ámbar de los avisos de la lista de tareas de 🔍 (.rv-aviso) para que se vea.
     ".top-right .cc-que-es{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:13.5px;font-weight:600;color:var(--warn);background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:999px;padding:5px 12px;min-height:0;box-shadow:none;cursor:pointer}",
-    "body:has(#view-revision.active,#view-transacciones.active) .top-right .cc-que-es{display:inline-flex}",
     ".cc-que-es .cc-info{margin:0;cursor:pointer}",
     ".cc-que-es:hover,.cc-que-es:focus-visible{color:var(--accent)}",
     ".cc-que-es:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}",

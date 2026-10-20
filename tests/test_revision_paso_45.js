@@ -261,10 +261,12 @@ assert("sin «Renta»: dice «efecto fiscal»", !/Renta/.test(queEs) && /Tiene e
 assert("un botón (teclado) que abre la ventana, sin burbuja",
   /^<button type="button" class="cc-que-es">/.test(S.ccHtmlQueEs()) && !/cc-burbuja/.test(S.ccHtmlQueEs()));
 const indexHtml = fs.readFileSync(path.join(__dirname, "..", "Reental-SPA", "index.html"), "utf8");
-assert("un solo hueco, en la barra de arriba (fija), que solo se ve en 🔍 y 📒",
+const estilosQueEs = vm.runInContext("ccInyectarEstilos.toString()", S);
+assert("un solo hueco, en la barra de arriba (fija), que se ve en todas las pestañas",
   /<div class="top-right">[\s\S]*?<span data-que-es><\/span>[\s\S]*?<\/div>/.test(indexHtml) &&
   (indexHtml.match(/<span data-que-es>/g) || []).length === 1 &&
-  /body:has\(#view-revision\.active,#view-transacciones\.active\) \.top-right \.cc-que-es\{display:inline-flex\}/.test(vm.runInContext("ccInyectarEstilos.toString()", S)));
+  /\.top-right \.cc-que-es\{display:inline-flex;/.test(estilosQueEs) && !/cc-que-es\{display:none/.test(estilosQueEs) &&
+  !/body:has\([^)]*\) \.top-right \.cc-que-es/.test(estilosQueEs));
 
 console.log("== P5. Con tokens con dudas, el aviso encima de las tarjetas ==");
 const lista = dudas => S.ccHtmlLista([rarUsdt], [rarUsdt], ctx, [], { ajustes: {}, tiposBce: {}, cache: null, abierta: null, dudas });
