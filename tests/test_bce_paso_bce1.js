@@ -199,6 +199,13 @@ async function main() {
     assert("motor, el mismo día ya cubierto: sin tipo", !("2026-04-07" in t2), t2);
     const t3 = sb.reindexarForwardFill(cache.tipos_bce, "2026-04-02", "2026-04-07");
     assert("motor sin cache: como siempre (4 días)", !("2026-04-07" in t3), t3);
+
+    // El vault solo se lleva en USDT: se resta del USDT de la cola («USDT
+    // (wallet)»); el USDC (esté donde esté) sale entero y a secas.
+    const otros = sb.rentaInversionesActivas({ USDT: [1200, 1100], USDC: [30, 27] }, "2026-04-07", false, new Map(), cache)
+      .otros.filas.map(f => [f.nombre, f.cantidad]);
+    assert("con vault: «USDT (wallet)» sin el del vault y «USDC» entero, sin «(wallet)»",
+      JSON.stringify(otros) === JSON.stringify([["USDT (wallet)", 200], ["USDC", 30]]), otros);
   }
 
   console.log("\n" + oks + " OK, " + fallos + " fallos");

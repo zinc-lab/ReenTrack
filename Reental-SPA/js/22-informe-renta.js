@@ -116,7 +116,9 @@ const APARTADO_FISCAL = {
 const APARTADO_VENTA_INMUEBLE = "Ganancias y pérdidas patrimoniales por transmisión de otros elementos patrimoniales (base del ahorro).";
 
 const ACTIVOS_NO_INMUEBLE = ["RNT", "USDT", "USDC", "POL"];
-const OTROS_CRIPTOACTIVOS = [["USDT", "USDT (wallet)"], ["USDC", "USDC (wallet)"],
+// El USDT del vault va en su línea: el de la cola, sin él, es el de la wallet.
+// El USDC no se resta del vault (su saldo solo se lleva en USDT): a secas.
+const OTROS_CRIPTOACTIVOS = [["USDT", "USDT (wallet)"], ["USDC", "USDC"],
   ["RNT", "RNT"], ["POL", "POL"]];
 
 /* x a n decimales: redondea el numero guardado tal cual es, con los
