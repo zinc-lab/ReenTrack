@@ -241,7 +241,10 @@ function excelHojaTransacciones(libro, ordenados) {
     excelCelda(hoja, fila, 5, r.periodo_fiscal);
     if (fiscHay(r.cantidad)) excelCelda(hoja, fila, 6, r.cantidad, { formato: EXCEL_FMT.TOKENS });
     if (fiscHay(usd)) excelCelda(hoja, fila, 7, usd, { formato: EXCEL_FMT.USD });
-    if (fiscHay(r.tipo_bce)) excelCelda(hoja, fila, 8, r.tipo_bce, { formato: EXCEL_FMT.TIPO_CAMBIO });
+    // El tipo, solo si se usó: no con los € puestos a mano (como fiUsd de js/23).
+    if (fiscHay(r.tipo_bce) && !fiscHay(r.cobrado_eur) && !fiscHay(r.coste_eur)) {
+      excelCelda(hoja, fila, 8, r.tipo_bce, { formato: EXCEL_FMT.TIPO_CAMBIO });
+    }
     if (fiscHay(eur)) excelCelda(hoja, fila, 9, eur, { formato: EXCEL_FMT.EUR });
     if (fiscHay(r.coste_fifo_eur)) excelCelda(hoja, fila, 10, r.coste_fifo_eur, { formato: EXCEL_FMT.EUR });
     if (fiscHay(r.gp_eur)) excelCelda(hoja, fila, 11, r.gp_eur, { formato: EXCEL_FMT.EUR });
@@ -798,8 +801,9 @@ function excelHojaRevision(libro, ordenados) {
     excelCelda(hoja, fila, 1, excelFecha(r.fecha), { formato: EXCEL_FMT.FECHA });
     excelCelda(hoja, fila, 2, r.hash, { mono: true });
     excelCelda(hoja, fila, 3, excelQue(r));
-    const [usd] = excelImportes(r);
+    const [usd, eur] = excelImportes(r);
     if (fiscHay(usd)) excelCelda(hoja, fila, 4, usd, { formato: EXCEL_FMT.USD });
+    else if (fiscHay(eur)) excelCelda(hoja, fila, 4, eur, { formato: EXCEL_FMT.EUR });
     else if (fiscHay(r.cantidad)) excelCelda(hoja, fila, 4, r.cantidad, { formato: EXCEL_FMT.TOKENS });
     excelCelda(hoja, fila++, 5, excelNota(r));
   }

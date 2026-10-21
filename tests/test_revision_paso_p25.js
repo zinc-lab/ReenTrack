@@ -205,6 +205,20 @@ const valor = (n, c) => (celdas(n).find(([k]) => k === c) || [])[1];
 assert("Excel: la venta con «—» en «Valor de transmisión USD», en su fila y en el total, y 450 en EUR",
   valor(nCab + 1, colUsd) === "—" && valor(nCab + 1, colUsd + 1) === 450 && valor(nCab + 2, 1) === "Total" && valor(nCab + 2, colUsd) === "—",
   [celdas(nCab + 1), celdas(nCab + 2)]);
+// «Transacciones»: sin «Tipo BCE» (no se usó) y con lo cobrado en €; a
+// revisar, «Revisión» dice lo cobrado en €, no los tokens.
+const celdasDe = (l, nombre, n) => [...(l.hojas.find(h => h.nombre === nombre).filas.get(n) || new Map())].map(([c, x]) => [c, x.valor]);
+const filaTx = [...libro.hojas.find(h => h.nombre === "Transacciones").filas.keys()]
+  .find(n => celdasDe(libro, "Transacciones", n).some(([, v]) => v === v2.hash));
+const tx = Object.fromEntries(celdasDe(libro, "Transacciones", filaTx));
+assert("Excel «Transacciones»: la venta en €, sin «Tipo BCE» y con 450 en «Importe EUR»", !(8 in tx) && tx[9] === 450, tx);
+const aRevisar = copia2.map(r => (r.clave === sal.clave ? Object.assign({}, r, { revisar: true }) : r));
+const libroRev = sb.excelLibro(aRevisar, colas2, resumen2, cache, STATE.config, informes2, new Date("2026-10-15T10:00:00Z"), "2026-10-15");
+const hojaRev = libroRev.hojas.find(h => h.nombre === "Revisión");
+const filaRev = [...hojaRev.filas.keys()].find(n => celdasDe(libroRev, "Revisión", n).some(([, v]) => v === v2.hash));
+const rev = Object.fromEntries(celdasDe(libroRev, "Revisión", filaRev));
+assert("Excel «Revisión»: la venta en € a revisar, con 450 € en «Importe estimado» (no los tokens)",
+  rev[4] === 450 && hojaRev.filas.get(filaRev).get(4).estilo.formato === "#,##0.00 €", rev);
 const pdf = sb.pdfHtml(informes2[2024], new Date("2026-10-15T10:00:00Z"));
 const trozo = pdf.slice(pdf.indexOf("pdf-transmisiones")).replace(/<[^>]+>/g, "|").replace(/\|+/g, "|");
 assert("PDF: la venta con «—» en USD y 450,00 en EUR", /\|—\|450,00\|/.test(trozo), trozo.slice(0, 400));
