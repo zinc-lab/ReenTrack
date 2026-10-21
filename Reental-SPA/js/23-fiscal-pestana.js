@@ -673,8 +673,11 @@ function fiGpDelGrupo(activos, anio) {
 
 /* Lo que queda de cada inmueble frente a las inversiones activas del
    último informe: si no cuadra (una fecha mal escrita o sin fecha deja
-   lotes fuera del informe), se dice. Con todos los lotes del motor. */
-function fiLotesCuadran(lotes, nombres, informe) {
+   lotes fuera del informe), se dice. Con todos los lotes del motor. Y
+   con sus eventos: uno con la fecha mal escrita o sin fecha (un gas de
+   POL, p. ej.) lo gasta el motor y el historial no lo enseña. */
+function fiLotesCuadran(lotes, nombres, informe, eventos = []) {
+  if (eventos.some(e => !fiscFechaValida(e.entra ? e.lote.fecha : e.registro && e.registro.fecha))) return false;
   const enInforme = new Map(), quedan = new Map();
   for (const f of ((informe.inversiones_activas || {}).inmuebles || {}).filas || []) {
     enInforme.set(f.nombre, (enInforme.get(f.nombre) || 0) + f.cantidad);
@@ -816,7 +819,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
   const interruptor = cerrados ? '<label class="rv-interruptor"><input type="checkbox" role="switch" id="fiVerTodos" data-foco="verTodos"' +
     (fiEstado.verTodos ? " checked" : "") + '><span class="rv-interruptor-pista" aria-hidden="true"></span><span>Ver también los que ya no tienes (' +
     cerrados + ")</span></label>" : "";
-  const aviso = ultimo && !fiLotesCuadran(resultado.lotes, resultado.nombres, ultimo)
+  const aviso = ultimo && !fiLotesCuadran(resultado.lotes, resultado.nombres, ultimo, resultado.eventos)
     ? '<p class="fi-nota-aviso">No cuadran con la cartera del informe de ' + ultimo.ejercicio + ": revisa las fechas de los avisos.</p>" : "";
   const { titulo, grupos } = fiGruposHistorial(activos, informe);
   const sub = grupos.map(([, as]) => fiGpDelGrupo(as, anio));

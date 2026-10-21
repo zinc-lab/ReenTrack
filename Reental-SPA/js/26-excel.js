@@ -346,7 +346,7 @@ function excelHojaHistorial(libro, calculo, cache) {
   }
   const informe = calculo.informes[anio];
   excelCelda(hoja, fila++, 1, fiHastaHistorial(informe, anio));
-  if (!fiLotesCuadran(calculo.lotes, calculo.nombres, informe)) {
+  if (!fiLotesCuadran(calculo.lotes, calculo.nombres, informe, calculo.eventos)) {
     excelCelda(hoja, fila++, 1, "No cuadran con la cartera del informe de " + anio + ": revisa las fechas de los avisos de «Fiscal " + anio + "».",
       { color: EXCEL_COLOR.ROJO });
   }

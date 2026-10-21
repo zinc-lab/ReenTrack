@@ -279,6 +279,23 @@ if (require.main === module) {
   assert("los € ya redondeados al céntimo, los empates al par (200,125 → 200,12)",
     euros.some(c => c[1] === 200.12) && euros.every(c => Math.abs(c[1] * 100 - Math.round(c[1] * 100)) < 1e-6),
     euros.filter(c => Math.abs(c[1] * 100 - Math.round(c[1] * 100)) >= 1e-6).slice(0, 3));
+  // A3: un gas de POL con la fecha mal escrita (o sin fecha) lo gasta el
+  // motor y el historial no lo enseña: la pantalla y el Excel lo dicen.
+  for (const fecha of ["2025-02-30 10:00:00", null]) {
+    sb.__fecha = fecha;
+    const g = vm.runInContext(`(() => {
+        const regs = structuredClone(__regs);
+        regs.push(Object.assign({}, regs[0], { clave: "gm", hash: "0xgm", categoria: "COMISION", subcategoria: "NEUTRO", contrato: "pol",
+          cantidad: 4, importe_usdt: null, fecha: __fecha }));
+        const res = fiCalcular(regs, __cache, state.config, { hoy: "2025-12-31", diaReal: "2026-10-20", descargaIncompleta: false });
+        const libro = excelLibro(res.registros, res.colas, res.resumen, __cache, state.config, res.informes, new Date(), res.hasta, null, res);
+        const h = libro.hojas.find(x => x.nombre === "Historial");
+        return { pantalla: fiHtmlHistorial(res, 2025, res.informes[2025], res.informes[2025]).includes("No cuadran con la cartera"),
+          excel: [...h.filas.values()].some(m => [...m.values()].some(c => String(c.valor).startsWith("No cuadran con la cartera del informe de 2025"))) };
+      })()`, sb);
+    assert("un gas de POL " + (fecha ? "con la fecha mal escrita" : "sin fecha") + ": «No cuadran» en 🧾 y en el Excel", g.pantalla && g.excel, g);
+  }
+  assert("sin fechas malas, no sale «No cuadran»", !R.html.includes("No cuadran") && !textos.some(t => t.startsWith("No cuadran")));
   const excel = abrirConExcel([ruta]);
   if (excel === null) console.log("  (sin Excel en este ordenador: no se abre con él)");
   else assert("Excel lo abre sin repararlo", excel.length === 1 && excel[0] === "ok", excel);
