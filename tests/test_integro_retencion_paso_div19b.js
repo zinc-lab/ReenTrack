@@ -164,9 +164,11 @@ assert("tarjeta: leyenda Reclamado 150,00 · Reinvertido 10,00 · Pendiente 7,00
   tarjeta.includes(">150,00 USD<") && tarjeta.includes(">10,00 USD<") && tarjeta.includes(">7,00 USD<") &&
   tarjeta.includes(">Pendiente<"));
 assert("tarjeta: el neto reclamado solo como dato que no se declara", tarjeta.includes("131,00 USD netos."));
+// Lo de cada barra, en su bocadillo (las barras no llevan <title>).
+const bocadillo = Object.fromEntries(S.dashColumnasRendimientos(r, "año").map(c => [c.periodo, S.dashTextoBocadillo(c)]));
 assert("barras por ejercicio: reclamado íntegro, reinvertido y pendiente",
-  tarjeta.includes("2026 · Reclamado: 150,00 USD") && tarjeta.includes("2026 · Pendiente: 7,00 USD") &&
-  tarjeta.includes("2025 · Reinvertido: 10,00 USD"));
+  /Reclamado 150,00 USD/.test(bocadillo["2026"]) && /Pendiente 7,00 USD/.test(bocadillo["2026"]) &&
+  /Reinvertido 10,00 USD/.test(bocadillo["2025"]), bocadillo);
 const tarjetaSolo = S.dashTarjetaRendimientos(soloReinv);
 assert("sin retención ni pendientes: retención 0,00 USD a la vista, sin «Pendiente» ni frase de neto",
   /Retención de Reental<\/span><span class="vv">0,00 USD<\/span>/.test(tarjetaSolo) &&

@@ -80,7 +80,8 @@ const svg = S.dashSvgApiladas(cm);
 assert("una columna por mes, con su zona para el bocadillo", (svg.match(/class="dash-col"/g) || []).length === 4 && (svg.match(/dash-col-zona/g) || []).length === 4);
 assert("dic-2025 (0): una línea gris de 1 px, sin partes", /data-i="1"><rect class="dash-col-zona"[^>]*\/><rect class="dash-cero"[^>]*height="1"\/><\/g>/.test(svg));
 assert("el eje nombra los meses (son pocos)", /nov 25<\/text>/.test(svg) && /feb 26<\/text>/.test(svg));
-assert("cada parte con su <title>", svg.includes("ene 2026 · Reclamado: 10,00 USD") && svg.includes("feb 2026 · Pendiente: 5,00 USD"));
+// Sin la etiqueta del navegador (<title>): repetiría el bocadillo o lo taparía.
+assert("las partes, sin <title> (lo dice el bocadillo)", !svg.includes("<title>") && (svg.match(/class="dash-bar-[abc]"/g) || []).length > 0, svg.slice(0, 300));
 const b = S.dashHtmlBocadillo(ene);
 assert("bocadillo: mes, reclamado con «de ello, retención», reinvertido, repartido y 2 repartos",
   b.includes("<b>ene 2026</b>") && b.includes("10,00 USD") && b.includes("de ello, retención") && b.includes("1,90 USD") &&

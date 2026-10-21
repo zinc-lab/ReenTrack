@@ -762,8 +762,9 @@ function dashEjeRedondo(maximo) {
 
 /* Barras apiladas, una por mes o por año; el alto de la pila es
    el íntegro repartido. Cada columna lleva una zona transparente de todo el
-   alto (para el bocadillo, js abajo) y el <title> de cada parte (sin JS o
-   al imprimir). Un 0 se dibuja como línea de 1 px en la base. Por mes, el
+   alto (para el bocadillo, js abajo); sin <title> en las partes: la
+   etiqueta del navegador repetiría el bocadillo o lo taparía. Un 0 se
+   dibuja como línea de 1 px en la base. Por mes, el
    eje solo nombra enero (o el primero y el último, si son pocos). */
 function dashSvgApiladas(columnas) {
   const W = 760, H = 240, L = 52, R = 10, T = 14, B = 30;
@@ -781,14 +782,13 @@ function dashSvgApiladas(columnas) {
     const cx = L + hueco * i + hueco / 2;
     const x = (cx - ancho / 2).toFixed(1);
     let base = y0, partes = "";
-    for (const [nombre, campo, clase] of DASH_PARTES) {
+    for (const [, campo, clase] of DASH_PARTES) {
       const v = c[campo];
       if (!(v > 0)) continue;
       const alto = y0 - Y(v);
       base -= alto;
       partes += '<rect class="' + clase + '" x="' + x + '" y="' + base.toFixed(1) + '" width="' + ancho.toFixed(1) +
-        '" height="' + alto.toFixed(1) + '"><title>' + dashEsc(dashNombrePeriodo(c.periodo)) + " · " + nombre + ": " +
-        dashEsc(dashNum(v, 2)) + " USD</title></rect>";
+        '" height="' + alto.toFixed(1) + '"/>';
     }
     if (!partes) partes = '<rect class="dash-cero" x="' + x + '" y="' + (y0 - 0.5).toFixed(1) + '" width="' + ancho.toFixed(1) + '" height="1"/>';
     barras += '<g class="dash-col" data-i="' + i + '"><rect class="dash-col-zona" x="' + (L + hueco * i).toFixed(1) + '" y="' + T +
