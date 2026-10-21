@@ -2,6 +2,11 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Orden (21/10/2026)
+
+- **Documentos:** la especificación de los datos dice «compra externa» donde
+  aún ponía «compra por banco».
+
 ## Historial en el Excel (21/10/2026)
 
 - **Excel:** la hoja «Cartera» pasa a ser **«Historial»**, con la misma

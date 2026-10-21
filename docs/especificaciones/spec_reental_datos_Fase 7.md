@@ -253,8 +253,8 @@ disponible), `unidad` (`"EUR"` o `"POL"`), `nota` (o `null`) y `total`
 **`inversiones_activas`:** `fecha_corte` (31/12, o `datos_hasta` si el año
 no ha terminado), `anio_terminado`, `nota` (en un año posterior a hoy, lo
 dice), `inmuebles` (`{filas, subtotal_eur}`; fila: `activo` (contrato),
-`nombre`, `cantidad`, `coste_usd` (lo que costó en dólares; `null` si se
-compró por banco), `coste_usd_parcial` (bool: solo una parte se pagó en
+`nombre`, `cantidad`, `coste_usd` (lo que costó en dólares; `null` en una
+compra externa con el coste en €), `coste_usd_parcial` (bool: solo una parte se pagó en
 dólares) y `coste_eur` (el total, al tipo de cambio del día de cada
 compra)), `vault` (`configurado`, `saldo_usd` (USDT a la fecha de corte),
 `saldo_eur`, `fecha_tipo_bce` (día del tipo BCE usado: el de corte o el
@@ -291,7 +291,7 @@ notas al pie):
   Utility token / Criptomoneda), `fecha_adquisicion`, `adquirido_por_canje`
   (bool: token llegado por un canje de contrato; la fecha es la de la
   compra original), `fecha_transmision`, `cantidad`,
-  `valor_adquisicion_usd` (`null` si no se sabe: compra por banco o coste
+  `valor_adquisicion_usd` (`null` si no se sabe: compra externa o coste
   puesto a mano en euros), `valor_adquisicion_eur`, `valor_transmision_usd`,
   `valor_transmision_eur` (repartido por cantidad) y `gp_eur` (solo en
   euros). `total`: `operaciones` y los mismos importes. Los canjes de
