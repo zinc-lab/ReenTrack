@@ -30,11 +30,10 @@ const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const sb = sandbox(MODULOS_PDF.concat(["18-transacciones.js"]), HORA_APP);
 sb.structuredClone = structuredClone;
 const USDT = vm.runInContext("USDT", sb), BURN = vm.runInContext("BURN", sb);
-const { WALLET, registrosP27 } = require("./navegador/p27_comun.js");
-const regs = registrosP27(USDT, BURN), tipos = {};
-for (const r of regs) tipos[r.fecha.slice(0, 10)] = 1.25;
+const { WALLET, registrosP27, cacheP27 } = require("./navegador/p27_comun.js");
+const regs = registrosP27(USDT, BURN);
 sb.__regs = regs;
-sb.__cache = { tipos_bce: tipos, precios_rnt: {}, precios_pol: {}, ajustes_usuario: { c2: { coste_eur: 500 } }, contratos_aprendidos: {} };
+sb.__cache = cacheP27(regs);
 const R = JSON.parse(vm.runInContext(`state.config = { wallet: "${WALLET}", vault: "" }; state.cache = __cache;
   (() => {
     const antes = [crearLote, consumirFifo, fiscAbrirLote];

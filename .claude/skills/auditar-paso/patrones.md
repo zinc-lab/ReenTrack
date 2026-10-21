@@ -230,6 +230,10 @@ mitad de la acción? ¿Y si se pulsa dos veces? ¿Y en el papel?
 - La app decide «qué falta» con una regla propia más floja que la del
   motor fiscal: un coste o un precio escrito como texto vale en la pantalla
   y no en el motor, y la pantalla dice que no falta nada.
+- Una vista nueva que sustituye a otra y saca sus datos de otro sitio
+  hereda los huecos de su fuente y pierde lo que la vieja hacía bien: una
+  hoja que leía la cartera del motor pasa a leer los movimientos con fecha
+  y se salta, sin aviso, lo que el motor gastó con una fecha mal escrita.
 - La receta de un comentario («cómo llamarlo») distinta de la llamada de
   verdad: la del Excel no pasaba la descarga fallida que sí pasa 🧾 Fiscal,
   y quien la copiara daría un año por cerrado. O se salta la guarda de la

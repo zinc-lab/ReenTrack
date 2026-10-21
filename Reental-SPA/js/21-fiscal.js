@@ -770,7 +770,8 @@ function motorFiscal(registros, cache, config, opciones = {}) {
     const movs = stables.has(r.hash) ? stables.get(r.hash)[lado] : [];
     const partes = repartirEnColas(movs, importe, STABLECOINS.has(r.contrato) ? r.contrato : USDT);
     r.colas_stable = partes.map(([cola]) => cola);
-    // Parte de cada cola (para repartir la G/P en la hoja Cartera).
+    // Parte de cada cola (hoy no la lee nadie, como coste_por_cola; se
+    // deja para no cambiar las cifras del motor).
     r.partes_stable = {};
     for (const [cola, n] of partes) r.partes_stable[cola] = pyVerdad(importe) ? n / importe : 0;
     return partes;

@@ -1,9 +1,11 @@
 /* =====================================================================
    REENTAL SPA · js/26-excel.js
    Las hojas del Excel de la app: Resumen, Transacciones, Ingresos,
-   Cartera, una «Fiscal AAAA» por año, Tipos de cambio BCE, la del cuadre
-   con la blockchain si se leyeron los saldos al actualizar (js/28) y, si
-   hay algo por revisar, Revisión.
+   Historial (la tabla de cada activo de 🧾; solo con el último
+   argumento, calculo: lo que da fiCalcular de js/23), una «Fiscal AAAA»
+   por año, Tipos de cambio BCE, la del cuadre con la blockchain si se
+   leyeron los saldos al actualizar (js/28) y, si hay algo por revisar,
+   Revisión.
    Prueba: tests/paridad_excel_paso_62 (las cifras de referencia, celda a
    celda, con los casos de los tests) y paridad_excel_real_paso_62 (con
    los datos de privado/datos_reales/).
@@ -12,25 +14,20 @@
    (js/21) y el informe para la Renta (js/22); este módulo solo las pone
    en su celda (el libro lo escribe js/25). Los textos son de la app.
 
-   Cómo llamarlo, con lo que deja UNA pasada de motorFiscal sobre una
-   copia nueva de los registros, y los informes como los pide la pestaña
-   🧾 Fiscal (fiCalcular de js/23: hasta qué día llegan los datos y si la
-   descarga falló), para que el Excel diga lo mismo que ella:
+   Cómo llamarlo: con el cálculo de 🧾 Fiscal (fiCalcular de js/23: UNA
+   pasada de motorFiscal sobre una copia nueva de los registros y los
+   informes, con hasta qué día llegan los datos y si la descarga falló),
+   para que el Excel diga lo mismo que ella; el último argumento es ese
+   cálculo entero (sin él no sale la hoja Historial):
 
-     const hasta = fiHastaCuando(state.cache);
-     const regs = structuredClone(state.registros);
-     const op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
-     const colas = motorFiscal(regs, state.cache, state.config, op);
-     const resumen = resumenFiscalAnual(regs);
-     const informes = informesRentaAnuales(regs, resumen, state.config,
-       { ...op, cache: state.cache, hoy: hasta.hoy, dia_real: hasta.diaReal, descarga_incompleta: hasta.descargaIncompleta });
-     const blob = xlsxBlob(excelLibro(regs, colas, resumen, state.cache, state.config, informes, new Date(), hasta));
+     const r = fiCalcular(state.registros, state.cache, state.config, fiHastaCuando(state.cache));
+     const blob = xlsxBlob(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes,
+       new Date(), r.hasta, r.cuadre, r));
 
-   En la app, esa pasada es la de 🧾 Fiscal: fiResultado() de js/23 da
-   registros, colas, resumen e informes y, si se leyeron los saldos al
-   actualizar, el cuadre con la blockchain con sus avisos ya en los
-   informes (r.cuadre, el último argumento: el botón de 📤 Exportar,
-   exExcel de js/24).
+   En la app es fiResultado() de js/23 (el mismo cálculo, guardado), con
+   el cuadre con la blockchain si se leyeron los saldos al actualizar
+   (r.cuadre, con sus avisos ya en los informes): el botón de 📤
+   Exportar, exExcel de js/24.
 
    Sin informes los monta aquí, sin la cartera a 31/12 (el
    apartado II sale «No disponible») ni el día de los datos: eso solo
@@ -317,153 +314,119 @@ function excelHojaIngresos(libro, ordenados, cache) {
   excelCelda(hoja, fila + 1, 1, EXCEL_COMO_DECLARAR);
 }
 
-/* ---------- Cartera: cada activo con sus operaciones, a coste de compra ---------- */
+/* ---------- Historial: cada activo con sus operaciones, como en 🧾 ---------- */
 
-/* Categorías que se listan en la sección de un activo: las que mueven lo
-   que tienes o su FIFO (los rendimientos van en la hoja Ingresos; el gas,
-   en una línea de POL). */
-function excelCategoriasDeActivo(activo) {
-  if (activo === "RNT") return ["REWARD", "COMPRA", "VENTA"];
-  if (activo === "USDT" || activo === "USDC") return ["DEPOSITO", "RETIRADA", "COMPRA", "VENTA", "REWARD"];
-  if (activo === "POL") return ["DEPOSITO", "RETIRADA", "COMPRA", "VENTA"];
-  return ["COMPRA", "VENTA"];
+/* La tabla «Historial de cada activo» de 🧾 Fiscal, de todos los años
+   (hasta el último dato) y con los lotes de cada venta a la vista: las
+   filas y sus cifras salen de js/23 (fiHistorial y fiFilasHistorial), las
+   mismas que la pantalla. calculo: lo que da fiCalcular (js/23). Lo que
+   falta (⚠️ en la pantalla) sale «A revisar». */
+const EXCEL_HISTORIAL_COLUMNAS = ["Fecha", "Operación", "Tokens", "Precio USD", "Precio EUR", "Importe EUR", "Comisión EUR",
+  "Coste EUR", "Ganancia o pérdida EUR", "Quedan", "Nota"];
+const EXCEL_A_REVISAR = "A revisar";
+
+/* Una cifra de la tabla: «A revisar» si falta (undefined), nada si no hay.
+   Los € ya redondeados al céntimo, como la pantalla (los empates, al par). */
+function excelCifraHistorial(hoja, fila, columna, v, formato, estilo = {}) {
+  if (v === undefined) excelCelda(hoja, fila, columna, EXCEL_A_REVISAR, { ...estilo, horizontal: "right" });
+  else if (typeof v === "number") excelCelda(hoja, fila, columna, formato === EXCEL_FMT.PRECIO ? v : rentaEur2(v), { ...estilo, formato });
 }
 
-/* Sección de un activo. Devuelve [fila siguiente, G/P realizada, coste de
-   compra de lo que queda]. ordenados: los registros por fecha; registros,
-   en su orden (el del gas). */
-function excelSeccionCartera(hoja, fila, activo, etiqueta, registros, ordenados, colas) {
-  const contrato = { RNT, USDT, USDC, POL: "pol" }[activo] || activo;
-  const esStable = activo === "USDT" || activo === "USDC";
-  const categorias = excelCategoriasDeActivo(activo);
-  // Una compra pagada con stablecoin es también una permuta de esa
-  // stablecoin, y un cambio de POL se apunta como USDT aunque fuera USDC:
-  // manda la cola que movió de verdad.
-  const deLaSeccion = r => {
-    if (esStable && pyVerdad(r.colas_stable) &&
-        (r.categoria === "COMPRA" || (r.categoria === "VENTA" && r.subcategoria === "GPP_SWAP"))) {
-      return r.colas_stable.includes(activo);
-    }
-    return r.contrato === contrato && categorias.includes(r.categoria);
-  };
-  const operaciones = ordenados.filter(deLaSeccion);
-  // Un pago o un cambio que movió USDT y USDC a la vez lleva aquí solo la
-  // parte de esta cola.
-  const gpDeLaSeccion = r => {
-    const partes = esStable ? r.partes_stable : null;
-    const costes = pyO(r.coste_por_cola, {});
-    if (pyVerdad(partes) && fiscTiene(partes, activo) && Object.keys(partes).length > 1 && fiscTiene(costes, activo)) {
-      const valor = r.gp_eur + pySuma(Object.values(costes));
-      return valor * partes[activo] - costes[activo];
-    }
-    return r.gp_eur;
-  };
-  // Las compras de un activo que no es stablecoin no tienen ganancia o
-  // pérdida aquí (es de lo que se pagó).
-  const conGp = r => fiscHay(r.gp_eur) && (esStable || r.categoria !== "COMPRA");
-  // Ni un regalo ni el resultado de un pool: van aparte en los totales (el
-  // del pool contaría dos veces).
-  const gpRealizada = pySuma(operaciones.filter(r => conGp(r) && r.codigo_concepto !== "GP_BASE_GRAL" &&
-    !rentaEsResultadoPool(r)).map(gpDeLaSeccion));
-  const lotes = colas.get(activo) || [];
-  const cierre = pySuma(lotes.map(l => l.cantidad));
-  const base = pySuma(lotes.map(l => l.cantidad * l.coste_unitario_eur));
-  const laTienes = cierre > 1e-9;
-  const sinPrecio = lotes.some(l => l.sin_coste && l.cantidad > 1e-9);
-  const seccion = { negrita: true, relleno: EXCEL_COLOR.SECCION };
-
-  excelCelda(hoja, fila, 1, etiqueta, seccion);
-  excelCelda(hoja, fila++, 2, laTienes ? "La tienes" : "Ya no la tienes", seccion);
-  excelCelda(hoja, fila, 1, "Al empezar");
-  excelCelda(hoja, fila++, 2, 0, { formato: EXCEL_FMT.TOKENS });
-  excelCelda(hoja, fila, 1, "Ahora");
-  excelCelda(hoja, fila++, 2, cierre, { formato: EXCEL_FMT.TOKENS });
-  excelCelda(hoja, fila, 1, "Coste medio de compra");
-  excelCelda(hoja, fila++, 2, sinPrecio ? EXCEL_FALTA_PRECIO : laTienes ? base / cierre : "-", laTienes && !sinPrecio ? { formato: EXCEL_FMT.EUR } : {});
-  excelCelda(hoja, fila, 1, "Coste de compra");
-  excelCelda(hoja, fila++, 2, sinPrecio ? EXCEL_FALTA_PRECIO : base, sinPrecio ? {} : { formato: EXCEL_FMT.EUR });
-  excelCelda(hoja, fila, 1, "Ganancia o pérdida de lo vendido");
-  excelCelda(hoja, fila++, 2, gpRealizada, { formato: EXCEL_FMT.EUR });
-  excelCelda(hoja, fila, 1, "Ganancia o pérdida sin vender");
-  excelCelda(hoja, fila++, 2, "No disponible (no cotiza)");
-  if (activo === "POL") {
-    const gas = registros.filter(r => r.categoria === "COMISION");
-    excelCelda(hoja, fila, 1, "Comisiones de red (gas)");
-    excelCelda(hoja, fila, 2, pySuma(gas.map(r => pyO(r.cantidad, 0))), { formato: EXCEL_FMT.TOKENS });
-    const gasEur = gas.filter(r => fiscHay(r.importe_eur)).map(r => r.importe_eur);
-    if (gasEur.length) excelCelda(hoja, fila, 3, pySuma(gasEur), { formato: EXCEL_FMT.EUR });
-    fila++;
-  }
-  excelCabecera(hoja, fila++, ["Fecha", "Operación", "Cantidad", "Importe EUR", "Ganancia o pérdida EUR", "Nota"]);
-  for (const r of operaciones) {
-    excelCelda(hoja, fila, 1, excelFecha(r.fecha), { formato: EXCEL_FMT.FECHA });
-    excelCelda(hoja, fila, 2, categoriaAMostrar(r.categoria), { relleno: excelColorCategoria(r.categoria) });
-    if (fiscHay(r.cantidad)) excelCelda(hoja, fila, 3, r.cantidad, { formato: EXCEL_FMT.TOKENS });
-    if (fiscHay(r.importe_eur)) excelCelda(hoja, fila, 4, r.importe_eur, { formato: EXCEL_FMT.EUR });
-    if (conGp(r)) {
-      excelCelda(hoja, fila, 5, gpDeLaSeccion(r), { formato: EXCEL_FMT.EUR });
-    }
-    excelCelda(hoja, fila++, 6, pyVerdad(r.nota) ? excelTexto(r.nota) : r.nota);
-  }
-  return [fila + 1, gpRealizada, base];
-}
-
-function excelHojaCartera(libro, registros, ordenados, colas, cache) {
-  const hoja = xlsxHoja(libro, "Cartera");
-  hoja.anchos = [34, 18, 15, 14, 12, 60];
-  xlsxCongelar(hoja, 2, 1);
+function excelHojaHistorial(libro, calculo, cache) {
+  const hoja = xlsxHoja(libro, "Historial");
+  hoja.anchos = [34, 40, 15, 13, 13, 15, 14, 15, 15, 15, 50];
+  const anios = fiAnios(calculo.informes);
+  const anio = anios.length ? anios[anios.length - 1] : null;
+  const activos = anio === null ? [] : fiHistorial(calculo, anio, cache);
   let fila = 1;
-  excelCelda(hoja, fila, 1, "Cartera: lo que tienes y cada operación (a coste de compra)", { negrita: true });
-  fila += 2;
+  excelCelda(hoja, fila++, 1, "Historial de cada activo", { negrita: true });
+  if (!activos.length) {
+    excelCelda(hoja, fila, 1, "Sin operaciones.");
+    return;
+  }
+  const informe = calculo.informes[anio];
+  excelCelda(hoja, fila++, 1, fiHastaHistorial(informe, anio));
+  if (!fiLotesCuadran(calculo.lotes, calculo.nombres, informe)) {
+    excelCelda(hoja, fila++, 1, "No cuadran con la cartera del informe de " + anio + ": revisa las fechas de los avisos de «Fiscal " + anio + "».",
+      { color: EXCEL_COLOR.ROJO });
+  }
+  fila++;
 
-  const catalogo = pyO(cache, {}).catalogo_propiedades;
-  const confirmadas = new Set(pdEsObjeto(catalogo)
-    ? Object.keys(inmueblesConfirmados(cache)).map(normalizarDireccion) : []);
-  // Los inmuebles y cualquier otro activo con cola FIFO que no sea de los
-  // de abajo (si uno de ellos entrara aquí, contaría dos veces).
-  const contratos = new Set(registros.filter(r => confirmadas.has(r.contrato)).map(r => r.contrato));
-  for (const a of colas.keys()) if (!ACTIVOS_NO_INMUEBLE.includes(a)) contratos.add(a);
-  const primera = new Map();
-  for (const r of registros) {
-    if (contratos.has(r.contrato) && pyVerdad(r.fecha)) {
-      const antes = primera.get(r.contrato);
-      primera.set(r.contrato, antes === undefined ? r.fecha : (r.fecha < antes ? r.fecha : antes));
+  // Arriba, una línea por activo (como las de 🧾), en sus grupos.
+  const { titulo, grupos } = fiGruposHistorial(activos, informe);
+  const linea = (etiqueta, quedan, costeQueda, ganancia, estilo = {}, nota = null) => {
+    excelCelda(hoja, fila, 1, etiqueta, estilo);
+    if (quedan !== null) excelCelda(hoja, fila, 2, quedan, { ...estilo, formato: EXCEL_FMT.TOKENS });
+    excelCifraHistorial(hoja, fila, 3, costeQueda, EXCEL_FMT.NUM, estilo);
+    excelCifraHistorial(hoja, fila, 4, ganancia, EXCEL_FMT.NUM_SIGNO, estilo);
+    if (nota) excelCelda(hoja, fila, 5, nota);
+    fila++;
+  };
+  excelCabecera(hoja, fila++, ["Activo", "Quedan", "Coste de lo que queda EUR", "Ganancia o pérdida EUR (desde el principio)"]);
+  linea("Total", null, fiCosteQueda(activos), fiGpDesdeElPrincipio(activos), { negrita: true });
+  for (const [nombre, as] of grupos) {
+    linea(nombre, null, fiCosteQueda(as), fiGpDesdeElPrincipio(as), { negrita: true, relleno: EXCEL_COLOR.GRUPO });
+    for (const a of as) {
+      linea(a.nombre, a.quedan, a.costeQueda, a.gp, {},
+        [a.avisos ? EXCEL_A_REVISAR + " (" + a.avisos + ")" : "", a.abierto ? "" : "Ya no lo tienes"].filter(Boolean).join(". "));
     }
   }
-  const orden = [...contratos].map(c => [c, primera.get(c) ?? "9999", excelEtiquetaActivo(c, cache)])
-    .sort((a, b) => cmpTexto(a[1], b[1]) || cmpTexto(a[2], b[2]) || cmpTexto(String(a[0]), String(b[0])));
+  // Lo que no es de un activo, como en el Resumen: el resultado de los
+  // pools de liquidez y los regalos (base general).
+  const pools = calculo.registros.filter(r => rentaEsResultadoPool(r) && fiscHay(r.gp_eur));
+  if (pools.length) linea(titulo("gp_otros_elementos") || "Pools de liquidez", null, null, pySuma(pools.map(r => r.gp_eur)));
+  const regalos = calculo.registros.filter(r => r.codigo_concepto === "GP_BASE_GRAL" && fiscHay(r.gp_eur));
+  if (regalos.length) linea("Ganancias sin transmisión (regalos, base general)", null, null, pySuma(regalos.map(r => r.gp_eur)));
+  fila++;
 
-  let totalGp = 0, totalBase = 0;
-  const seccion = (activo, etiqueta) => {
-    let gp, base;
-    [fila, gp, base] = excelSeccionCartera(hoja, fila, activo, etiqueta, registros, ordenados, colas);
-    totalGp += gp;
-    totalBase += base;
-  };
-  excelCelda(hoja, fila++, 1, "Inmuebles tokenizados", { negrita: true });
-  for (const [contrato, , etiqueta] of orden) seccion(contrato, etiqueta);
-  excelCelda(hoja, fila++, 1, "Criptoactivos", { negrita: true });
-  for (const activo of ACTIVOS_NO_INMUEBLE) seccion(activo, activo);
-
-  excelCelda(hoja, fila++, 1, "Totales", { negrita: true, relleno: EXCEL_COLOR.SECCION });
-  excelCelda(hoja, fila, 1, "Coste de compra de lo que tienes");
-  excelCelda(hoja, fila++, 2, totalBase, { formato: EXCEL_FMT.EUR });
-  // Igual que la suma de la ganancia o pérdida neta de todos los años del
-  // Resumen: con el resultado de los pools (no tienen sección) y sin los
-  // regalos.
-  const pools = pySuma(registros.filter(r => rentaEsResultadoPool(r) && fiscHay(r.gp_eur)).map(r => r.gp_eur));
-  const regalos = pySuma(registros.filter(r => r.codigo_concepto === "GP_BASE_GRAL" && fiscHay(r.gp_eur))
-    .map(r => r.gp_eur));
-  if (pyVerdad(pools)) {
-    excelCelda(hoja, fila, 1, "Resultado de los pools de liquidez");
-    excelCelda(hoja, fila++, 2, pools, { formato: EXCEL_FMT.EUR });
-  }
-  excelCelda(hoja, fila, 1, "Ganancia o pérdida de lo vendido (todos los años)");
-  excelCelda(hoja, fila, 2, totalGp + pools, { formato: EXCEL_FMT.EUR });
-  if (pyVerdad(regalos)) {
-    fila++;
-    excelCelda(hoja, fila, 1, "Ganancias sin transmisión (regalos, base general)");
-    excelCelda(hoja, fila, 2, regalos, { formato: EXCEL_FMT.EUR });
+  // Debajo, la tabla de cada activo.
+  for (const [, as] of grupos) {
+    for (const a of as) {
+      excelCelda(hoja, fila++, 1, a.nombre, { negrita: true, relleno: EXCEL_COLOR.SECCION });
+      excelCabecera(hoja, fila++, EXCEL_HISTORIAL_COLUMNAS);
+      let supuesto = false;
+      for (const { f, c: x, nota, operacion, tokens, sinLote, lotes, precioUsd, precioEur, sinUsd } of fiFilasHistorial(a, calculo.nombres)) {
+        if (fiPorMes(f)) excelCelda(hoja, fila, 1, mesEs(f.fecha.slice(0, 7)));
+        else {
+          // Escrita a mano puede traer «Z» o milésimas, o no traer hora.
+          excelCelda(hoja, fila, 1, xlsxFecha(f.fecha.slice(0, 19)),
+            { formato: /\d{2}:\d{2}/.test(f.fecha) ? EXCEL_FMT.FECHA_HORA : EXCEL_FMT.FECHA });
+        }
+        excelCelda(hoja, fila, 2, operacion);
+        excelCelda(hoja, fila, 3, tokens, { formato: EXCEL_FMT.TOKENS });
+        const notas = [nota, f.aviso ? "A revisar: aviso en «Fiscal " + f.fecha.slice(0, 4) + "»" : "",
+          sinLote ? cantidadEs(sinLote) + " sin compra registrada" : ""];
+        if (x) {
+          if (sinUsd) excelCelda(hoja, fila, 4, "—", { horizontal: "right" });
+          else excelCifraHistorial(hoja, fila, 4, precioUsd, EXCEL_FMT.PRECIO);
+          excelCifraHistorial(hoja, fila, 5, precioEur, EXCEL_FMT.PRECIO);
+          excelCifraHistorial(hoja, fila, 6, x.total, x.supuesto ? EXCEL_FMT.NUM_SUPUESTO : EXCEL_FMT.NUM);
+          excelCifraHistorial(hoja, fila, 7, x.comision, EXCEL_FMT.NUM);
+          excelCifraHistorial(hoja, fila, 8, x.costeSigno, EXCEL_FMT.NUM_SIGNO);
+          excelCifraHistorial(hoja, fila, 9, x.gp, EXCEL_FMT.NUM_SIGNO);
+          if (fiscHay(x.quedan)) excelCelda(hoja, fila, 10, x.quedan, { formato: EXCEL_FMT.TOKENS });
+          supuesto = supuesto || !!x.supuesto;
+        } else excelCifraHistorial(hoja, fila, 6, undefined);
+        if (notas.some(Boolean)) excelCelda(hoja, fila, 11, notas.filter(Boolean).join(". "));
+        fila++;
+        // Los lotes de una venta, siempre a la vista (en la pantalla, «▸ n lotes»).
+        for (const p of lotes) {
+          excelCelda(hoja, fila, 2, "↳ " + p.texto);
+          excelCelda(hoja, fila, 3, p.n, { formato: EXCEL_FMT.TOKENS });
+          excelCifraHistorial(hoja, fila, 6, p.total, EXCEL_FMT.NUM);
+          excelCifraHistorial(hoja, fila, 7, p.comision, EXCEL_FMT.NUM);
+          excelCifraHistorial(hoja, fila, 8, p.coste, p.conSigno ? EXCEL_FMT.NUM_SIGNO : EXCEL_FMT.NUM);
+          excelCifraHistorial(hoja, fila++, 9, p.gp, EXCEL_FMT.NUM_SIGNO);
+        }
+      }
+      const total = { negrita: true };
+      excelCelda(hoja, fila, 2, "Total", total);
+      excelCelda(hoja, fila, 3, a.quedan, { ...total, formato: EXCEL_FMT.TOKENS });
+      excelCifraHistorial(hoja, fila, 8, a.costeQueda, EXCEL_FMT.NUM, total);
+      excelCifraHistorial(hoja, fila++, 9, a.gp, EXCEL_FMT.NUM_SIGNO, total);
+      if (supuesto) excelCelda(hoja, fila++, 1, NOTA_COSTE_SUPUESTO);
+      fila++;
+    }
   }
 }
 
@@ -744,7 +707,7 @@ function excelRentaAvisos(hoja, fila, informe) {
     { relleno: EXCEL_COLOR.CABECERA, cabecera: true });
   for (const a of informe.avisos) {
     excelTextoRenta(hoja, fila, excelFrase(a.detalle), 4, true);
-    fila = excelFilaRenta(hoja, fila, [excelFecha(a.fecha), a.concepto, a.tipo === "revisar" ? "A revisar" : "Nota"],
+    fila = excelFilaRenta(hoja, fila, [excelFecha(a.fecha), a.concepto, a.tipo === "revisar" ? EXCEL_A_REVISAR : "Nota"],
       [EXCEL_FMT.FECHA]);
   }
   return fila;
@@ -851,7 +814,7 @@ function excelHojaRevision(libro, ordenados) {
    «Generado el»; hasta: el de fiHastaCuando (js/23), para avisar en cada
    «Fiscal AAAA» como el informe imprimible (sin él, nada);
    cuadre: el de fiResultado (js/23; sin él, no hay hoja del cuadre). */
-function excelLibro(registros, colas, resumen, cache, config, informes = null, ahora = new Date(), hasta = null, cuadre = null) {
+function excelLibro(registros, colas, resumen, cache, config, informes = null, ahora = new Date(), hasta = null, cuadre = null, calculo = null) {
   if (!fiscHay(informes)) informes = informesRentaAnuales(registros, resumen, config, { cache });
   colas = rentaComoMap(colas);
   const libro = xlsxLibro();
@@ -859,7 +822,7 @@ function excelLibro(registros, colas, resumen, cache, config, informes = null, a
   const ordenados = excelOrdenados(registros);
   excelHojaTransacciones(libro, ordenados);
   excelHojaIngresos(libro, ordenados, cache);
-  excelHojaCartera(libro, registros, ordenados, colas, cache);
+  if (calculo) excelHojaHistorial(libro, calculo, cache);
   excelHojasRenta(libro, informes, ahora, hasta);
   excelHojaTiposBce(libro, registros, informes, cache);
   if (cuadre) excelHojaCuadre(libro, cuadre);

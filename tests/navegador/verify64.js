@@ -154,14 +154,9 @@ function espiar() {
     await new Promise(r => setTimeout(r, 600));
     window.xlsxBlob = blobDe;
     // La receta de la cabecera de js/26.
-    const hasta = fiHastaCuando(state.cache);
-    const regs = structuredClone(state.registros);
-    const op = { cierres: {}, cierres_usd: {}, cierres_pools: {}, cierres_otras: {}, cierres_supuestos: {} };
-    const colas = motorFiscal(regs, state.cache, state.config, op);
-    const resumen = resumenFiscalAnual(regs);
-    const informes = informesRentaAnuales(regs, resumen, state.config,
-      { ...op, cache: state.cache, hoy: hasta.hoy, dia_real: hasta.diaReal, descarga_incompleta: hasta.descargaIncompleta });
-    const receta = Array.from(xlsxBytes(excelLibro(regs, colas, resumen, state.cache, state.config, informes, ahora, hasta), ahora));
+    const r = fiCalcular(state.registros, state.cache, state.config, fiHastaCuando(state.cache));
+    const receta = Array.from(xlsxBytes(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes,
+      ahora, r.hasta, r.cuadre, r), ahora));
     return { receta, registrosIguales: JSON.stringify(state.registros) === registrosAntes, deshabilitado,
       habilitadoDespues: !document.getElementById("btnExcel").disabled };
   });

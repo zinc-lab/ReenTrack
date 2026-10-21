@@ -61,7 +61,7 @@ assert("un formato de euros no cambia con un entero",
 let libro = sb.excelLibro([], {}, {}, {}, {});
 assert("sin datos: las hojas fijas, sin Renta ni Revisión",
   JSON.stringify(libro.hojas.map(h => h.nombre)) ===
-  JSON.stringify(["Resumen", "Transacciones", "Ingresos", "Cartera", "Tipos de cambio BCE"]),
+  JSON.stringify(["Resumen", "Transacciones", "Ingresos", "Tipos de cambio BCE"]),
   libro.hojas.map(h => h.nombre));
 let bytes = null;
 try { bytes = sb.xlsxBytes(libro); } catch (e) { bytes = e.message; }
@@ -181,16 +181,16 @@ assert("Ingresos: lo que no tiene fecha no tiene fila de año, pero suma en el t
 const fs = require("fs");
 const path = require("path");
 const leer = f => fs.readFileSync(path.join(__dirname, "..", "Reental-SPA", "js", f), "utf8");
-// Las opciones con que se piden los informes: lo que va tras «{ ...op, ».
-const opcionesDe = (texto, antes) => {
-  const i = texto.indexOf(antes);
-  const m = i < 0 ? null : /\{ \.\.\.op, ([^}]*)\}/.exec(texto.slice(i));
-  return m ? m[1].replace("cache: state.cache", "cache").replace(/\s+/g, " ").trim() : null;
+// Los argumentos de excelLibro: los de la receta y los del botón de 📤.
+const argumentosDe = texto => {
+  const m = /excelLibro\(([^;]*?\br)\)/.exec(texto);
+  return m ? m[1].replace("new Date()", "ahora").replace(/\s+/g, " ").trim() : null;
 };
-const receta = opcionesDe(leer("26-excel.js").split("*/")[0], "informesRentaAnuales(regs");
-const fiscal = opcionesDe(leer("23-fiscal-pestana.js"), "const informes = informesRentaAnuales(regs");
-assert("A2: la receta pide los informes con las mismas opciones que 🧾 Fiscal",
-  receta && receta === fiscal && /descarga_incompleta/.test(receta), { receta, fiscal });
+const cabecera = leer("26-excel.js").split("*/")[0];
+const receta = argumentosDe(cabecera), boton = argumentosDe(leer("24-exportar.js"));
+assert("A2: la receta y el botón de 📤 pasan el cálculo de 🧾 (fiCalcular) entero",
+  /= fiCalcular\(/.test(cabecera) && /fiResultado\(\)/.test(leer("24-exportar.js")) &&
+  receta && receta === boton, { receta, boton });
 
 console.log("\n" + ok + " OK, " + fallos + " fallos");
 process.exit(fallos ? 1 : 0);

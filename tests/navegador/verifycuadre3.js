@@ -121,7 +121,7 @@ function dobles() {
   assert("el Excel lleva la hoja «Cuadre con la blockchain», antes de Revisión si la hay", hojas.includes("Cuadre con la blockchain") &&
     hojas.indexOf("Cuadre con la blockchain") === hojas.indexOf("Tipos de cambio BCE") + 1, hojas);
   const exporta = fs.readFileSync(path.join(__dirname, "..", "..", "Reental-SPA", "js", "24-exportar.js"), "utf8");
-  assert("📤 le pasa el cuadre al Excel", /r\.hasta, r\.cuadre\)/.test(exporta));
+  assert("📤 le pasa el cuadre al Excel", /r\.hasta, r\.cuadre, r\)/.test(exporta));
 
   console.log("C3) Todo cuadra");
   await page.evaluate(i => { location.hash = "#inicio"; window.__blockchain[i] -= 1; }, FONDO);

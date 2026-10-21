@@ -36,4 +36,12 @@ function registrosP27(USDT, BURN) {
   ];
 }
 
-module.exports = { WALLET, registrosP27 };
+/* La cache de esos registros para el motor: el tipo del BCE de cada día
+   y el coste que pusiste a la compra externa de Casa. */
+function cacheP27(regs) {
+  const tipos = {};
+  for (const r of regs) tipos[r.fecha.slice(0, 10)] = 1.25;
+  return { tipos_bce: tipos, precios_rnt: {}, precios_pol: {}, ajustes_usuario: { c2: { coste_eur: 500 } }, contratos_aprendidos: {} };
+}
+
+module.exports = { WALLET, registrosP27, cacheP27 };

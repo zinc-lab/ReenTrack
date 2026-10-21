@@ -2,6 +2,18 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Historial en el Excel (21/10/2026)
+
+- **Excel:** la hoja «Cartera» pasa a ser **«Historial»**, con la misma
+  tabla de cada activo que 🧾 Fiscal: arriba, lo que queda de cada activo,
+  su coste y la ganancia o pérdida desde el principio, en los grupos del
+  Resumen; debajo, cada operación con sus precios en USD y en €, importe,
+  comisión, coste con signo, ganancia o pérdida y lo que queda, y los
+  lotes de cada venta siempre a la vista. Todos los años, hasta el último
+  dato. Lo que en la pantalla sale con ⚠️, en el Excel dice «A revisar».
+- Las cifras de cada fila salen de lo mismo que la pantalla, así que el
+  Excel y 🧾 dicen siempre lo mismo.
+
 ## Recompensas DeFi con importe en 📒 (20/10/2026)
 
 - **📒 Transacciones:** cada recompensa DeFi de RNT (también los regalos)

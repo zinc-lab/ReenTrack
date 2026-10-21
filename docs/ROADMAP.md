@@ -22,6 +22,7 @@
 - **Comprobación antes de cada commit** de que nada de `privado/` va a Git.
 - **Historial de cada activo** en 🧾 (20/10/2026): cada inmueble, RNT, POL,
   USDT y USDC con sus compras, ventas y lotes, hasta el 31/12 del ejercicio.
+  En el Excel, la hoja «Historial» (21/10/2026), en lugar de «Cartera».
 - **Compra externa** (18/10/2026): lo que compraste y la app no ve pagar, una
   compra por entrega con su precio en 💶 (ver el [CHANGELOG](CHANGELOG.md)).
 - **1.1** y **1.2** (15/10/2026): lo que salió de las primeras pruebas y las
@@ -35,7 +36,6 @@
 | Paso | Qué |
 |---|---|
 | ➡️ **Arreglos y mejoras** | Los fallos menores apuntados y lo que vaya saliendo al usarla |
-| **Historial en el Excel** | La misma tabla por activo de 🧾, en el Excel, cuando la pantalla esté asentada |
 
 ## Solo si hace falta
 

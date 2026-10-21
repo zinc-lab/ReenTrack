@@ -8,7 +8,10 @@
  * valor (numero, fecha, si/no o texto) y el mismo formato, sin tolerancia.
  * El «Generado el» de cada caso es el que lleva grabado. Abre con Excel de
  * verdad los 5 libros mas grandes (si hay Excel). Comprueba ademas que el
- * Excel no cambia lo que recibe. Los 6 escenarios con tus datos van aparte
+ * Excel no cambia lo que recibe. Cada caso lleva el cálculo de 🧾
+ * (fiCalcular de js/23, con el día del «Generado el»), así que también sale
+ * su hoja Historial, y esa hoja se compara fila a fila con la pantalla de
+ * 🧾 (compararConPantalla). Los 6 escenarios con tus datos van aparte
  * (paridad_excel_real_paso_62).
  *
  * Ejecucion (desde la raiz del repo):
@@ -43,9 +46,12 @@ const generado = caso => new Date(caso.ahora);
 /* El Excel de la app de un caso, guardado en la carpeta; da lo que el
    Excel cambio de lo que recibe (null si nada). */
 function guardarExcel(sb, a, ruta, ahora) {
-  const huella = () => JSON.stringify(plano(a));   // plano: también las colas, que son un Map
+  // plano: también las colas, que son un Map. Con el cálculo de 🧾, lo que
+  // ya va dentro de él (registros, colas, resumen, informes) no se repite.
+  const vigilado = a.calculo ? { calculo: a.calculo, cache: a.cache, config: a.config } : a;
+  const huella = () => JSON.stringify(plano(vigilado));
   const antes = huella();
-  const libro = sb.excelLibro(a.registros, a.colas, a.resumen, a.cache, a.config, a.informes, ahora, null, a.cuadre || null);
+  const libro = sb.excelLibro(a.registros, a.colas, a.resumen, a.cache, a.config, a.informes, ahora, null, a.cuadre || null, a.calculo || null);
   fs.writeFileSync(ruta, sb.xlsxBytes(libro));
   return huella() !== antes ? "el Excel cambio lo que recibe" : null;
 }
@@ -70,14 +76,22 @@ module.exports = { MODULOS_EXCEL, abrirConExcel, volcarConPython, guardarExcel, 
 if (require.main === module) {
   const datos = leerCasos("paridad_excel_62.json");
   const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "excel62-"));
-  const sb = sandbox(MODULOS_EXCEL);
+  // Con 🧾 (js/23) y los nombres de 📒 (js/18), para el cálculo y la hoja Historial.
+  const { compararConPantalla, MODULOS_HISTORIAL } = require("./test_excel_paso_historial1.js");
+  const sb = sandbox(MODULOS_HISTORIAL);
+  sb.structuredClone = structuredClone;
   // Primero todos los Excel de la app; luego una sola lectura con openpyxl.
   const hechos = new Map(datos.sinteticos.map((caso, i) => {
     const ruta = path.join(carpeta, i + ".xlsx");
     sb.__e = caso.entrada;
-    vm.runInContext("state.config = { wallet: __e.wallet, vault: __e.vault };", sb);
+    sb.__hoy = caso.ahora.slice(0, 10);
     try {
-      return [caso, { ruta, cambio: guardarExcel(sb, caso.entrada.args, ruta, generado(caso)) }];
+      const calculo = vm.runInContext("state.config = { wallet: __e.wallet, vault: __e.vault }; state.cache = __e.args.cache; " +
+        "fiCalcular(__e.args.registros, __e.args.cache, state.config, { hoy: __hoy, diaReal: null, descargaIncompleta: false })", sb);
+      sb.__calculo = calculo;
+      const html = vm.runInContext("fiEstado.verTodos = true; (a => a === undefined ? '' : " +
+        "fiHtmlHistorial(__calculo, a, __calculo.informes[a], __calculo.informes[a]))(fiAnios(__calculo.informes).at(-1))", sb);
+      return [caso, { ruta, html, cambio: guardarExcel(sb, { ...caso.entrada.args, calculo }, ruta, generado(caso)) }];
     } catch (err) {
       return [caso, { error: err }];
     }
@@ -102,7 +116,9 @@ if (require.main === module) {
     ejecutar: caso => {
       const h = hechos.get(caso);
       if (h.error) throw h.error;
-      return { salida: h.volcado, cambio: h.cambio };
+      // La hoja Historial, como la pantalla de 🧾.
+      const pantalla = compararConPantalla(sb, h.html, h.volcado.hojas.Historial || {});
+      return { salida: h.volcado, cambio: [h.cambio, ...pantalla.difs.slice(0, 5)].filter(Boolean).join("; ") || null };
     },
     porArchivo: { "tests/test_informe_excel_paso_div15e.py": 1, "tests/test_cuadre_paso_cuadre2.py": 17,
       "tests/test_sin_vault_paso_div12.py": 1, "tests/test_arreglos_paso_arreglos2.py": 34,

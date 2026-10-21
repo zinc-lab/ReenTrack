@@ -694,11 +694,8 @@ function fiCeldaEur(v, signo = false, aviso = FI_AVISO) {
   const t = fiEur(v, signo);
   return signo && /[1-9]/.test(t) ? '<span class="' + (v < 0 ? "fi-neg" : "fi-pos") + '">' + t + "</span>" : t;
 }
-// Precio por token, con los decimales de los precios de la app (ccDecimalesPrecio).
-const fiPrecio = (v, n, unidad) => {
-  const x = fiscEsNumero(v) && n ? Math.abs(v / n) : NaN;
-  return Number.isFinite(x) ? numEs(x, ccDecimalesPrecio(x)) + " " + unidad : "";
-};
+// Precio por token, con los decimales de los precios de la app (ccDecimalesPrecio); «» si no hay.
+const fiPrecio = (x, unidad) => (x === null ? "" : numEs(x, ccDecimalesPrecio(x)) + " " + unidad);
 
 // Como el extracto de IBKR: el importe (lo pagado o cobrado) y el coste con signo.
 const FI_COLUMNAS = [["Fecha"], ["Operación"], ["Tokens", 1], ["Precio USD", 1], ["Precio EUR", 1],
@@ -716,33 +713,74 @@ const fiCosteSigno = (v, aviso = FI_AVISO) => (v === undefined ? aviso : v === n
 /* Una fila de la tabla con solo algunas columnas ({posición en FI_COLUMNAS: contenido}). */
 const fiFilaH = (attrs, celdas) => "<tr " + attrs + ">" + FI_COLUMNAS.map(([, num], i) => fiCelda(celdas[i] ?? "", num)).join("") + "</tr>";
 
+/* Lo que dice cada fila de la tabla de un activo, sin formato: la
+   pantalla y la hoja Historial del Excel (js/26) lo enseñan igual. Por
+   fila: la fila del historial (f) y sus cifras (c), la nota, el nombre
+   de la operación, los tokens con signo, los que salieron sin compra
+   (sinLote), los precios por token (null si no hay; sinUsd: hay importe
+   pero no USD, «—») y sus lotes, cada uno con su parte de lo cobrado y de
+   la comisión, su coste (con signo, salvo en un canje: el coste con que
+   pasa la compra) y su ganancia o pérdida. */
+function fiFilasHistorial(a, nombres) {
+  return a.filas.map(f => {
+    const c = f.cifras;
+    const otros = f.tipo === "rend" ? [...f.registros].filter(r => String(r.fecha).slice(0, 7) !== f.fecha.slice(0, 7)) : [];
+    const nota = f.tipo === "revisar" ? "No cuenta hasta revisarla"
+      : otros.length ? "Incluye " + otros.length + (otros.length === 1 ? " reparto del " : " repartos del ") + otros.map(r => fechaEs(r.fecha)).join(", ") : "";
+    const tokens = c ? c.tokens : pyO(f.r.cantidad, 0);
+    const precio = v => (c && fiscEsNumero(v) && c.tokens ? Math.abs(v / c.tokens) : null);
+    const lotes = (c ? c.piezas : []).map(p => {
+      const parte = c.tokens ? p.n / Math.abs(c.tokens) : 0;
+      const total = typeof c.total === "number" ? c.total * parte : null, comision = c.comision === null ? null : c.comision * parte;
+      return { texto: p.texto, n: p.n, total, comision, conSigno: f.tipo !== "canje", coste: f.tipo === "canje" ? p.coste : -p.coste,
+        gp: typeof c.gp === "number" ? total - (comision || 0) - p.coste : null };
+    });
+    const precioUsd = precio(c && c.usd), precioEur = precio(c && c.total);
+    return { f, c, nota, operacion: fiOperacion(f, a.nombre, nombres), tokens, lotes, precioUsd, precioEur,
+      sinUsd: precioUsd === null && !!c && typeof c.total === "number",
+      sinLote: c && c.sinLote > 1e-9 * Math.abs(tokens || 1) ? c.sinLote : 0 };
+  });
+}
+
+/* Los grupos del historial, con los nombres de su bloque del Resumen
+   (titulo: el de una clave del Resumen). La pantalla y la hoja Historial,
+   con sus totales: lo que cuesta lo que queda (undefined si falta un
+   coste) y la ganancia o pérdida desde el principio. */
+function fiGruposHistorial(activos, informe) {
+  const titulo = clave => (informe.resumen.find(f => f.clave === clave) || { concepto: "" }).concepto.split(":")[0];
+  const grupos = [[titulo("gp_inmuebles"), activos.filter(a => !a.moneda)], [titulo("gp_permutas"), activos.filter(a => a.moneda)]]
+    .filter(g => g[1].length);
+  return { titulo, grupos };
+}
+const fiCosteQueda = as => (as.some(a => a.costeQueda === undefined) ? undefined : pySuma(as.map(a => a.costeQueda)));
+const fiGpDesdeElPrincipio = as => pySuma(as.map(a => a.gp || 0));
+// Hasta cuándo llega el historial de un ejercicio, y en qué orden.
+const fiHastaHistorial = (informe, anio) => (informe.cabecera.anio_terminado ? "Hasta el 31/12/" + anio
+  : "Hasta el " + fechaEs(informe.cabecera.datos_hasta)) + ", en orden FIFO: al vender salen primero los más antiguos.";
+
 /* La tabla de un activo: una fila por operación (rendimientos y gas, por
    mes), el botón «▸ n lotes» en una venta y la fila Total. */
 function fiTablaHistorial(a, abiertos, nombres, anio) {
   let html = "";
-  for (const f of a.filas) {
+  for (const { f, c, nota, operacion, tokens: n0, sinLote, lotes, precioUsd, precioEur, sinUsd } of fiFilasHistorial(a, nombres)) {
     // La clave va en un atributo: sin \u0000 (el navegador lo cambia).
-    const c = f.cifras, id = a.nombre + "::" + f.clave, abierto = abiertos.has(id);
+    const id = a.nombre + "::" + f.clave, abierto = abiertos.has(id);
     // La hora, debajo de la fecha (ocupa menos de ancho).
     const conHora = fechaEs(f.fecha, true).split(" ");
     const fecha = fiPorMes(f) ? mesEs(f.fecha.slice(0, 7))
       : ccEsc(conHora[0]) + (conHora[1] ? '<span class="fi-h-debajo">' + conHora[1] + "</span>" : "");
     const titulo = fiPorMes(f) ? "" : fechaDosHoras(f.fecha, f.r && f.r.instante);
-    const otros = f.tipo === "rend" ? [...f.registros].filter(r => String(r.fecha).slice(0, 7) !== f.fecha.slice(0, 7)) : [];
-    const nota = f.tipo === "revisar" ? "No cuenta hasta revisarla"
-      : otros.length ? "Incluye " + otros.length + (otros.length === 1 ? " reparto del " : " repartos del ") + otros.map(r => fechaEs(r.fecha)).join(", ") : "";
+    const n = lotes.length;
     const clase = f.tipo === "canje" ? "canje" : fiPorMes(f) ? "grupo"
       : f.tipo === "revisar" || (c && c.tokens >= 0) ? "entra" : "sale";
-    const n = c ? c.piezas.length : 0;
     // El aviso de una fila de otro año no está en los de este: sin enlace, con su año.
     const deOtro = f.fecha.slice(0, 4) !== String(anio);
     const av = deOtro ? '<span class="fi-info" tabindex="0" title="A revisar: su aviso, en los de ' + f.fecha.slice(0, 4) + '">⚠️</span>' : FI_AVISO;
     const boton = n ? ' <button type="button" class="fi-lotes" aria-expanded="' + abierto + '" data-desglose="' + ccEsc(id) + '" data-foco="' + ccEsc("lotes:" + id) + '">' +
       (abierto ? "▾ " : "▸ ") + n + (n === 1 ? " lote" : " lotes") + "</button>" : "";
     const et = '<span class="fi-et fi-et-' + clase + '"' + (nota ? ' title="' + ccEsc(nota) + '" tabindex="0"' : "") + ">" +
-      ccEsc(fiOperacion(f, a.nombre, nombres)) + (nota && f.tipo !== "revisar" ? " ⓘ" : "") + "</span>" +
+      ccEsc(operacion) + (nota && f.tipo !== "revisar" ? " ⓘ" : "") + "</span>" +
       (f.aviso ? " " + av : "");
-    const n0 = c ? c.tokens : pyO(f.r.cantidad, 0), sinLote = c && c.sinLote > 1e-9 * Math.abs(n0 || 1) ? c.sinLote : 0;
     const conSigno = numEs(n0, 6, true, true);
     const tokens = (/[1-9]/.test(conSigno) ? fiCant(n0, true) : "±0") +
       (sinLote ? ' <span class="fi-info" tabindex="0" title="' + cantidadEs(sinLote) + ' sin compra registrada">ⓘ</span>' : "");
@@ -751,18 +789,14 @@ function fiTablaHistorial(a, abiertos, nombres, anio) {
     html += '<tr class="fi-h-' + clase + (f.tipo === "revisar" ? " fi-h-nocuenta" : "") + '">' +
       fiCelda(titulo ? '<span title="' + ccEsc(titulo) + '" tabindex="0">' + fecha + "</span>" : fecha) + fiCelda(et + boton) +
       fiCelda(tokens, 1) +
-      fiCelda(c ? fiPrecio(c.usd, c.tokens, "$") || (typeof c.total === "number" ? "—" : "") : "", 1) + fiCelda(c && typeof c.total === "number" ? fiPrecio(c.total, c.tokens, "€") : "", 1) +
+      fiCelda(sinUsd ? "—" : fiPrecio(precioUsd, "$"), 1) + fiCelda(fiPrecio(precioEur, "€"), 1) +
       fiCelda(c ? fiCeldaEur(c.total, false, av) + (c.supuesto ? " **" : "") : av, 1) + fiCelda(c ? fiCeldaEur(c.comision, false, av) : "", 1) +
       fiCelda(c ? fiCosteSigno(c.costeSigno, av) : "", 1) + fiCelda(c ? fiCeldaEur(c.gp, true, av) : "", 1) + fiCelda(quedan, 1) + "</tr>";
-    for (const p of n ? c.piezas : []) {
-      // Cada lote, con su parte de lo cobrado y de la comisión.
-      const parte = c.tokens ? p.n / Math.abs(c.tokens) : 0;
-      const total = typeof c.total === "number" ? c.total * parte : null, comision = c.comision === null ? null : c.comision * parte;
-      const gp = typeof c.gp === "number" ? total - (comision || 0) - p.coste : null;
+    for (const p of lotes) {
       // En un canje, el coste con que pasa cada compra; en una venta, el que sale.
       html += fiFilaH('class="fi-h-lote" data-de="' + ccEsc(id) + '"' + (abierto ? "" : " hidden"), { 1: "↳ " + ccEsc(p.texto),
-        2: fiCant(p.n), 5: fiCeldaEur(total), 6: fiCeldaEur(comision), 7: f.tipo === "canje" ? fiEur(p.coste) : fiCosteSigno(-p.coste),
-        8: fiCeldaEur(gp, true) });
+        2: fiCant(p.n), 5: fiCeldaEur(p.total), 6: fiCeldaEur(p.comision), 7: p.conSigno ? fiCosteSigno(p.coste) : fiEur(p.coste),
+        8: fiCeldaEur(p.gp, true) });
     }
   }
   html += fiFilaH('class="fi-h-suma"', { 1: "Total", 2: fiCant(a.quedan), 7: fiCeldaEur(a.costeQueda), 8: fiCeldaEur(a.gp, true) });
@@ -779,27 +813,22 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
   const activos = fiHistorial(resultado, anio, state.cache);
   if (!activos.length) return '<p class="help">Sin operaciones hasta el 31/12/' + anio + ".</p>";
   const cerrados = activos.filter(a => !a.abierto).length;
-  const c = informe.cabecera;
-  const hasta = c.anio_terminado ? "Hasta el 31/12/" + anio : "Hasta el " + fechaEs(c.datos_hasta);
   const interruptor = cerrados ? '<label class="rv-interruptor"><input type="checkbox" role="switch" id="fiVerTodos" data-foco="verTodos"' +
     (fiEstado.verTodos ? " checked" : "") + '><span class="rv-interruptor-pista" aria-hidden="true"></span><span>Ver también los que ya no tienes (' +
     cerrados + ")</span></label>" : "";
   const aviso = ultimo && !fiLotesCuadran(resultado.lotes, resultado.nombres, ultimo)
     ? '<p class="fi-nota-aviso">No cuadran con la cartera del informe de ' + ultimo.ejercicio + ": revisa las fechas de los avisos.</p>" : "";
-  // Los nombres de los grupos, los de su bloque del Resumen.
-  const titulo = clave => (informe.resumen.find(f => f.clave === clave) || { concepto: "" }).concepto.split(":")[0];
-  const grupos = [[titulo("gp_inmuebles"), "Tokens de cada inmueble.", activos.filter(a => !a.moneda)],
-    [titulo("gp_permutas"), "RNT, POL, USDT y USDC.", activos.filter(a => a.moneda)]].filter(g => g[2].length);
-  const sub = grupos.map(([, , as]) => fiGpDelGrupo(as, anio));
+  const { titulo, grupos } = fiGruposHistorial(activos, informe);
+  const sub = grupos.map(([, as]) => fiGpDelGrupo(as, anio));
   // Los pools de liquidez: su resultado no es de un activo; va con el del Resumen.
   const pools = informe.detalle.otros_elementos ? informe.detalle.otros_elementos.total.importe_eur : null;
-  const total = as => [fiCeldaEur(as.some(a => a.costeQueda === undefined) ? undefined : pySuma(as.map(a => a.costeQueda))),
-    fiCeldaEur(pySuma(as.map(a => a.gp || 0)), true)];
-  let html = '<p class="help">' + hasta + ", en orden FIFO: al vender salen primero los más antiguos." + interruptor + "</p>" + aviso +
+  const total = as => [fiCeldaEur(fiCosteQueda(as)), fiCeldaEur(fiGpDesdeElPrincipio(as), true)];
+  let html = '<p class="help">' + fiHastaHistorial(informe, anio) + interruptor + "</p>" + aviso +
     '<div class="fi-historial' + (fiEstado.verTodos ? " fi-todos" : "") + '">' +
     fiLineaHistorial("fi-h-cab", ["Activo", "Quedan", "Coste de lo que queda", "Ganancia o pérdida (desde el principio)", "Ganancia o pérdida de " + anio]) +
     fiLineaHistorial("fi-h-total", ["Total", "", ...total(activos), fiCeldaEur(pySuma(sub) + (pools || 0), true)]);
-  grupos.forEach(([titulo, nota, as], i) => {
+  grupos.forEach(([titulo, as], i) => {
+    const nota = as[0].moneda ? "RNT, POL, USDT y USDC." : "Tokens de cada inmueble.";
     // Un grupo sin nada que tengas, oculto con ellos.
     html += '<div class="fi-h-grupo' + (as.some(a => a.abierto) ? "" : " fi-h-cerrado") + '">' +
       '<div class="fi-subgrupo">' + ccEsc(titulo) + '</div><p class="fi-pie">' + nota + "</p>" +

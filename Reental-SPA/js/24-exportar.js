@@ -304,7 +304,7 @@ async function exExcel() {
     const r = exCalculoFiscal();
     if (!r) return;
     const ahora = new Date();
-    const blob = xlsxBlob(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes, ahora, r.hasta, r.cuadre), ahora);
+    const blob = xlsxBlob(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes, ahora, r.hasta, r.cuadre, r), ahora);
     const nombre = exNombreExcel(ahora);
     exRenderSeguro();
     let archivo = nombre, descargado = !soportaFSA;
