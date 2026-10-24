@@ -48,7 +48,7 @@ lo haría una persona: abren `index.html`, pulsan botones y miden lo que sale.
 | `verifycuadre3.js` | Cuadre con la blockchain (js/28): «🔄 Actualizar» lee el saldo de cada token y avisa si no cuadra | Sintéticos |
 | `verifysueltos1.js` | 💼 Dinero invertido arriba con su bocadillo, notas sobre amarillo, tarjetas de 🧾, barra de 💰 y el botón «DeFi» | Sintéticos |
 | `verifymenores1.js` | Arranque con el almacenamiento bloqueado, foco en 💶, 📒 pintado una vez, «1 reparto» | Sintéticos |
-| `verifytour1.js` | El ejemplo: «¿Es tu primera vez?» solo la primera vez; las 17 paradas desde 📖, cada una en su pestaña y señalando algo; «Compra externa…» sin «Siguiente» y lo pagado en 💶; al salir («Empezar» o ✕) nada del ejemplo en memoria ni guardado y nada a internet | Sintéticos (en la app) |
+| `verifytour1.js` | El ejemplo: «¿Es tu primera vez?» solo la primera vez; todas las paradas desde 📖, cada una en su pestaña y señalando algo; «Compra externa…» sin «Siguiente» y lo pagado en 💶; al salir («Empezar» o ✕) nada del ejemplo en memoria ni guardado y nada a internet | Sintéticos (en la app) |
 | `verifyayuda1.js` | 📖 Ayuda: en el menú, la última; sus enlaces a las 7 pestañas en el orden del menú; cada botón que cita existe | Sin datos |
 | `verifybocadillo1.js` | El bocadillo de los gráficos de 📊 sigue al ratón (línea y barras); con teclado, arriba de su columna | Sintéticos |
 | `verifymenu1.js` | La barra en dos grupos y su pie que lleva a 🚀; los iconos de 📒 y 💰 sin caja; «🔄 Actualizar» centrado y más abajo | Sin datos |

@@ -1066,7 +1066,8 @@ async function arrRestaurarRecordados() {
       recordarAjustesSinSello(state.cache);
       renderPanel();
       actualizarChipEstado();
-      if (typeof tourOfrecer === "function") tourOfrecer();   // la primera vez, el ejemplo (js/29)
+      // La primera vez, el ejemplo (js/29): sin nada guardado, ni ilegible ni mal escrito.
+      if (!g && !arr.sinLeer && typeof tourOfrecer === "function") tourOfrecer();
     }
   }
   arrPintarSeguro();

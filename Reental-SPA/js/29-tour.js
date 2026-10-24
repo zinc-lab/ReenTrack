@@ -64,6 +64,7 @@ function tourMontarEjemplo() {
   cache.catalogo_propiedades[contrato(9)] = { estado: "CANDIDATA", nombre_reental: "", simbolo: "RXYZ" };
   tokens.push(mov(OTRO, W, contrato(9), t18(1), "Reental XYZ", "RXYZ", "18", ts(2026, 8, 2)));
   for (let f = "2024-01-01", hoy = hoyEspana(); f <= hoy; f = sumarDias(f, 1)) cache.tipos_bce[f] = 1.1;
+  apuntarSincronizacion(cache, true);   // al día: 🧾 no pide sincronizar
   state.cache = cache;
   const filas = ["dividend,date,reinvested,claimed,distributed,retained,reinvests,claims,wallet"];
   let h = 0;
@@ -155,6 +156,7 @@ async function tourEmpezar() {
   };
   const drv = window.driver.js.driver({
     steps: TOUR_PASOS,
+    // Con «menos movimiento» también, como las de 🔍 (decisión del usuario).
     animate: !document.documentElement.classList.contains("sin-animaciones"),
     showProgress: true, progressText: "{{current}} de {{total}}",
     nextBtnText: "Siguiente", prevBtnText: "Anterior", closeBtnLabel: "Salir del ejemplo",

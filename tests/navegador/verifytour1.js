@@ -2,7 +2,9 @@
  * inventados que no guarda nada.
  *
  *  T1) la primera vez, sin nada guardado, sale «¿Es tu primera vez?» y
- *      «Ver un ejemplo» empieza el recorrido; al volver, ya no (un navegador manejado por un programa no la ve: se
+ *      «Ver un ejemplo» empieza el recorrido; al volver, ya no; tampoco con
+ *      tu wallet, tras «Empezar con mis datos» ni con lo guardado mal
+ *      escrito (A9) (un navegador manejado por un programa no la ve: se
  *      finge uno normal).
  *  T2) «▶ Ver un ejemplo» de 📖 Ayuda: cada parada abre su pestaña y señala
  *      algo (al cambiar de pestaña, primero su botón del menú), solo para
@@ -19,7 +21,11 @@
  *  T6) lo de tu sesión no se cuela en el ejemplo (A3).
  *  T7) «Anterior» hasta 🔍 se salta «Compra externa» y 💶 ya hechas y
  *      señala el catálogo (A7); el historial no crece y «Atrás» del
- *      navegador sale del ejemplo (A13). 0 errores.
+ *      navegador sale del ejemplo (A13).
+ *  T8) con tus datos ya guardados, al salir siguen byte a byte igual aunque
+ *      escribas en «Tus datos» o se lance una descarga, y nada sale a
+ *      internet. Además: la licencia de driver.js entera (A15) y su fila del
+ *      README sin contar paradas (A14). 0 errores.
  *
  * DATOS 100 % SINTÉTICOS. Ejecución (servidor en 8765 y NODE_PATH a
  * puppeteer-core):  node tests/navegador/verifytour1.js
@@ -61,6 +67,26 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(".driver-popover-close-btn")]);
   await esperar(300);
   assert("T1: al volver ya no sale", !(await dlg()));
+  // Desde cero (sin nada en el navegador) con lo que se pida; recarga y ¿sale la ventana?
+  const ventanaTras = async preparar => {
+    await page.evaluate(async preparar => {
+      localStorage.clear();
+      await idbOperar("readwrite", s => s.clear());
+      await new Function("return (" + preparar + ")()")();
+    }, preparar.toString());
+    await page.reload({ waitUntil: "networkidle0" });
+    await esperar(300);
+    return dlg();
+  };
+  assert("T1: con tu wallet en tus datos, no sale", !(await ventanaTras(() =>
+    localStorage.setItem("reental_config", JSON.stringify({ wallet: "0x" + "ab".repeat(20) })))));
+  assert("T1: sale en un navegador vacío", await ventanaTras(() => {}));
+  await page.click('#tourDlg button[value=""]');
+  await page.reload({ waitUntil: "networkidle0" });
+  await esperar(300);
+  assert("T1: tras «Empezar con mis datos» y recargar, no vuelve a salir", !(await dlg()));
+  assert("T1: con lo guardado mal escrito, no sale sobre su aviso (A9)", !(await ventanaTras(() =>
+    idbOperar("readwrite", s => s.put({ texto: "{roto" }, "archivo")))));
   await page.evaluate(() => sessionStorage.removeItem("fingir"));
   await page.reload({ waitUntil: "networkidle0" });
 
@@ -107,6 +133,10 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     if (p.n !== fin) assert("T2: " + p.n + " señala algo en " + p.vista, p.senala, p);
     if (p.senala) assert("T2: " + p.n + " «" + p.titulo + "»: " + (/^(Compra externa|💶 Coste)$/.test(p.titulo) ? "se puede usar" : "solo mirar") + " (A5, A6)",
       p.mirar === !/^(Compra externa|💶 Coste)$/.test(p.titulo), p);
+    if (p.titulo === "El año") {
+      const fi = await page.evaluate(() => document.getElementById("fiCuerpo").textContent);
+      assert("T2: 🧾 del ejemplo no pide sincronizar (A10)", !/No sé cuándo|sincroniza para/.test(fi), fi.slice(0, 200));
+    }
     if (p.titulo === "Tus datos") {
       await page.focus("#cfgWallet");
       await page.keyboard.press("Escape");
@@ -224,6 +254,48 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await esperar(300);
   const tras7 = await page.evaluate(() => ({ pop: !!document.querySelector(".driver-popover"), wallet: state.config.wallet || "" }));
   assert("T7: «Atrás» del navegador sale del ejemplo (A13)", !tras7.pop && !tras7.wallet, tras7);
+
+  /* T8: con tus datos ya guardados, el ejemplo no los toca aunque escribas en
+     «Tus datos» o se lance una descarga (bloqueos de guardado e internet). */
+  await page.evaluate(async () => {
+    localStorage.clear();
+    await idbOperar("readwrite", s => s.clear());
+    localStorage.setItem("reental_config", JSON.stringify({ wallet: "0x" + "ab".repeat(20), etherscan_api_key: "MIA" }));
+    const c = cacheVacia();
+    c.ajustes_usuario = { ["0x" + "aa".repeat(32) + "::0x" + "bb".repeat(20)]: { nota: "mía" } };
+    await escribirArchivoNavegador(c, { cuando: Date.now() });
+  });
+  await abrirAyuda();
+  await page.reload({ waitUntil: "networkidle0" });   // lo que la app reescribe sola al abrir, ya hecho
+  const mio = await guardado();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.click("#tourVer");
+  await page.waitForSelector(".driver-popover", { visible: true });
+  for (let i = 0; i < 5 && (await parada()).titulo !== "Tus datos"; i++) {
+    const n = (await parada()).n;
+    await page.click(".driver-popover-next-btn");
+    await otraParada(n);
+  }
+  await page.focus("#cfgWallet");
+  await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+  await page.keyboard.type("0x" + "cd".repeat(20));
+  await page.evaluate(() => {
+    document.getElementById("cfgWallet").dispatchEvent(new Event("change", { bubbles: true }));
+    arrActualizar().catch(() => {});
+  });
+  await esperar(1500);
+  await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(".driver-popover-close-btn")]);
+  await page.waitForFunction(() => typeof idbOperar === "function" && !!state.cache);
+  const tuyo = await guardado();
+  assert("T8: con tus datos guardados, al salir siguen byte a byte igual", tuyo === mio, [mio.slice(0, 200), tuyo.slice(0, 200)]);
+  assert("T8: la descarga del ejemplo no salió a internet", fuera.length === 0, fuera);
+
+  /* A14, A15: documentos. */
+  const fs = require("fs"), path = require("path"), raiz = path.join(__dirname, "..", "..");
+  assert("A15: driver.js lleva su licencia MIT entera",
+    /Copyright \(c\) Kamran Ahmed[\s\S]*Permission is hereby granted[\s\S]*WITHOUT WARRANTY/.test(fs.readFileSync(path.join(raiz, "Reental-SPA", "js", "00-driver.js"), "utf8")));
+  const fila = fs.readFileSync(path.join(__dirname, "README.md"), "utf8").split("\n").find(l => l.includes("verifytour1.js"));
+  assert("A14: su fila del README no cuenta las paradas a mano", !!fila && !/\d+ paradas/.test(fila), fila);
 
   assert("0 errores en la página", errores.length === 0, errores);
 
