@@ -14,7 +14,8 @@
  *      ✕ a mitad vuelve a donde estabas, igual de limpio.
  *  T5) no empieza (y lo dice) si al salir se perdería algo: el guardado
  *      fallando (A1), una descarga en marcha (A2), «Ajustes en JSON» a medio
- *      escribir (A8). 0 errores.
+ *      escribir (A8).
+ *  T6) lo de tu sesión no se cuela en el ejemplo (A3). 0 errores.
  *
  * DATOS 100 % SINTÉTICOS. Ejecución (servidor en 8765 y NODE_PATH a
  * puppeteer-core):  node tests/navegador/verifytour1.js
@@ -163,6 +164,19 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   await noEmpieza("con una descarga en marcha (A2)", () => { arr.preparando = true; }, "espera a que termine la descarga");
   await noEmpieza("con «Ajustes en JSON» a medio escribir (A8)", () => { document.getElementById("txtAjustes").value = '{"a medias":'; },
     "aplica o borra lo que escribiste");
+
+  /* T6 (A3): lo de tu sesión no se cuela: un filtro de 📒 y una descarga que falló. */
+  await abrirAyuda();
+  await page.evaluate(() => {
+    document.getElementById("txBuscar").value = "zzz";
+    document.getElementById("txBuscar").dispatchEvent(new Event("input", { bubbles: true }));
+    arr.ultimaPreparacion = { fin: Date.now(), err: ["etherscan"] };
+  });
+  await page.click("#tourVer");
+  await page.waitForSelector(".driver-popover", { visible: true });
+  const cuela = await page.evaluate(() => ({ buscar: document.getElementById("txBuscar").value, prep: arr.ultimaPreparacion }));
+  assert("T6: en el ejemplo, sin tu búsqueda de 📒 ni tu última descarga", cuela.buscar === "" && cuela.prep === null, cuela);
+  await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(".driver-popover-close-btn")]);
 
   assert("0 errores en la página", errores.length === 0, errores);
 

@@ -125,6 +125,11 @@ async function tourEmpezar() {
   // Salir (✕, Esc o «Empezar»): la recarga trae lo guardado, tal como estaba.
   const salir = destino => { location.hash = destino; location.reload(); };
   tourSinGuardar();
+  // Lo de tu sesión no se cuela: la última descarga y los filtros de 📒 y 💰.
+  arrReiniciarSync();
+  arr.csvFueraMasNuevo = false;
+  txVaciarFiltros();
+  rdVaciarFiltros();
   tourMontarEjemplo();
   volcarConfigAFormulario();
   arrClasificarAhora();
