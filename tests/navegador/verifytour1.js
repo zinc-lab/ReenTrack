@@ -5,9 +5,10 @@
  *      «Ver un ejemplo» empieza el recorrido; al volver, ya no (un navegador manejado por un programa no la ve: se
  *      finge uno normal).
  *  T2) «▶ Ver un ejemplo» de 📖 Ayuda: cada parada abre su pestaña y señala
- *      algo (al cambiar de pestaña, primero su botón del menú); los textos
+ *      algo (al cambiar de pestaña, primero su botón del menú), solo para
+ *      mirar salvo «Compra externa» y 💶 con su «Calcular…» (A5, A6, A12); los textos
  *      nombran las pestañas; siempre con «Siguiente»; pulsar «Compra externa…» avanza;
- *      en 💶 se escribe lo pagado.
+ *      en 💶 se escribe lo pagado, y ← →, o Esc, dentro de un campo no mueven ni cierran el recorrido (A4).
  *  T3) «Empezar» lleva a 🚀 sin nada del ejemplo en memoria ni en lo
  *      guardado (IndexedDB y localStorage); nada salió a internet.
  *  T4) solo con «Siguiente», «Compra externa» se decide sola y sigue en 💶;
@@ -74,7 +75,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     const n = p.querySelector(".driver-popover-next-btn");
     return { n: p.querySelector(".driver-popover-progress-text").textContent, titulo: p.querySelector(".driver-popover-title").textContent,
       senala: !!a && a.id !== "driver-dummy-element" && a.getBoundingClientRect().height > 0, vista: document.querySelector(".view.active").id,
-      siguiente: !!n && n.style.display !== "none" && !!n.offsetParent };
+      siguiente: !!n && n.style.display !== "none" && !!n.offsetParent, mirar: !!a && a.classList.contains("driver-no-interaction"),
+      calcular: !!a && !!a.querySelector('[data-cb="calcular"]') };
   });
 
   // Tras pulsar, a que cambie de parada (o se vaya la burbuja).
@@ -100,8 +102,23 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
     if (!p) break;
     vistas.push(p.vista.replace("view-", "") + ":" + p.titulo);
     if (p.n !== fin) assert("T2: " + p.n + " señala algo en " + p.vista, p.senala, p);
+    if (p.senala) assert("T2: " + p.n + " «" + p.titulo + "»: " + (/^(Compra externa|💶 Coste)$/.test(p.titulo) ? "se puede usar" : "solo mirar") + " (A5, A6)",
+      p.mirar === !/^(Compra externa|💶 Coste)$/.test(p.titulo), p);
+    if (p.titulo === "Tus datos") {
+      await page.focus("#cfgWallet");
+      await page.keyboard.press("Escape");
+      await esperar(300);
+      const q = await parada();
+      assert("T2: Esc dentro de un campo no cierra el ejemplo (A4)", q && q.titulo === "Tus datos", q);
+    }
     if (p.titulo === "💶 Coste") {
+      assert("T2: en 💶 se señala también «Calcular el precio por token» (A12)", p.calcular, p);
       await page.type(".driver-active-element .cb-valor", "150");
+      // A4: escribiendo, ← y → son del campo: el recorrido se queda en 💶.
+      for (const k of ["ArrowLeft", "ArrowRight"]) await page.keyboard.press(k);
+      await esperar(300);
+      const sigue = await parada();
+      assert("T2: ← y → dentro de un campo no mueven el ejemplo (A4)", sigue && sigue.titulo === "💶 Coste", sigue);
       await page.keyboard.press("Enter");
       await esperar(500);
       const c = await page.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent).join());

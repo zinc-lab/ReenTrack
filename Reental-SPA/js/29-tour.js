@@ -85,24 +85,26 @@ const TOUR_PASOS = [
   tourMenu("inicio", "🚀 Puesta en marcha", "Aquí se empieza: tus datos, el archivo de Reental y tus copias."),
   { pestana: "inicio", element: "#arrDatos", popover: { title: "Tus datos", description: "Tu wallet y tu API key de Etherscan. Con las dos, la descarga empieza sola." } },
   { pestana: "inicio", element: "#dzCsv", popover: { title: "Archivo de Reental", description: "El archivo de rendimientos que descargas de la web de Reental." } },
-  { pestana: "inicio", element: "#arrPreparar", popover: { title: "🔄 Actualizar", description: "Para tenerla al día, pulsa aquí y añade el último archivo de Reental." } },
+  { pestana: "inicio", element: "#arrPreparar", popover: { title: "🔄 Actualizar", description: "Para tenerla al día: este botón y el último archivo de Reental." } },
   tourMenu("revision", "🔍 Revisión", "Lo que la app no puede decidir sola. Hay que dejarla sin nada pendiente."),
   { pestana: "revision", element: ".rv-tareas", popover: { title: "Las tareas", description: "Una fila por tarea. Verde: al día; ámbar: falta algo." } },
   { pestana: "revision", element: () => [...document.querySelectorAll("#rvCatalogo[open] tr")].find(tr => tr.textContent.includes(PN_ESTADOS.CANDIDATA)),
     popover: { title: "Catálogo de inmuebles", description: "Empieza por aquí: es lo que más limpia. Un token con dudas: «✔ Confirmar» si es un inmueble, «🚫 Descartar» si no." } },
   // Pulsarlo avanza (tourEmpezar); «Siguiente» lo pulsa por ti si sigue ahí.
-  { pestana: "revision", element: TOUR_COMPRA,
+  // Esta y la de 💶 son las únicas que se tocan; las demás, solo mirar.
+  { pestana: "revision", element: TOUR_COMPRA, disableActiveInteraction: false,
     popover: { title: "Compra externa", description: "Compraste tokens fuera de tu wallet (transferencia, exchange…) y la app no ve el pago. Pulsa «Compra externa…».",
       onNextClick: (el, paso, o) => { const b = document.querySelector(TOUR_COMPRA); if (b) b.click(); else o.driver.moveNext(); } } },
-  { pestana: "revision", element: () => [...document.querySelectorAll("#cbCoste[open] tr.cb-fila")].find(f => [...f.cells].some(td => td.textContent.trim() === "RNT")),
-    waitForElement: 3000, skipMissingElement: true,
+  // La tabla entera: no se repinta al guardar y lleva «Calcular el precio por token» debajo de la fila.
+  { pestana: "revision", element: () => [...document.querySelectorAll("#cbCoste[open] tr.cb-fila")].find(f => [...f.cells].some(td => td.textContent.trim() === "RNT"))?.closest("tbody"),
+    waitForElement: 3000, skipMissingElement: true, disableActiveInteraction: false,
     popover: { title: "💶 Coste", description: "Pon lo que pagaste y pulsa Intro. Si llegó en varias entregas, «Calcular el precio por token»." } },
   { pestana: "revision", element: () => document.querySelector('#ccLista [data-opcion="venta"]')?.closest(".cc-item"), popover: { title: "Venta", description: "«Es una venta…» y pones lo cobrado, en USD o en €, o eliges el cobro recibido." } },
   { pestana: "revision", element: "#ccResueltos", popover: { title: "Ya decididos", description: "Todo lo que decides aquí se puede cambiar o deshacer." } },
   tourMenu("dashboard", "📊 Dashboard", "Tu cartera de un vistazo."),
   { pestana: "dashboard", element: "#tarjetaMetricas .dash-metrics", popover: { title: "Las cifras", description: "Lo principal arriba; debajo, lo invertido, lo cobrado y los gráficos." } },
   { pestana: "dashboard", element: "#tarjetaMetricas .dash-nominal-fila", popover: { title: "Valor nominal",
-    description: "Enciéndelo para ver tus tokens a 100 € o 100 $ cada uno, como los cuenta la web de Reental." } },
+    description: "Al encenderlo, tus tokens a 100 € o 100 $ cada uno, como los cuenta la web de Reental." } },
   tourMenu("transacciones", "📒 Transacciones", "Todos tus movimientos."),
   { pestana: "transacciones", element: "#txFiltros", popover: { title: "Filtros", description: "Busca por tipo, año, inmueble o texto. En cada movimiento puedes escribir una nota." } },
   tourMenu("rendimientos", "💰 Rendimientos", "Cada reparto de Reental: lo cobrado, lo retenido y lo pendiente."),
@@ -149,6 +151,8 @@ async function tourEmpezar() {
     showProgress: true, progressText: "{{current}} de {{total}}",
     nextBtnText: "Siguiente", prevBtnText: "Anterior", closeBtnLabel: "Salir del ejemplo",
     overlayClickBehavior: "none", popoverClass: "tour-pop", stageRadius: 10,
+    // Solo mirar: lo señalado no se usa (pulsarlo lanzaría lo de verdad o lo repintaría fuera del hueco).
+    disableActiveInteraction: true,
     onNextClick: (el, paso, o) => ir(o.driver, 1),
     onPrevClick: (el, paso, o) => ir(o.driver, -1),
     onDestroyStarted: () => salir(volver),
@@ -158,6 +162,8 @@ async function tourEmpezar() {
   document.addEventListener("click", e => {
     if (drv.getActiveStep() && drv.getActiveStep().element === TOUR_COMPRA && e.target.closest(TOUR_COMPRA)) setTimeout(() => drv.moveNext(), 300);
   }, true);
+  // Escribiendo, las flechas y Esc son del campo, no del recorrido (driver.js las escucha en window).
+  document.addEventListener("keyup", e => { if (e.target.closest("input, textarea, select")) e.stopPropagation(); });
   drv.drive();
 }
 
