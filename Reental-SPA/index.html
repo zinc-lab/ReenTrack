@@ -809,6 +809,18 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
   </form>
 </dialog>
 
+<!-- El ejemplo, la primera vez (js/29, tourOfrecer) -->
+<dialog id="tourDlg" class="arr-dlg" aria-labelledby="tourDlgTit">
+  <form method="dialog">
+    <h3 id="tourDlgTit">¿Es tu primera vez?</h3>
+    <p>Un recorrido con datos inventados. Al terminar, la app queda en blanco.</p>
+    <div class="row mt">
+      <button value="ejemplo" class="primary" autofocus>Ver un ejemplo</button>
+      <button value="">Empezar con mis datos</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ============================ EXPORTAR ============================ -->
 <section id="view-exportar" class="view">
   <div class="card">
@@ -827,6 +839,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
     <h3>Qué es</h3>
     <p>ReenTrack lee tus transacciones de Reental en Polygon y el archivo de rendimientos que te da Reental, y los ordena: lo que has invertido, lo que has cobrado y su efecto fiscal. Es una app no oficial, sin relación con Reental.</p>
     <h3>Empezar</h3>
+    <p><button type="button" id="tourVer">▶ Ver un ejemplo</button> Un recorrido con datos inventados; al terminar, todo queda como estaba.</p>
     <ol>
       <li><a href="#inicio">🚀 Puesta en marcha</a>: pon tu wallet y tu API key de Etherscan (es gratis); la descarga empieza sola.</li>
       <li>Añade el archivo de rendimientos de Reental (el CSV que descargas de su web).</li>
@@ -858,6 +871,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
      El código JavaScript está dividido en archivos independientes dentro
      de la carpeta "js". El orden de carga importa: 13-inicio.js, el último.
 ===================================================================== -->
+<script src="js/00-driver.js"></script>
 <script src="js/01-constantes.js"></script>
 <script src="js/02-utilidades.js"></script>
 <script src="js/03-archivos.js"></script>
@@ -885,6 +899,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
 <script src="js/26-excel.js"></script>
 <script src="js/27-informe-pdf.js"></script>
 <script src="js/28-cuadre.js"></script>
+<script src="js/29-tour.js"></script>
 <script src="js/13-inicio.js"></script>
 </body>
 </html>

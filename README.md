@@ -55,8 +55,9 @@ Etherscan) y las consultas de tipos de cambio (al BCE) y de precios (a CoinGecko
 
 ### Tecnologías
 
-- **App:** HTML + CSS + JavaScript sin dependencias ni compilación; IndexedDB
-  para guardar los datos de cada uno; gráficos SVG hechos a mano.
+- **App:** HTML + CSS + JavaScript sin compilación ni más dependencias que
+  [driver.js](https://driverjs.com) (MIT), copiado dentro para el ejemplo;
+  IndexedDB para guardar los datos de cada uno; gráficos SVG hechos a mano.
 - **Pruebas:** Node (la app en una VM), puppeteer-core + Chrome (navegador) y
   Python con `pytest` (documentos; openpyxl y PyMuPDF para leer el Excel y el PDF).
 
@@ -69,7 +70,7 @@ ReenTrack/
 ├── CLAUDE.md               ← para Claude Code: «lee el README»
 ├── Reental-SPA/            ← la app
 │   ├── index.html              estructura y estilos
-│   └── js/                     módulos 01–28, cargados en orden (ver abajo)
+│   └── js/                     módulos 00–29, cargados en orden (ver abajo)
 ├── tests/                  ← pruebas
 │   ├── test_*.js / *.py        pruebas puras
 │   ├── paridad_*.js            comparan las cifras de la app con las aprobadas
@@ -86,12 +87,13 @@ ReenTrack/
 └── privado/                🔒 fuera de Git: tus datos de prueba, planes y notas
 ```
 
-Módulos 01–28 de `js/`: 01–13 base (constantes, utilidades, configuración, cache,
+Módulos 00–29 de `js/`: 00 driver.js (copiado tal cual), 01–13 base (constantes, utilidades, configuración, cache,
 Etherscan, BCE, CoinGecko, sincronización, archivo de Reental, panel, carga,
 inicio), 14 clasificación, 15 🔍 Revisión, 16 📊 Dashboard, 17 💰 Rendimientos,
 18 📒 Transacciones, 19 🚀 Puesta en marcha, 20 coste de las compras, 21 motor
 fiscal, 22 informe para la Renta, 23 🧾 Fiscal, 24 📤 Exportar, 25 escritor de
-.xlsx, 26 hojas del Excel, 27 informe imprimible, 28 cuadre con la blockchain.
+.xlsx, 26 hojas del Excel, 27 informe imprimible, 28 cuadre con la blockchain,
+29 el ejemplo (recorrido con datos inventados).
 
 ### Ejecutar y probar
 

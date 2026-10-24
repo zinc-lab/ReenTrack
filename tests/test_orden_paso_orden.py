@@ -171,10 +171,10 @@ class TestOrden(unittest.TestCase):
     def test_readme_con_todos_los_modulos(self):
         numeros = [int(f[:2]) for f in os.listdir(os.path.join(RAIZ, "Reental-SPA", "js"))
                    if re.match(r"^\d{2}-.*\.js$", f)]
-        m = re.search(r"Módulos 01–(\d{2})", leer("README.md"))
-        self.assertTrue(m, "README: falta la línea «Módulos 01–NN»")
+        m = re.search(r"Módulos 00–(\d{2})", leer("README.md"))
+        self.assertTrue(m, "README: falta la línea «Módulos 00–NN»")
         self.assertEqual(int(m.group(1)), max(numeros),
-                         "README: «Módulos 01–NN» no llega al último módulo de js/")
+                         "README: «Módulos 00–NN» no llega al último módulo de js/")
 
     def test_sin_tus_datos_en_git(self):
         # Nada de privado/datos_reales/ en lo que iría a Git (ver tus_datos());

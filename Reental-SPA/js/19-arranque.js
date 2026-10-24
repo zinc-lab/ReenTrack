@@ -1066,6 +1066,7 @@ async function arrRestaurarRecordados() {
       recordarAjustesSinSello(state.cache);
       renderPanel();
       actualizarChipEstado();
+      if (typeof tourOfrecer === "function") tourOfrecer();   // la primera vez, el ejemplo (js/29)
     }
   }
   arrPintarSeguro();
@@ -1091,7 +1092,7 @@ function arrTrasGuardar() {
    abiertas con doble clic, otras páginas file:// comparten el almacén. */
 const ARR_SENAL_OLVIDAR = "reental_olvidar";   // aviso a las otras pestañas
 const ARR_CLAVES_NAVEGADOR = ["reental_config", "reental_copias", "reental_dark", "reental_nav_plegada", "reental_datos_en_archivo",
-  ARR_SENAL_OLVIDAR];
+  "reental_tour_visto", ARR_SENAL_OLVIDAR];
 async function arrOlvidarTodo() {
   const dlg = $("arrDlgOlvidar");
   if (!dlg || dlg.open) return;
