@@ -115,6 +115,12 @@ const TOUR_PASOS = [
 
 async function tourEmpezar() {
   await autoGuardarCache();   // lo tuyo, guardado antes de apartarlo
+  // Lo que la recarga del final tiraría: así no se empieza.
+  const aj = $("txtAjustes");
+  const motivo = arr.preparando || state.sync.running ? "espera a que termine la descarga"
+    : state.errorGuardar || state.cacheDirty ? "lo tuyo no se ha podido guardar; guarda una copia en 🚀 Puesta en marcha"
+    : aj.value !== (aj.dataset.pintado || "") ? "aplica o borra lo que escribiste en «Ajustes en JSON»" : "";
+  if (motivo) { toast("Ahora no: " + motivo + ".", "warn"); return; }
   const volver = location.hash || "#dashboard";
   // Salir (✕, Esc o «Empezar»): la recarga trae lo guardado, tal como estaba.
   const salir = destino => { location.hash = destino; location.reload(); };

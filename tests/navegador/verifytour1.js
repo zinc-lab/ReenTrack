@@ -11,7 +11,10 @@
  *  T3) «Empezar» lleva a 🚀 sin nada del ejemplo en memoria ni en lo
  *      guardado (IndexedDB y localStorage); nada salió a internet.
  *  T4) solo con «Siguiente», «Compra externa» se decide sola y sigue en 💶;
- *      ✕ a mitad vuelve a donde estabas, igual de limpio; 0 errores.
+ *      ✕ a mitad vuelve a donde estabas, igual de limpio.
+ *  T5) no empieza (y lo dice) si al salir se perdería algo: el guardado
+ *      fallando (A1), una descarga en marcha (A2), «Ajustes en JSON» a medio
+ *      escribir (A8). 0 errores.
  *
  * DATOS 100 % SINTÉTICOS. Ejecución (servidor en 8765 y NODE_PATH a
  * puppeteer-core):  node tests/navegador/verifytour1.js
@@ -138,6 +141,29 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   const x = await page.evaluate(() => ({ hash: location.hash, wallet: state.config.wallet || "", pop: !!document.querySelector(".driver-popover") }));
   assert("T4: ✕ vuelve a 📖 Ayuda, sin el ejemplo", x.hash === "#ayuda" && !x.wallet && !x.pop, x);
   assert("T4: lo guardado, sin nada del ejemplo", await limpio());
+  /* T5 (A1, A2, A8): lo que la recarga del final tiraría → no empieza y lo dice. */
+  const abrirAyuda = async () => {
+    await page.goto(BASE + "index.html#ayuda", { waitUntil: "networkidle0" });
+    await page.reload({ waitUntil: "networkidle0" });
+    await page.evaluate(() => window.scrollTo(0, 0));   // la recarga deja la página bajada: la barra de arriba taparía el botón
+  };
+  const noEmpieza = async (nombre, preparar, texto) => {
+    await abrirAyuda();
+    await page.evaluate(preparar);
+    await page.click("#tourVer");
+    await esperar(400);
+    const r = await page.evaluate(() => ({ pop: !!document.querySelector(".driver-popover"),
+      aviso: [...document.querySelectorAll("#toasts .toast")].map(t => t.textContent).join() }));
+    assert("T5: " + nombre + " → no empieza y lo dice", !r.pop && r.aviso.includes("Ahora no: " + texto), r);
+  };
+  await noEmpieza("con el guardado fallando (A1)", async () => {
+    window.escribirArchivoNavegador = async () => { throw new Error("lleno"); };
+    marcarCacheDirty();
+  }, "lo tuyo no se ha podido guardar");
+  await noEmpieza("con una descarga en marcha (A2)", () => { arr.preparando = true; }, "espera a que termine la descarga");
+  await noEmpieza("con «Ajustes en JSON» a medio escribir (A8)", () => { document.getElementById("txtAjustes").value = '{"a medias":'; },
+    "aplica o borra lo que escribiste");
+
   assert("0 errores en la página", errores.length === 0, errores);
 
   await browser.close();
