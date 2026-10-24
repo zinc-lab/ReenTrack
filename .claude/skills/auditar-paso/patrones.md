@@ -90,6 +90,10 @@ tiene otro tipo o está vacío?
   usuario), no queda ningún ↩ y lo hecho es invisible; y lo que la acción
   cambió de paso (un token confirmado que pasa a «con dudas») el ↩ no lo
   devuelve.
+- Un modo que aparta lo del usuario y recarga al terminar (un recorrido con
+  datos inventados): la recarga tiraba lo que aún no estaba guardado (el
+  guardado fallando, una descarga a medias, un borrador sin aplicar). Antes
+  de apartar, mirar si algo se perdería y, si es así, no empezar.
 
 **Mirar:** para cada acción nueva, hacer → deshacer → ¿queda exactamente
 como antes? Hacer → editar → ¿se conservan los campos que no se editaron?
@@ -98,6 +102,9 @@ como antes? Hacer → editar → ¿se conservan los campos que no se editaron?
 ## 4. Estado de la pantalla y repintados
 
 - Lo escrito a medias se borra al repintar.
+- Una capa encima que señala un elemento (un recorrido guiado): si la app lo
+  repinta al usarlo, lo nuevo queda tapado y sin poder usarse. Señalar un
+  contenedor que no se repinta, o dejarlo solo para mirar.
 - Una clave con un carácter que el navegador cambia al leer el HTML
   (`\u0000` en un atributo `data-…`) ya no casa con la guardada: lo
   desplegado se cerraba en cada repintado.
@@ -491,6 +498,9 @@ textos que el usuario o un ajuste pueden cambiar.
   propio `clickCentrado`, se arreglaron seis y tres siguieron rotos sin
   que nadie lo viera, porque la regresión corta no corre arneses. Buscar
   (`grep`) el selector en todos los `tests/navegador/`.
+- Una protección (no guardar, no salir a internet) probada solo con la app
+  vacía y sin que nada intente escribir: seguía en verde aunque se quitara.
+  Probarla con datos del usuario ya guardados y forzando la escritura.
 
 **Mirar:** para cada cambio del paso, ¿qué test fallaría si el cambio
 estuviera mal? Si ninguno, es un hueco.
