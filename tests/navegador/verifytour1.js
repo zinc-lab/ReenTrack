@@ -16,7 +16,10 @@
  *  T5) no empieza (y lo dice) si al salir se perdería algo: el guardado
  *      fallando (A1), una descarga en marcha (A2), «Ajustes en JSON» a medio
  *      escribir (A8).
- *  T6) lo de tu sesión no se cuela en el ejemplo (A3). 0 errores.
+ *  T6) lo de tu sesión no se cuela en el ejemplo (A3).
+ *  T7) «Anterior» hasta 🔍 se salta «Compra externa» y 💶 ya hechas y
+ *      señala el catálogo (A7); el historial no crece y «Atrás» del
+ *      navegador sale del ejemplo (A13). 0 errores.
  *
  * DATOS 100 % SINTÉTICOS. Ejecución (servidor en 8765 y NODE_PATH a
  * puppeteer-core):  node tests/navegador/verifytour1.js
@@ -194,6 +197,33 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
   const cuela = await page.evaluate(() => ({ buscar: document.getElementById("txBuscar").value, prep: arr.ultimaPreparacion }));
   assert("T6: en el ejemplo, sin tu búsqueda de 📒 ni tu última descarga", cuela.buscar === "" && cuela.prep === null, cuela);
   await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(".driver-popover-close-btn")]);
+
+  /* T7 (A7, A13): «Anterior» hasta 🔍 y «Atrás» del navegador. */
+  await abrirAyuda();
+  const largo = await page.evaluate(() => history.length);
+  await page.click("#tourVer");
+  await page.waitForSelector(".driver-popover", { visible: true });
+  for (let i = 0; i < 20 && (await parada()).titulo !== "Las cifras"; i++) {
+    const n = (await parada()).n;
+    await page.click(".driver-popover-next-btn");
+    await otraParada(n);
+  }
+  assert("T7: las pestañas del ejemplo no quedan en el historial (A13)", (await page.evaluate(() => history.length)) === largo);
+  const atras = [];
+  for (let i = 0; i < 8; i++) {
+    const p0 = await parada();
+    if (p0.titulo === "Las tareas") break;
+    await page.click(".driver-popover-prev-btn");
+    await otraParada(p0.n);
+    const p1 = await parada();
+    atras.push(p1.titulo + (p1.senala ? "" : " (sin señalar)"));
+  }
+  assert("T7: «Anterior» hasta 🔍 se salta lo ya hecho y señala el catálogo (A7)",
+    atras.join(" < ") === "📊 Dashboard < Ya decididos < Venta < Catálogo de inmuebles < Las tareas", atras);
+  await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate(() => history.back())]);
+  await esperar(300);
+  const tras7 = await page.evaluate(() => ({ pop: !!document.querySelector(".driver-popover"), wallet: state.config.wallet || "" }));
+  assert("T7: «Atrás» del navegador sale del ejemplo (A13)", !tras7.pop && !tras7.wallet, tras7);
 
   assert("0 errores en la página", errores.length === 0, errores);
 

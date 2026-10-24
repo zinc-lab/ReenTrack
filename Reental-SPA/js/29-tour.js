@@ -88,16 +88,18 @@ const TOUR_PASOS = [
   { pestana: "inicio", element: "#arrPreparar", popover: { title: "🔄 Actualizar", description: "Para tenerla al día: este botón y el último archivo de Reental." } },
   tourMenu("revision", "🔍 Revisión", "Lo que la app no puede decidir sola. Hay que dejarla sin nada pendiente."),
   { pestana: "revision", element: ".rv-tareas", popover: { title: "Las tareas", description: "Una fila por tarea. Verde: al día; ámbar: falta algo." } },
-  { pestana: "revision", element: () => [...document.querySelectorAll("#rvCatalogo[open] tr")].find(tr => tr.textContent.includes(PN_ESTADOS.CANDIDATA)),
+  // Abierto: la app lo pliega al salir de 🔍 y no lo reabre si ya avisó.
+  { pestana: "revision", element: () => { $("rvCatalogo").open = true; return [...document.querySelectorAll("#rvCatalogo tr")].find(tr => tr.textContent.includes(PN_ESTADOS.CANDIDATA)); },
     popover: { title: "Catálogo de inmuebles", description: "Empieza por aquí: es lo que más limpia. Un token con dudas: «✔ Confirmar» si es un inmueble, «🚫 Descartar» si no." } },
   // Pulsarlo avanza (tourEmpezar); «Siguiente» lo pulsa por ti si sigue ahí.
   // Esta y la de 💶 son las únicas que se tocan; las demás, solo mirar.
-  { pestana: "revision", element: TOUR_COMPRA, disableActiveInteraction: false,
+  // `hecha`: con la compra ya decidida, «Anterior» se salta esta y la de 💶.
+  { pestana: "revision", element: TOUR_COMPRA, disableActiveInteraction: false, hecha: () => !document.querySelector(TOUR_COMPRA),
     popover: { title: "Compra externa", description: "Compraste tokens fuera de tu wallet (transferencia, exchange…) y la app no ve el pago. Pulsa «Compra externa…».",
       onNextClick: (el, paso, o) => { const b = document.querySelector(TOUR_COMPRA); if (b) b.click(); else o.driver.moveNext(); } } },
   // La tabla entera: no se repinta al guardar y lleva «Calcular el precio por token» debajo de la fila.
   { pestana: "revision", element: () => [...document.querySelectorAll("#cbCoste[open] tr.cb-fila")].find(f => [...f.cells].some(td => td.textContent.trim() === "RNT"))?.closest("tbody"),
-    waitForElement: 3000, skipMissingElement: true, disableActiveInteraction: false,
+    waitForElement: 3000, skipMissingElement: true, disableActiveInteraction: false, hecha: () => !document.querySelector(TOUR_COMPRA),
     popover: { title: "💶 Coste", description: "Pon lo que pagaste y pulsa Intro. Si llegó en varias entregas, «Calcular el precio por token»." } },
   { pestana: "revision", element: () => document.querySelector('#ccLista [data-opcion="venta"]')?.closest(".cc-item"), popover: { title: "Venta", description: "«Es una venta…» y pones lo cobrado, en USD o en €, o eliges el cobro recibido." } },
   { pestana: "revision", element: "#ccResueltos", popover: { title: "Ya decididos", description: "Todo lo que decides aquí se puede cambiar o deshacer." } },
@@ -124,8 +126,11 @@ async function tourEmpezar() {
     : aj.value !== (aj.dataset.pintado || "") ? "aplica o borra lo que escribiste en «Ajustes en JSON»" : "";
   if (motivo) { toast("Ahora no: " + motivo + ".", "warn"); return; }
   const volver = location.hash || "#dashboard";
-  // Salir (✕, Esc o «Empezar»): la recarga trae lo guardado, tal como estaba.
-  const salir = destino => { location.hash = destino; location.reload(); };
+  // Las pestañas del recorrido no quedan en el historial (location.replace): «Atrás» del navegador sale.
+  let esperada = location.hash;
+  // Salir (✕, Esc, «Empezar» o «Atrás»): la recarga trae lo guardado, tal como estaba.
+  const salir = destino => { esperada = destino; location.replace(destino); location.reload(); };
+  addEventListener("hashchange", () => { if (location.hash !== esperada) salir(location.hash); });
   tourSinGuardar();
   // Lo de tu sesión no se cuela: la última descarga y los filtros de 📒 y 💰.
   arrReiniciarSync();
@@ -138,12 +143,15 @@ async function tourEmpezar() {
   actualizarChipEstado();
   document.querySelectorAll("#toasts .toast").forEach(t => t.remove());
   const ir = (drv, d) => {
-    const i = drv.getActiveIndex() + d, paso = TOUR_PASOS[i];
+    let i = drv.getActiveIndex() + d;
+    while (d < 0 && TOUR_PASOS[i] && TOUR_PASOS[i].hecha && TOUR_PASOS[i].hecha()) i--;
+    const paso = TOUR_PASOS[i];
     if (!paso) { salir("#inicio"); return; }
     if (!paso.pestana || location.hash === "#" + paso.pestana) { drv.moveTo(i); return; }
     // Con la pestaña ya pintada: los oyentes de la app se registraron antes que este.
     addEventListener("hashchange", () => drv.moveTo(i), { once: true });
-    location.hash = "#" + paso.pestana;
+    esperada = "#" + paso.pestana;
+    location.replace(esperada);
   };
   const drv = window.driver.js.driver({
     steps: TOUR_PASOS,
