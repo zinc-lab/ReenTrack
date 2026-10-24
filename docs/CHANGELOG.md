@@ -2,6 +2,22 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## El ejemplo (24/10/2026)
+
+- **Primera vez:** con la app vacía, «¿Es tu primera vez?» ofrece «Ver un
+  ejemplo» o «Empezar con mis datos». También desde 📖 Ayuda, «▶ Ver un
+  ejemplo».
+- **El recorrido:** una cartera inventada y 23 paradas en el orden en que se
+  usa la app (🚀, 🔍, 📊, 📒, 💰, 🧾, 📤 y 📖). Al cambiar de pestaña señala
+  su botón del menú. Es para mirar, salvo en 🔍: «Compra externa…» y lo
+  pagado en 💶 los haces tú.
+- **Tus datos:** mientras dura no se guarda ni se borra nada y no sale nada a
+  internet; al salir, la app queda como estaba. No empieza si algo se
+  perdería (el guardado fallando, una descarga a medias o «Ajustes en JSON»
+  sin aplicar).
+- **Técnico:** usa [driver.js](https://driverjs.com) (MIT), copiado dentro,
+  la única librería ajena de la app.
+
 ## Orden (21/10/2026)
 
 - **Documentos:** la especificación de los datos dice «compra externa» donde

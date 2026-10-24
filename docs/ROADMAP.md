@@ -20,6 +20,8 @@
   app está abierta en otra pestaña; igual abierta con doble clic como archivo
   único (comprobado en Chrome, Edge y Firefox).
 - **Comprobación antes de cada commit** de que nada de `privado/` va a Git.
+- **El ejemplo** (24/10/2026): un recorrido guiado con datos inventados, la
+  primera vez y desde 📖 Ayuda, sin tocar lo tuyo (driver.js).
 - **Historial de cada activo** en 🧾 (20/10/2026): cada inmueble, RNT, POL,
   USDT y USDC con sus compras, ventas y lotes, hasta el 31/12 del ejercicio.
   En el Excel, la hoja «Historial» (21/10/2026), en lugar de «Cartera».
