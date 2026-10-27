@@ -53,6 +53,10 @@ const NOTA_CANJE_INFORME = "* Token recibido en un canje de contrato: se indica 
 // Compra externa de un inmueble sin coste tuyo. «Incluye»: la fila puede juntar otras
 // compras con su coste.
 const NOTA_COSTE_SUPUESTO = "** Incluye compras externas de inmuebles sin coste indicado, a 100 € por token.";
+// Sin criterio claro ni de Reental (sus certificados: monedas virtuales; su
+// guía: préstamo o LLC). La app no sabe de qué tipo es cada inmueble: se
+// avisa y el motor no cambia (27/10/2026).
+const NOTA_TOKENS_INMUEBLE = "No hay un criterio claro. Aquí, sus rendimientos van como capital mobiliario y sus ventas, como otros elementos patrimoniales. Si el proyecto es de una sociedad española (un préstamo participativo, según la guía fiscal de Reental): rendimientos, intereses del capital mobiliario; venta o amortización, también capital mobiliario, no ganancia patrimonial. Si es de una LLC de EE. UU.: sin aclarar; participación en beneficios (capital mobiliario, con deducción por doble imposición) o atribución de rentas (capital inmobiliario, base general). Los certificados de Reental los tratan como monedas virtuales. Revisa en la documentación de cada inmueble (su ficha o su contrato) de qué tipo es.";
 // Genérico, sin casillas ni países: la app facilita, no es una guía fiscal.
 const DESCARGO_RENTA = "Este informe es una ayuda para preparar la declaración: lo genera un programa con las operaciones de la wallet, el archivo de rendimientos de Reental y los tipos de cambio del Banco Central Europeo. No es un documento oficial ni lo emite Reental. Antes de presentar la declaración, confírmalo con un asesor.";
 const GLOSARIO_RENTA = [
@@ -104,6 +108,7 @@ const NOTA_METODOLOGICA_RENTA = [
   ["Monedas que llegan", "Los USDT y USDC que llegan a la wallet tienen como coste su valor en euros del día de llegada."],
   ["Inversiones activas", "A coste de compra, porque los tokens de inmuebles no cotizan. El vault, por su saldo en USDT al tipo de cambio del día de cierre."],
   ["Comisiones de red", "El gas de una compra se suma a su coste y el de una venta se resta de lo cobrado (DGT V0648-24). El total del apartado 4 es informativo."],
+  ["Tokens de inmuebles", NOTA_TOKENS_INMUEBLE],
   ["Céntimos", NOTA_CENTIMOS],
 ];
 const APARTADO_FISCAL = {

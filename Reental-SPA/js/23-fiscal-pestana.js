@@ -897,7 +897,8 @@ function fiHtml(resultado, anios, anio, clasificados) {
   return fiHtmlCabecera(informe, resultado.hasta, anios, anio) +
     (aRevisar ? '<p class="fi-nota-aviso"><a href="#fiAvisos" class="fi-ir-avisos">⚠️ ' + aRevisar +
       (aRevisar === 1 ? " aviso puede cambiar" : " avisos pueden cambiar") + " estas cifras</a></p>" : "") +
-    seccion("fiResumen", "Resumen del ejercicio " + anio, fiHtmlResumen(informe)) +
+    seccion("fiResumen", "Resumen del ejercicio " + anio, fiHtmlResumen(informe) +
+      '<p class="fi-pie">⚠️ Tokens de inmuebles: ' + ccEsc(NOTA_TOKENS_INMUEBLE) + "</p>") +
     seccion("fiVentas", "Ventas y permutas de " + anio, fiHtmlVentas(informe, resultado.operaciones)) +
     seccion("fiHistorial", "Historial de cada activo", fiHtmlHistorial(resultado, anio, informe, resultado.informes[anios.at(-1)])) +
     seccion("fiAvisos", "Avisos de " + anio, fiHtmlAvisos(avisos)) +

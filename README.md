@@ -135,6 +135,8 @@ usan, si existen, `privado/datos_reales/` (`config.json`, `reental_cache.json`,
 - **No es una guía fiscal.** Rendimientos de inmuebles: capital mobiliario, base
   del ahorro. Ventas de tokens: «otros elementos patrimoniales». Sin consejos por
   país ni por tipo de rendimiento; solo un «confírmalo con un asesor» genérico.
+  Única excepción: el aviso de los tokens de inmuebles en 🧾 y en el informe
+  (`NOTA_TOKENS_INMUEBLE`), porque no hay criterio claro.
 - **Solo Reental.** Lo DeFi ajeno (otros pools o stakings) no se trata.
 - **Ventas y cobros:** el destino y la cercanía en el tiempo nunca deciden solos
   que hay una venta; solo un vínculo que confirma quien usa la app. No se marca

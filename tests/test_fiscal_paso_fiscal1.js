@@ -337,6 +337,11 @@ console.log("== 1. js/09: la última sincronización en la cache ==");
     !/Cesión a terceros|25\.2|sede\.agenciatributaria/.test(htmlRes));
   assert("sin casillas ni consejos del asesor en el resumen",
     !/casilla|asesor|LLC|España/.test(htmlRes));
+  const notaTokens = vm.runInContext("NOTA_TOKENS_INMUEBLE", S);
+  assert("tokens de inmuebles: el aviso en 🧾 bajo el resumen y en la nota del informe (PDF y Excel)",
+    /fiHtmlResumen\(informe\) \+\s*'<p class="fi-pie">⚠️ Tokens de inmuebles: ' \+ ccEsc\(NOTA_TOKENS_INMUEBLE\)/.test(S.fiHtml.toString()) &&
+    vm.runInContext("NOTA_METODOLOGICA_RENTA", S).some(([t, x]) => t === "Tokens de inmuebles" && x === notaTokens) &&
+    /sociedad española/.test(notaTokens) && /LLC/.test(notaTokens) && /documentación de cada inmueble/.test(notaTokens));
   assert("cantidad de POL y la nota escapada en su ⓘ", htmlRes.includes("1,5 POL") && htmlRes.includes("Íntegro &lt;menos&gt; retenciones."));
   assert("métricas: íntegro, retenciones (—), ganancias y capital al 31/12", htmlRes.includes("Capital al 31/12") && htmlRes.includes("50,50 €") && htmlRes.includes("1.000,00 €"));
   const enCurso = S.fiHtmlResumen(Object.assign({}, informe, { cabecera: { anio_terminado: false }, inversiones_activas: { fecha_corte: "2026-05-20" } }));
