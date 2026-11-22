@@ -4,10 +4,10 @@
  * cap_totales_paises.png y cap_totales_exportar.png.
  *
  *  S1) 🚀: sin datos, sin el apartado del país; con ellos, «🌍 País del token»
- *      con cada inmueble y su campo.
- *  S2) el desplegable con buscador: «us» o «españa» valen (en el campo,
- *      el nombre; en tu archivo, el código); «Narnia» no (aviso y vuelve
- *      a lo de antes); vacío lo borra; los usados, arriba de la lista.
+ *      con cada inmueble y su botón «Elegir país», todos del mismo ancho.
+ *  S2) el menú: con el buscador («us», «españa», «Es» + flechas), con el
+ *      ratón, «Quitar el país», Esc, abrir y cerrar; los usados arriba con
+ *      una línea, unas 6 filas; el resumen y los botones del mismo ancho.
  *  S3) 🧾: el historial dice «Prueba Cáceres 8 (US)».
  *  S4) 📤: el botón junto al Excel; si 🧾 no puede calcular, dice por qué y
  *      no guarda nada.
@@ -80,97 +80,96 @@ function espiar() {
   const s1 = await page.evaluate(() => {
     const caja = document.getElementById("arrPaises");
     return { visible: !caja.hidden, titulo: caja.querySelector("summary").textContent,
-      campos: [...caja.querySelectorAll("input.arr-pais")].map(i => [i.labels[0].textContent, i.value, i.getAttribute("aria-controls"), i.readOnly]) };
+      campos: [...caja.querySelectorAll("button.arr-pais")].map(b => [b.previousElementSibling.textContent, b.textContent, b.getAttribute("aria-haspopup")]),
+      resumen: document.getElementById("arrPaisesResumen").textContent };
   });
   assert("S1 -> sin datos, sin el apartado del país", sinDatos);
-  assert("S1 -> con datos, «🌍 País del token (opcional)» con cada inmueble y su desplegable, que se puede escribir",
-    s1.visible && /País del token/.test(s1.titulo) && /opcional/.test(s1.titulo) &&
-    JSON.stringify(s1.campos) === JSON.stringify([["Prueba Cáceres 8", "", "arrPaisesOpciones", false], ["Prueba Fondo 1", "", "arrPaisesOpciones", false],
-      ["Prueba Sevilla 2", "", "arrPaisesOpciones", false]]), s1);
+  assert("S1 -> con datos, «🌍 País del token (opcional)» con cada inmueble, su botón «Elegir país» y «3 sin país»",
+    s1.visible && /País del token/.test(s1.titulo) && /opcional/.test(s1.titulo) && s1.resumen === "3 sin país" &&
+    JSON.stringify(s1.campos) === JSON.stringify([["Prueba Cáceres 8", "Elegir país", "listbox"], ["Prueba Fondo 1", "Elegir país", "listbox"],
+      ["Prueba Sevilla 2", "Elegir país", "listbox"]]), s1);
 
-  /* ============ S2) escribir el país ============ */
-  const escribir = async (i, texto) => {
-    await page.evaluate((i, texto) => {
-      const el = document.querySelectorAll("input.arr-pais")[i];
-      el.value = texto;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    }, i, texto);
-    await esperar(150);
-    return page.evaluate(i => ({ campo: document.querySelectorAll("input.arr-pais")[i].value,
-      guardado: JSON.parse(JSON.stringify(state.cache.paises_inmuebles || {})), toasts: window.__vistos.toasts.slice() }), i);
-  };
-  let s2 = await escribir(0, "us");
-  assert("S2 -> «us»: en el campo «Estados Unidos», en tu archivo «US»", s2.campo === "Estados Unidos" && s2.guardado["Prueba Cáceres 8"] === "US", s2);
-  s2 = await escribir(1, "Narnia");
-  assert("S2 -> «Narnia» no es un país: aviso y el campo vuelve a lo de antes", s2.campo === "" && !("Prueba Fondo 1" in s2.guardado) &&
-    s2.toasts.some(([t, m]) => t === "warn" && /Elige un país de la lista/.test(m)), s2);
-  s2 = await escribir(2, "españa");
-  assert("S2 -> «españa» por su nombre: «España» y «ES»", s2.campo === "España" && s2.guardado["Prueba Sevilla 2"] === "ES", s2);
+  /* ============ S2) el menú ============ */
   await page.evaluate(() => { document.getElementById("arrPaises").open = true; });
-  const fijo = await page.evaluate(() => { const i = document.getElementById("arrPais0"), b = i.nextElementSibling;
-    return { soloLectura: i.readOnly, lapiz: !b.hidden && b.textContent === "" && !!b.querySelector("svg"), nombre: b.getAttribute("aria-label") }; });
-  assert("S2 -> con país: el campo queda fijo y al lado el lápiz (un dibujo, no un emoji)",
-    fijo.soloLectura && fijo.lapiz && fijo.nombre === "Cambiar el país de Prueba Cáceres 8", fijo);
-  await page.focus("#arrPais0");
-  const cerrada = await page.evaluate(() => document.getElementById("arrPaisesOpciones").hidden);
-  assert("S2 -> fijo: al entrar no se abre la lista", cerrada);
-  // La lista propia: al entrar, los usados arriba y una línea; unas 6 filas a la vista.
-  await page.focus("#arrPais1");
-  const lista = () => page.evaluate(() => {
-    const ul = document.getElementById("arrPaisesOpciones"), li = ul.querySelector("li");
-    return { abierta: !ul.hidden && ul.parentElement.contains(document.activeElement), n: ul.querySelectorAll("li").length,
-      primeros: [...ul.querySelectorAll("li")].slice(0, 3).map(l => l.textContent), linea: (ul.querySelector(".arr-pais-linea") || {}).textContent,
-      filas: li ? Math.round(ul.clientHeight / li.offsetHeight) : 0, marcado: (ul.querySelector('[aria-selected="true"]') || {}).textContent,
-      expandido: document.activeElement.getAttribute("aria-expanded") };
+  const menu = () => page.evaluate(() => {
+    const m = document.getElementById("arrPaisesMenu"), ul = document.getElementById("arrPaisesOpciones"), li = ul.querySelector("li");
+    const nombre = l => l.textContent.slice(2);
+    return { abierto: !m.hidden, bajo: m.previousElementSibling && m.previousElementSibling.id, foco: document.activeElement.id,
+      n: ul.querySelectorAll("li[data-pais]").length, primeros: [...ul.querySelectorAll("li")].slice(0, 3).map(nombre),
+      linea: (l => l && nombre(l))(ul.querySelector(".arr-pais-linea")), filas: li ? Math.round(ul.clientHeight / li.offsetHeight) : 0,
+      marcado: (l => l && nombre(l))(ul.querySelector('[aria-selected="true"]')), conMarca: [...ul.querySelectorAll("li svg")].map(s => s.parentElement.dataset.pais),
+      quitar: !document.getElementById("arrPaisQuitar").hidden, nada: !!ul.querySelector(".arr-pais-nada") };
   });
-  let l = await lista();
-  assert("S2 -> al entrar: 249 países, «España» y «Estados Unidos» arriba, la línea antes de «Afganistán», 6 filas a la vista",
-    l.abierta && l.n === 249 && JSON.stringify(l.primeros) === JSON.stringify(["España", "Estados Unidos", "Afganistán"]) &&
-    l.linea === "Afganistán" && l.filas === 6 && l.expandido === "true" && !l.marcado, l);
+  const botones = () => page.evaluate(() => ({ textos: [...document.querySelectorAll("button.arr-pais")].map(b => b.textContent),
+    anchos: [...document.querySelectorAll("button.arr-pais")].map(b => b.offsetWidth), resumen: document.getElementById("arrPaisesResumen").textContent,
+    guardado: JSON.parse(JSON.stringify(state.cache.paises_inmuebles || {})), foco: document.activeElement.id,
+    abiertos: [...document.querySelectorAll("button.arr-pais")].filter(b => b.getAttribute("aria-expanded") === "true").length }));
+  await page.click("#arrPais0");
+  let m = await menu();
+  assert("S2 -> pulsar «Elegir país»: el menú bajo ese botón, el foco en el buscador, los 249 sin línea ni marca y sin «Quitar el país»",
+    m.abierto && m.bajo === "arrPais0" && m.foco === "arrPaisBusca" && m.n === 249 && !m.linea && !m.marcado && !m.quitar, m);
+  await page.keyboard.type("us");
+  m = await menu();
+  assert("S2 -> «us»: marcado Estados Unidos (su código)", m.marcado === "Estados Unidos", m);
+  await page.keyboard.press("Enter");
+  await esperar(200);
+  let b = await botones();
+  assert("S2 -> Intro: «US Estados Unidos» en el botón y en tu archivo; el menú cerrado y el foco en el botón; el resumen",
+    b.textos[0] === "USEstados Unidos" && b.guardado["Prueba Cáceres 8"] === "US" && b.foco === "arrPais0" && b.abiertos === 0 &&
+    b.resumen === "1 Estados Unidos · 2 sin país" && (await menu()).abierto === false, b);
+  await page.click("#arrPais2");
+  await page.keyboard.type("españa");
+  await page.keyboard.press("Enter");
+  await esperar(200);
+  await page.click("#arrPais1");
+  m = await menu();
+  assert("S2 -> al abrir otro: España y Estados Unidos arriba, la línea antes de Afganistán, 6 filas a la vista",
+    JSON.stringify(m.primeros) === JSON.stringify(["España", "Estados Unidos", "Afganistán"]) && m.linea === "Afganistán" && m.filas === 6, m);
   await page.keyboard.type("Es");
-  l = await lista();
-  assert("S2 -> «Es»: solo los que empiezan así, los usados primero y España marcada", l.abierta && l.n > 2 && l.n < 10 &&
-    JSON.stringify(l.primeros.slice(0, 2)) === JSON.stringify(["España", "Estados Unidos"]) && l.marcado === "España", l);
+  m = await menu();
+  assert("S2 -> «Es»: solo los que empiezan así, los usados primero y España marcada", m.n > 2 && m.n < 10 &&
+    JSON.stringify(m.primeros.slice(0, 2)) === JSON.stringify(["España", "Estados Unidos"]) && m.marcado === "España", m);
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await esperar(200);
-  const campo1 = () => page.evaluate(() => ({ campo: document.getElementById("arrPais1").value, guardado: state.cache.paises_inmuebles["Prueba Fondo 1"],
-    cerrada: document.getElementById("arrPaisesOpciones").hidden, fijo: document.getElementById("arrPais1").readOnly, foco: document.activeElement.id }));
-  let elegido = await campo1();
-  assert("S2 -> flecha abajo e Intro: «Estados Unidos» elegido, guardado y fijo; la lista cerrada",
-    elegido.campo === "Estados Unidos" && elegido.guardado === "US" && elegido.cerrada && elegido.fijo, elegido);
-  // El lápiz: se puede escribir otra vez, con lo de antes seleccionado.
-  await page.click("#arrPais1 + .arr-pais-editar");
+  b = await botones();
+  assert("S2 -> flecha abajo e Intro: Estados Unidos", b.guardado["Prueba Fondo 1"] === "US" && b.textos[1] === "USEstados Unidos", b);
+  await page.click("#arrPais1");
+  m = await menu();
+  assert("S2 -> al volver a abrirlo: marcado y con la marca el que tiene, y «Quitar el país»",
+    m.marcado === "Estados Unidos" && JSON.stringify(m.conMarca) === '["US"]' && m.quitar, m);
   await page.keyboard.type("Alem");
   await page.click("#arrPaisesOpciones li[data-pais='DE']");
   await esperar(200);
-  elegido = await campo1();
-  assert("S2 -> lápiz, «Alem» y clic en «Alemania»: elegida, guardada, fija y el foco sigue en el campo",
-    elegido.campo === "Alemania" && elegido.guardado === "DE" && elegido.fijo && elegido.foco === "arrPais1", elegido);
-  await page.click("#arrPais1 + .arr-pais-editar");
-  await page.keyboard.press("Tab");
+  b = await botones();
+  assert("S2 -> con el ratón: Alemania", b.guardado["Prueba Fondo 1"] === "DE" && b.textos[1] === "DEAlemania" && b.abiertos === 0, b);
+  await page.click("#arrPais1");
+  await page.keyboard.type("Narnia");
+  m = await menu();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
   await esperar(200);
-  elegido = await campo1();
-  assert("S2 -> lápiz y salir sin cambiar nada: sigue «Alemania» y vuelve a quedar fija", elegido.campo === "Alemania" && elegido.fijo, elegido);
-  await page.evaluate(() => { totPonerPais(state.cache, "Prueba Fondo 1", ""); document.activeElement.blur(); arrPintar(); });
-  s2 = await escribir(2, "");
-  assert("S2 -> vacío lo borra", !("Prueba Sevilla 2" in s2.guardado) && s2.guardado["Prueba Cáceres 8"] === "US", s2);
-  // Con el teclado de verdad: escribir y pasar al siguiente con Tab no
-  // pierde el foco (la lista no se rehace) y lo de los dos se guarda.
-  await page.focus("#arrPais1");
-  await page.keyboard.type("Francia");
-  await page.keyboard.press("Tab");   // elige Francia; el foco pasa a su lápiz
-  await esperar(300);
-  const enLapiz = await page.evaluate(() => document.activeElement.matches("#arrPais1 + .arr-pais-editar"));
-  await page.keyboard.press("Tab");
-  await esperar(100);
-  await page.keyboard.type("pt");   // también por su código
-  await page.keyboard.press("Tab");
-  await esperar(300);
-  const tab = await page.evaluate(() => ({ enLapiz: document.activeElement.matches("#arrPais2 + .arr-pais-editar"),
-    guardado: JSON.parse(JSON.stringify(state.cache.paises_inmuebles || {})) }));
-  assert("S2 -> con el teclado: «Francia», Tab (al lápiz), Tab, «pt», Tab: los dos guardados y el foco en el lápiz de cada uno",
-    tab.guardado["Prueba Fondo 1"] === "FR" && tab.guardado["Prueba Sevilla 2"] === "PT" && enLapiz && tab.enLapiz, [enLapiz, tab]);
+  b = await botones();
+  assert("S2 -> «Narnia»: «Ningún país», Intro no cambia nada y Esc cierra y vuelve al botón",
+    m.nada && m.n === 0 && b.guardado["Prueba Fondo 1"] === "DE" && b.foco === "arrPais1" && b.abiertos === 0 && !(await menu()).abierto, [m, b]);
+  await page.click("#arrPais1");
+  await page.click("#arrPaisQuitar");
+  await esperar(200);
+  b = await botones();
+  assert("S2 -> «Quitar el país»: «Elegir país» y fuera de tu archivo", !("Prueba Fondo 1" in b.guardado) && b.textos[1] === "Elegir país", b);
+  await page.click("#arrPais1");
+  await page.click("#arrPais1");
+  const dos = await menu();
+  await page.click("#arrPais1");
+  await page.click("#arrPaises > p.help");
+  assert("S2 -> pulsar dos veces el botón lo abre y lo cierra; pulsar fuera lo cierra", !dos.abierto && !(await menu()).abierto && (await botones()).abiertos === 0, dos);
+  await page.click("#arrPais2");
+  await page.keyboard.type("república dom");
+  await page.keyboard.press("Enter");
+  await esperar(200);
+  b = await botones();
+  assert("S2 -> todos los botones del mismo ancho, también con un nombre largo", b.guardado["Prueba Sevilla 2"] === "DO" &&
+    new Set(b.anchos).size === 1 && b.anchos[0] > 150, b);
   await page.evaluate(() => { for (const n of ["Prueba Fondo 1", "Prueba Sevilla 2"]) totPonerPais(state.cache, n, ""); arrPintar(); });
   const caja = await page.$("#arrPaises");
   await caja.screenshot({ path: path.join(OUT, "cap_totales_paises.png") });

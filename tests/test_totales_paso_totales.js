@@ -189,18 +189,14 @@ assert("nombre del archivo: reentrack-totales_AAAA-MM-DD.csv", vm.runInContext("
 
 /* ---------------------------------------------------------------- C */
 console.log("== C. El país ==");
-assert("dos letras, en mayúsculas; vacío vale; lo demás no", JSON.stringify(vm.runInContext("['us', ' ES ', '', 'USA', 'U1', 'é'].map(totLeerPais)", sb)) ===
-  JSON.stringify(["US", "ES", "", null, null, null]));
-assert("el país por su nombre, con o sin tildes ni mayúsculas; uno que no existe, no", JSON.stringify(vm.runInContext(
-  "['España', 'espana', ' ESTADOS UNIDOS ', 'República Dominicana', 'Narnia', 'XX', 'zz'].map(totLeerPais)", sb)) === '["ES","ES","US","DO",null,null,null]');
 assert("la lista: 249 países sin repetir, con su nombre en español", vm.runInContext("TOT_PAISES.length === 249 && new Set(TOT_PAISES).size === 249 && " +
   "totNombrePais('ES') === 'España' && totNombrePais('US') === 'Estados Unidos'", sb));
 const opciones = vm.runInContext("totOpcionesPaises(new Set(['US', 'ES']))", sb);
 assert("el desplegable: primero los que ya usas (por nombre) y luego todos los demás por nombre", opciones.length === 249 &&
   JSON.stringify(opciones.slice(0, 2)) === '["ES","US"]' && opciones[2] === "AF" && !opciones.slice(2).includes("ES"), opciones.slice(0, 4));
 assert("al escribir, el código exacto o una palabra del nombre que empiece así", JSON.stringify(vm.runInContext(
-  "[['ES','Es'], ['US','es'], ['FR','es'], ['PT','pt'], ['AF',''], ['DO','domin'], ['GB','unido'], ['ES','españ'], ['ES','pa']].map(([c, t]) => totPaisCoincide(c, t))", sb)) ===
-  '[true,true,false,true,true,true,true,true,false]');
+  "[['ES','Es'], ['US','es'], ['FR','es'], ['PT','pt'], ['AF',''], ['DO','domin'], ['GB','unido'], ['ES','españ'], ['ES','pa'], ['DO','República Dom'], ['DO','dom rep']].map(([c, t]) => totPaisCoincide(c, t))", sb)) ===
+  '[true,true,false,true,true,true,true,true,false,true,false]');
 assert("mal escrito a mano en tu archivo: no vale", vm.runInContext(`[paisInmueble("A", { paises_inmuebles: { A: "usa" } }), paisInmueble("A", { paises_inmuebles: "US" }),
   paisInmueble("toString", { paises_inmuebles: {} }), paisInmueble("A", null)].join("|")`, sb) === "|||");
 const C = vm.runInContext(`(() => {
@@ -316,8 +312,6 @@ assert("A14: un inmueble «__proto__» tiene su moneda (valor nominal 200 $)", p
 const protoPais = vm.runInContext(`(() => { const c = {}; totPonerPais(c, "__proto__", "US"); const a = paisInmueble("__proto__", c);
   const copia = JSON.parse(JSON.stringify(c)); totPonerPais(c, "__proto__", ""); return [a, paisInmueble("__proto__", copia), Object.keys(c.paises_inmuebles).length]; })()`, sb);
 assert("A14: y guarda su país (también en la copia) y se borra", JSON.stringify(protoPais) === '["US","US",0]', protoPais);
-// A11: solo letras de la A a la Z.
-assert("A11: «ß», «ﬁ» o «ſs» no valen como país", JSON.stringify(vm.runInContext("['ß', 'ﬁ', 'ſs', 'Us'].map(totLeerPais)", sb)) === '[null,null,null,"US"]');
 // A12: un nombre que una hoja de cálculo tomaría por fórmula.
 sb.__celdas = ['=HYPERLINK("x","y")', "+1", "-2", "@a", 'Casa "Sol"', "Casa"];
 assert("A12: =, +, -, @ al principio llevan ' delante; con comillas, dobladas",

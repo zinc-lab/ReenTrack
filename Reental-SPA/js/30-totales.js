@@ -173,23 +173,14 @@ function totNombrePais(codigo) {
 }
 const totSinTildes = t => String(t).normalize("NFD").replace(/\p{M}/gu, "").trim().toLowerCase();
 
-/* Lo escrito en el campo del país: su nombre («España», «espana») o su
-   código («es»). Da el código, "" si está vacío y null si no es un país. */
-function totLeerPais(texto) {
-  const t = String(texto ?? "").trim();
-  if (t === "") return "";
-  if (/^[A-Za-z]{2}$/.test(t)) return TOT_PAISES.includes(t.toUpperCase()) ? t.toUpperCase() : null;
-  const buscado = totSinTildes(t);
-  return TOT_PAISES.find(c => totSinTildes(totNombrePais(c)) === buscado) || null;
-}
-
-/* Los países del desplegable, por nombre: primero los que ya usas. */
-// ¿Sale el país al escribir «texto»? Su código exacto o una palabra de su
-// nombre que empiece así («es» → España, Estados Unidos…; «unido» → Reino Unido).
+// ¿Sale el país al escribir «texto»? Su código exacto, o su nombre o una de
+// sus palabras que empiece así («es» → España, Estados Unidos…; «unido» →
+// Reino Unido; «república dom» → República Dominicana).
 function totPaisCoincide(codigo, texto) {
-  const t = totSinTildes(texto);
-  return !t || codigo.toLowerCase() === t || totSinTildes(totNombrePais(codigo)).split(/[\s-]+/).some(p => p.startsWith(t));
+  const t = totSinTildes(texto), nombre = totSinTildes(totNombrePais(codigo));
+  return !t || codigo.toLowerCase() === t || nombre.startsWith(t) || nombre.split(/[\s-]+/).some(p => p.startsWith(t));
 }
+/* Los países del menú, por nombre: primero los que ya usas. */
 function totOpcionesPaises(usados) {
   const porNombre = lista => lista.sort((a, b) => cmpTexto(totNombrePais(a), totNombrePais(b)));
   const arriba = porNombre(TOT_PAISES.filter(c => usados.has(c)));
@@ -211,141 +202,136 @@ function totNombresInmuebles(registros, cache) {
 }
 
 /* ----------------------------- 🚀 País del token ----------------------------- */
+/* Cada inmueble con un botón que enseña su país (o «Elegir país»), todos
+   del mismo ancho. Al pulsarlo, un menú con buscador: los que usas arriba,
+   una línea y el resto. Hay un solo menú: se pone bajo el botón pulsado. */
+
+const TOT_FLECHA = '<svg class="arr-pais-flecha" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const TOT_MARCA = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const totCodigo = c => '<span class="arr-pais-cod">' + c + "</span>";
 
 function totPintarPaises() {
-  const caja = $("arrPaises"), lista = $("arrPaisesLista"), opciones = $("arrPaisesOpciones");
-  if (!caja || !lista || !opciones) return;
+  const caja = $("arrPaises"), lista = $("arrPaisesLista"), menu = $("arrPaisesMenu");
+  if (!caja || !lista || !menu) return;
   const nombres = state.cache && Array.isArray(state.registros) ? totNombresInmuebles(state.registros, state.cache) : [];
   caja.hidden = !nombres.length;
-  const texto = n => (paisInmueble(n) ? totNombrePais(paisInmueble(n)) : "");
-  const campos = [...lista.querySelectorAll("input.arr-pais")];
-  const foco = campos.find(i => i === document.activeElement);
-  // Los mismos inmuebles: solo los valores, sin tocar el campo en el que
-  // escribes (rehacer la lista quitaría el foco al pasar de uno a otro).
-  if (JSON.stringify(campos.map(i => i.dataset.inmueble)) === JSON.stringify(nombres)) {
-    for (const i of campos) if (i !== foco) { i.value = texto(i.dataset.inmueble); totBloquearPais(i); }
+  // El resumen: «5 Estados Unidos · 1 España · 2 sin país».
+  const cuenta = new Map();
+  let sin = 0;
+  for (const n of nombres) { const p = paisInmueble(n); if (p) cuenta.set(p, (cuenta.get(p) || 0) + 1); else sin++; }
+  $("arrPaisesResumen").textContent = [...cuenta].sort((a, b) => b[1] - a[1] || cmpTexto(totNombrePais(a[0]), totNombrePais(b[0])))
+    .map(([p, k]) => k + " " + totNombrePais(p)).concat(sin ? [sin + " sin país"] : []).join(" · ");
+  // Los mismos inmuebles: solo cambia lo que dice cada botón (rehacerlos
+  // quitaría el foco y cerraría el menú).
+  const botones = [...lista.querySelectorAll("button.arr-pais")];
+  if (JSON.stringify(botones.map(b => b.dataset.inmueble)) === JSON.stringify(nombres)) {
+    for (const b of botones) totPintarBoton(b);
     return;
   }
-  totCerrarPaises();
-  caja.appendChild(opciones);   // la lista de países se pone bajo un campo: que no se borre con ellos
-  lista.innerHTML = nombres.map((n, i) => '<div class="field"><label for="arrPais' + i + '">' + ccEsc(n) + "</label>" +
-    '<div class="arr-pais-fila"><input id="arrPais' + i + '" class="arr-pais" role="combobox" aria-autocomplete="list" aria-expanded="false" ' +
-    'aria-controls="arrPaisesOpciones" autocomplete="off" placeholder="Busca un país" data-inmueble="' +
-    ccEsc(n) + '" value="' + ccEsc(texto(n)) + '">' + '<button type="button" class="arr-pais-editar" title="Cambiar" aria-label="Cambiar el país de ' +
-    ccEsc(n) + '" hidden>' + TOT_LAPIZ + "</button></div></div>").join("");
-  for (const i of lista.querySelectorAll("input.arr-pais")) totBloquearPais(i);
-  // Si cambian los inmuebles mientras escribes, lo escrito y el foco se quedan.
-  const otra = foco && [...lista.querySelectorAll("input.arr-pais")].find(i => i.dataset.inmueble === foco.dataset.inmueble);
-  if (otra) { otra.value = foco.value; otra.focus(); }
+  totCerrarPaises(false);
+  caja.appendChild(menu);   // el menú se pone bajo un botón: que no se borre con ellos
+  lista.innerHTML = nombres.map((n, i) => '<div class="arr-pais-fila"><span class="arr-pais-inmueble" id="arrPaisInm' + i + '">' + ccEsc(n) +
+    '</span><button type="button" id="arrPais' + i + '" class="arr-pais" aria-haspopup="listbox" aria-expanded="false" ' +
+    'aria-labelledby="arrPaisInm' + i + " arrPais" + i + '" data-inmueble="' + ccEsc(n) + '"></button></div>').join("");
+  for (const b of lista.querySelectorAll("button.arr-pais")) totPintarBoton(b);
+}
+function totPintarBoton(boton) {
+  const p = paisInmueble(boton.dataset.inmueble);
+  boton.classList.toggle("vacio", !p);
+  boton.innerHTML = (p ? totCodigo(p) : "") + '<span class="arr-pais-nombre">' + (p ? ccEsc(totNombrePais(p)) : "Elegir país") + "</span>" + TOT_FLECHA;
+  boton.title = p ? totNombrePais(p) : "";   // un nombre largo se corta con «…»
 }
 
-async function totCambioPais(input) {
-  const pais = totLeerPais(input.value), nombre = input.dataset.inmueble;
-  const anterior = paisInmueble(nombre);
-  if (pais === null || !state.cache) {
-    toast("Elige un país de la lista.", "warn");
-    input.value = anterior ? totNombrePais(anterior) : "";
-    return;
-  }
-  input.value = pais ? totNombrePais(pais) : "";
-  if (pais !== anterior) { totPonerPais(state.cache, nombre, pais); marcarCacheDirty(); }
-  if (document.activeElement !== input) totBloquearPais(input);
-  if (pais !== anterior) await autoGuardarCache();
+let totBotonAbierto = null;
+function totAbrirPaises(boton) {
+  const menu = $("arrPaisesMenu"), busca = $("arrPaisBusca");
+  totBotonAbierto = boton;
+  boton.after(menu);
+  boton.setAttribute("aria-expanded", "true");
+  $("arrPaisQuitar").hidden = !paisInmueble(boton.dataset.inmueble);
+  busca.value = "";
+  menu.hidden = false;
+  totFiltrarPaises();
+  busca.focus();
 }
-
-/* Un país elegido queda fijo (solo lectura); el lápiz de al lado lo
-   vuelve a abrir. Sin país, el campo se puede escribir. */
-const TOT_LAPIZ = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" ' +
-  'stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
-function totBloquearPais(input) {
-  const fijo = !!paisInmueble(input.dataset.inmueble);
-  input.readOnly = fijo;
-  input.nextElementSibling.hidden = !fijo;
-}
-
-/* La lista de países: propia y no un <datalist>, que no deja fijar su alto
-   ni separar los que usas. Una sola para todos los campos: se pone bajo el
-   que se está escribiendo. Al entrar, todos; al escribir, los que coinciden. */
-let totCampoAbierto = null;
-function totAbrirPaises(input, filtrar) {
-  if (input.readOnly) return;
-  const ul = $("arrPaisesOpciones");
-  const usados = new Set([...document.querySelectorAll("input.arr-pais")].map(i => paisInmueble(i.dataset.inmueble)).filter(Boolean));
-  const t = filtrar ? input.value : "";
+// Al abrir, todos (marcado el que tiene); al escribir, los que coinciden
+// (marcado el primero, o el del código exacto: «pt» → Portugal).
+function totFiltrarPaises() {
+  const ul = $("arrPaisesOpciones"), t = $("arrPaisBusca").value, actual = paisInmueble(totBotonAbierto.dataset.inmueble);
+  const usados = new Set([...document.querySelectorAll("button.arr-pais")].map(b => paisInmueble(b.dataset.inmueble)).filter(Boolean));
   const codigos = totOpcionesPaises(usados).filter(c => totPaisCoincide(c, t));
   const n = codigos.filter(c => usados.has(c)).length;
-  ul.innerHTML = codigos.map((c, i) => '<li role="option" id="arrPaisOp' + c + '" data-pais="' + c + '"' +
-    (i === n && n ? ' class="arr-pais-linea"' : "") + ">" + ccEsc(totNombrePais(c)) + "</li>").join("");
-  input.closest(".field").appendChild(ul);
-  totCampoAbierto = input;
-  ul.hidden = !codigos.length;
-  input.setAttribute("aria-expanded", String(!ul.hidden));
-  // Al escribir, marcado el primero (o el del código exacto: «pt» → Portugal).
+  ul.innerHTML = codigos.length ? codigos.map((c, i) => '<li role="option" id="arrPaisOp' + c + '" data-pais="' + c + '"' +
+    (i === n && n ? ' class="arr-pais-linea"' : "") + ">" + totCodigo(c) + ccEsc(totNombrePais(c)) + (c === actual ? TOT_MARCA : "") + "</li>").join("")
+    : '<li class="arr-pais-nada">Ningún país</li>';
   const exacto = codigos.find(c => c.toLowerCase() === totSinTildes(t));
-  totMarcarPais(input, filtrar && codigos.length ? (exacto || codigos[0]) : null);
+  totMarcarPais(t.trim() ? (exacto || codigos[0]) : actual);
 }
-function totMarcarPais(input, codigo) {
-  const ul = $("arrPaisesOpciones");
+function totMarcarPais(codigo) {
+  const ul = $("arrPaisesOpciones"), busca = $("arrPaisBusca");
   for (const li of ul.querySelectorAll('[aria-selected="true"]')) li.removeAttribute("aria-selected");
   const li = codigo && $("arrPaisOp" + codigo);
-  if (li) { li.setAttribute("aria-selected", "true"); li.scrollIntoView({ block: "nearest" }); input.setAttribute("aria-activedescendant", li.id); }
-  else input.removeAttribute("aria-activedescendant");
+  if (li) { li.setAttribute("aria-selected", "true"); li.scrollIntoView({ block: "nearest" }); busca.setAttribute("aria-activedescendant", li.id); }
+  else busca.removeAttribute("aria-activedescendant");
 }
-function totCerrarPaises() {
-  const ul = $("arrPaisesOpciones"), input = totCampoAbierto;
-  totCampoAbierto = null;
-  if (ul) ul.hidden = true;
-  if (input) { input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
+function totCerrarPaises(volverAlBoton) {
+  const menu = $("arrPaisesMenu"), boton = totBotonAbierto;
+  totBotonAbierto = null;
+  if (menu) menu.hidden = true;
+  if (boton) { boton.setAttribute("aria-expanded", "false"); if (volverAlBoton) boton.focus(); }
 }
-function totElegirPais(input, codigo) {
-  input.value = totNombrePais(codigo);
-  totCerrarPaises();
-  totCambioPais(input);   // lo guarda ya (sin esperar a la copia): queda fijo enseguida
-  totBloquearPais(input);
+async function totElegirPais(pais) {
+  const boton = totBotonAbierto;
+  totCerrarPaises(true);
+  if (!boton || !state.cache || pais === paisInmueble(boton.dataset.inmueble)) return;
+  totPonerPais(state.cache, boton.dataset.inmueble, pais);
+  marcarCacheDirty();
+  totPintarPaises();
+  await autoGuardarCache();
 }
 
 if (typeof document !== "undefined") {
-  const campoPais = ev => ev.target && ev.target.closest && ev.target.closest("input.arr-pais");
-  document.addEventListener("change", ev => { const input = campoPais(ev); if (input) totCambioPais(input); });
-  document.addEventListener("focusin", ev => { const input = campoPais(ev); if (input) totAbrirPaises(input, false); });
-  document.addEventListener("input", ev => { const input = campoPais(ev); if (input) totAbrirPaises(input, true); });
-  // Al salir del campo: se cierra la lista y, si tiene país, vuelve a quedar fijo.
-  document.addEventListener("focusout", ev => { const input = campoPais(ev); if (input) { totCerrarPaises(); totBloquearPais(input); } });
+  const en = (ev, sel) => ev.target && ev.target.closest && ev.target.closest(sel);
   document.addEventListener("click", ev => {
-    const lapiz = ev.target.closest && ev.target.closest("button.arr-pais-editar");
-    if (!lapiz) return;
-    const input = lapiz.previousElementSibling;
-    input.readOnly = false;
-    lapiz.hidden = true;
-    input.focus();
-    input.select();
+    const boton = en(ev, "button.arr-pais");
+    if (boton) {
+      const abierto = totBotonAbierto === boton;
+      totCerrarPaises(false);
+      if (!abierto) totAbrirPaises(boton);
+      return;
+    }
+    if (en(ev, "#arrPaisQuitar")) return totElegirPais("");
+    const li = en(ev, "#arrPaisesOpciones li[data-pais]");
+    if (li) return totElegirPais(li.dataset.pais);
+    if (totBotonAbierto && !en(ev, "#arrPaisesMenu")) totCerrarPaises(false);
   });
-  // Con el ratón en la lista: sin quitar el foco al campo.
-  document.addEventListener("mousedown", ev => {
-    const li = ev.target.closest && ev.target.closest("#arrPaisesOpciones li[data-pais]");
-    if (!li || !totCampoAbierto) return;
-    ev.preventDefault();
-    totElegirPais(totCampoAbierto, li.dataset.pais);
+  // Pulsar en la lista no quita el foco al buscador (si no, se cerraría antes del clic).
+  document.addEventListener("mousedown", ev => { if (en(ev, "#arrPaisesOpciones")) ev.preventDefault(); });
+  document.addEventListener("input", ev => { if (ev.target.id === "arrPaisBusca" && totBotonAbierto) totFiltrarPaises(); });
+  // Salir del menú con Tab lo cierra (al pulsar su botón, lo cierra el clic).
+  document.addEventListener("focusout", ev => {
+    if (!totBotonAbierto || !en(ev, "#arrPaisesMenu")) return;
+    const a = ev.relatedTarget;
+    if (!a || (!a.closest("#arrPaisesMenu") && a !== totBotonAbierto)) totCerrarPaises(false);
   });
-  // Con el teclado: flechas para moverse, Intro o Tab para elegir, Esc para cerrar.
+  // Flechas para moverse, Intro para elegir, Esc para cerrar.
   document.addEventListener("keydown", ev => {
-    const input = campoPais(ev);
-    if (!input || input.readOnly) return;
-    const ul = $("arrPaisesOpciones"), abierta = totCampoAbierto === input && !ul.hidden;
-    const marcado = abierta && ul.querySelector('[aria-selected="true"]');
+    if (ev.target.id !== "arrPaisBusca" || !totBotonAbierto) return;
+    const ul = $("arrPaisesOpciones"), marcado = ul.querySelector('[aria-selected="true"]');
     if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
       ev.preventDefault();
-      if (!abierta) return totAbrirPaises(input, false);
       const items = [...ul.querySelectorAll("li[data-pais]")];
       const i = marcado ? items.indexOf(marcado) + (ev.key === "ArrowDown" ? 1 : -1) : 0;
       const otro = items[Math.max(0, Math.min(items.length - 1, i))];
-      if (otro) totMarcarPais(input, otro.dataset.pais);
-    } else if ((ev.key === "Enter" || ev.key === "Tab") && marcado) {
-      if (ev.key === "Enter") ev.preventDefault();
-      totElegirPais(input, marcado.dataset.pais);
-    } else if (ev.key === "Escape" && abierta) {
+      if (otro) totMarcarPais(otro.dataset.pais);
+    } else if (ev.key === "Enter") {
       ev.preventDefault();
-      totCerrarPaises();
+      if (marcado) totElegirPais(marcado.dataset.pais);
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      totCerrarPaises(true);
     }
   });
 }

@@ -478,18 +478,28 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
   #cfgEthKey,#cfgNombre,#cfgNif{visibility:hidden!important}
 }
 
-/* El país del token en 🚀 (js/30): elegido, queda fijo y se cambia con el lápiz;
-   su lista, unas 6 filas, los que usas arriba y una línea */
-#arrPaisesLista .field{position:relative}
-.arr-pais-fila{display:flex;gap:8px;align-items:center}
-.arr-pais-fila input{flex:1;min-width:0}
-.arr-pais-fila input[readonly]{background:var(--panel2);cursor:default}
-.arr-pais-editar{padding:0;width:38px;flex:none;display:inline-flex;align-items:center;justify-content:center}
-.arr-pais-lista{position:absolute;top:100%;left:0;right:0;z-index:30;margin:4px 0 0;padding:4px 0;list-style:none;
-  max-height:calc(6 * 2.3em + 8px);overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:var(--rs);box-shadow:var(--shadow)}
-.arr-pais-lista li{padding:0 12px;line-height:2.3em;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* El país del token en 🚀 (js/30): cada inmueble con un botón de ancho fijo y un menú con buscador */
+#arrPaisesLista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:10px;border-top:1px solid var(--border)}
+.arr-pais-fila{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border)}
+.arr-pais-fila:nth-child(odd){border-right:1px solid var(--border)}
+.arr-pais-inmueble{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button.arr-pais{flex:none;width:230px;min-height:34px;padding:5px 10px;display:inline-flex;align-items:center;gap:8px;box-shadow:none;font-weight:500;text-align:left}
+button.arr-pais.vacio{border-style:dashed;color:var(--muted)}
+.arr-pais-nombre{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arr-pais-flecha{flex:none;color:var(--faint);transition:transform .15s}
+button.arr-pais[aria-expanded="true"] .arr-pais-flecha{transform:rotate(180deg)}
+.arr-pais-cod{flex:none;font-size:11px;font-weight:700;letter-spacing:.03em;padding:1px 5px;border-radius:4px;background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-bd)}
+.arr-pais-resumen{float:right;font-weight:500;font-size:13px;color:var(--muted)}
+.arr-pais-menu{position:absolute;top:calc(100% - 4px);right:14px;width:260px;z-index:30;padding:6px;background:var(--panel);border:1px solid var(--border2);border-radius:var(--rs);box-shadow:var(--shadow)}
+.arr-pais-menu input{width:100%}
+.arr-pais-lista{list-style:none;margin:6px 0 0;padding:0;max-height:192px;overflow-y:auto}
+.arr-pais-lista li{display:flex;align-items:center;gap:8px;padding:0 8px;height:32px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.arr-pais-lista li svg{margin-left:auto;flex:none;color:var(--accent)}
 .arr-pais-lista li:hover,.arr-pais-lista li[aria-selected="true"]{background:var(--panel2);color:var(--accent2)}
-.arr-pais-lista li.arr-pais-linea{border-top:1px solid var(--border2)}
+.arr-pais-lista li.arr-pais-linea{position:relative;margin-top:9px}
+.arr-pais-lista li.arr-pais-linea::before{content:"";position:absolute;left:0;right:0;top:-5px;border-top:1px solid var(--border2)}
+.arr-pais-lista li.arr-pais-nada{color:var(--muted);cursor:default;background:none}
+button.arr-pais-quitar{width:100%;margin-top:6px;min-height:30px;padding:4px 8px;box-shadow:none;font-weight:500;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -752,10 +762,14 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
 
     <!-- El país del token de cada inmueble (donde se emite, no donde está el edificio) lo pinta y lo guarda js/30; solo un dato, no cambia ninguna cifra -->
     <details id="arrPaises" class="arr-datos" hidden>
-      <summary>🌍 País del token <span class="arr-opcional">(opcional)</span></summary>
+      <summary>🌍 País del token <span class="arr-opcional">(opcional)</span><span id="arrPaisesResumen" class="arr-pais-resumen"></span></summary>
       <p class="help mt">Donde se emite el token, no donde está el inmueble. Sale junto al inmueble en 🧾, el informe, el Excel y «Solo totales» de 📤.</p>
-      <div class="grid2 mt" id="arrPaisesLista"></div>
-      <ul id="arrPaisesOpciones" class="arr-pais-lista" role="listbox" aria-label="Países" hidden></ul>
+      <div id="arrPaisesLista"></div>
+      <div id="arrPaisesMenu" class="arr-pais-menu" hidden>
+        <input id="arrPaisBusca" role="combobox" aria-label="Busca un país" aria-autocomplete="list" aria-expanded="true" aria-controls="arrPaisesOpciones" autocomplete="off" placeholder="Busca un país">
+        <ul id="arrPaisesOpciones" class="arr-pais-lista" role="listbox" aria-label="Países"></ul>
+        <button type="button" id="arrPaisQuitar" class="arr-pais-quitar">Quitar el país</button>
+      </div>
     </details>
 
     <div class="arr-reental">
