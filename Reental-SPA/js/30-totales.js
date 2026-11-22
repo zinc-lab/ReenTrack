@@ -8,8 +8,8 @@
        nominal (la moneda de cada proyecto, como 📊: dashMonedaProyecto de
        js/16) y el valor del RNT (precios_rnt del día del corte, que pide
        js/09 con fechasCortePrecioRnt de js/08).
-   (2) «🌍 País de cada inmueble» en 🚀: lo apunta quien usa la app (dos
-       letras), se guarda en tu archivo (paises_inmuebles, por nombre) y
+   (2) «🌍 País de cada inmueble» en 🚀: lo elige quien usa la app de una
+       lista con buscador, se guarda (su código de dos letras) en tu archivo (paises_inmuebles, por nombre) y
        solo es un dato: sale en el CSV y junto al nombre en 🧾, el informe
        y el Excel (nombreConPais de js/22). No cambia ninguna cifra.
    ===================================================================== */
@@ -154,11 +154,40 @@ function totCsv(filas) {
 
 const totNombreArchivo = ahora => "reentrack-totales_" + exFechaLocal(ahora).dia + ".csv";
 
-/* Dos letras de la A a la Z, en mayúsculas («us» vale «US»); "" vacío;
-   null si no vale. */
+/* Los países: sus códigos de dos letras (ISO 3166-1); el nombre en
+   español lo da el navegador. */
+const TOT_PAISES = ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+  "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF " +
+  "GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW " +
+  "KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL " +
+  "NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST " +
+  "SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW").split(" ");
+let totNombres = null;   // código -> nombre en español (se hace una vez)
+function totNombrePais(codigo) {
+  if (!totNombres) {
+    let nombre = c => c;
+    try { const n = new Intl.DisplayNames(["es"], { type: "region" }); nombre = c => n.of(c) || c; } catch (e) { /* sin Intl: el código */ }
+    totNombres = new Map(TOT_PAISES.map(c => [c, nombre(c)]));
+  }
+  return totNombres.get(codigo) || codigo;
+}
+const totSinTildes = t => String(t).normalize("NFD").replace(/\p{M}/gu, "").trim().toLowerCase();
+
+/* Lo escrito en el campo del país: su nombre («España», «espana») o su
+   código («es»). Da el código, "" si está vacío y null si no es un país. */
 function totLeerPais(texto) {
   const t = String(texto ?? "").trim();
-  return t === "" ? "" : /^[A-Za-z]{2}$/.test(t) ? t.toUpperCase() : null;
+  if (t === "") return "";
+  if (/^[A-Za-z]{2}$/.test(t)) return TOT_PAISES.includes(t.toUpperCase()) ? t.toUpperCase() : null;
+  const buscado = totSinTildes(t);
+  return TOT_PAISES.find(c => totSinTildes(totNombrePais(c)) === buscado) || null;
+}
+
+/* Los países del desplegable, por nombre: primero los que ya usas. */
+function totOpcionesPaises(usados) {
+  const porNombre = lista => lista.sort((a, b) => cmpTexto(totNombrePais(a), totNombrePais(b)));
+  const arriba = porNombre(TOT_PAISES.filter(c => usados.has(c)));
+  return arriba.concat(porNombre(TOT_PAISES.filter(c => !usados.has(c))));
 }
 
 /* Apunta (o borra, con "") el país de un inmueble en la cache. */
@@ -178,21 +207,29 @@ function totNombresInmuebles(registros, cache) {
 /* ----------------------------- 🚀 País de cada inmueble ----------------------------- */
 
 function totPintarPaises() {
-  const caja = $("arrPaises"), lista = $("arrPaisesLista");
-  if (!caja || !lista) return;
+  const caja = $("arrPaises"), lista = $("arrPaisesLista"), opciones = $("arrPaisesOpciones");
+  if (!caja || !lista || !opciones) return;
   const nombres = state.cache && Array.isArray(state.registros) ? totNombresInmuebles(state.registros, state.cache) : [];
   caja.hidden = !nombres.length;
+  // El desplegable: solo se rehace si cambian los países que usas.
+  const usados = new Set(nombres.map(n => paisInmueble(n)).filter(Boolean));
+  const huella = [...usados].sort().join(",");
+  if (opciones.dataset.usados !== huella || !opciones.options.length) {
+    opciones.dataset.usados = huella;
+    opciones.innerHTML = totOpcionesPaises(usados).map(c => '<option value="' + ccEsc(totNombrePais(c)) + '"></option>').join("");
+  }
+  const texto = n => (paisInmueble(n) ? totNombrePais(paisInmueble(n)) : "");
   const campos = [...lista.querySelectorAll("input.arr-pais")];
   const foco = campos.find(i => i === document.activeElement);
   // Los mismos inmuebles: solo los valores, sin tocar el campo en el que
   // escribes (rehacer la lista quitaría el foco al pasar de uno a otro).
   if (JSON.stringify(campos.map(i => i.dataset.inmueble)) === JSON.stringify(nombres)) {
-    for (const i of campos) if (i !== foco) i.value = paisInmueble(i.dataset.inmueble);
+    for (const i of campos) if (i !== foco) i.value = texto(i.dataset.inmueble);
     return;
   }
   lista.innerHTML = nombres.map((n, i) => '<div class="field"><label for="arrPais' + i + '">' + ccEsc(n) + "</label>" +
-    '<input id="arrPais' + i + '" class="arr-pais" maxlength="2" autocomplete="off" placeholder="—" data-inmueble="' +
-    ccEsc(n) + '" value="' + ccEsc(paisInmueble(n)) + '"></div>').join("");
+    '<input id="arrPais' + i + '" class="arr-pais" list="arrPaisesOpciones" autocomplete="off" placeholder="Busca un país" data-inmueble="' +
+    ccEsc(n) + '" value="' + ccEsc(texto(n)) + '"></div>').join("");
   // Si cambian los inmuebles mientras escribes, lo escrito y el foco se quedan.
   const otra = foco && [...lista.querySelectorAll("input.arr-pais")].find(i => i.dataset.inmueble === foco.dataset.inmueble);
   if (otra) { otra.value = foco.value; otra.focus(); }
@@ -200,13 +237,14 @@ function totPintarPaises() {
 
 async function totCambioPais(input) {
   const pais = totLeerPais(input.value), nombre = input.dataset.inmueble;
+  const anterior = paisInmueble(nombre);
   if (pais === null || !state.cache) {
-    toast("El país, con dos letras (ES, US…).", "warn");
-    input.value = paisInmueble(nombre);
+    toast("Elige un país de la lista.", "warn");
+    input.value = anterior ? totNombrePais(anterior) : "";
     return;
   }
-  input.value = pais;
-  if (pais === paisInmueble(nombre)) return;
+  input.value = pais ? totNombrePais(pais) : "";
+  if (pais === anterior) return;
   totPonerPais(state.cache, nombre, pais);
   marcarCacheDirty();
   await autoGuardarCache();

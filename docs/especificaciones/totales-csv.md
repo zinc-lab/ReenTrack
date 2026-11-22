@@ -25,7 +25,7 @@
 | `fecha_corte` | El 31/12 de cada ejercicio con informe y, del año en curso, el día hasta el que llegan tus datos (el de 🧾), no el día en que se saca |
 | `concepto` | Uno de los de abajo |
 | `inmueble` | El nombre del inmueble en las filas `inmueble_…`; vacío en los totales |
-| `pais` | El país que apuntes en 🚀 (dos letras), o vacío |
+| `pais` | El país que elijas en 🚀 (dos letras), o vacío |
 | `importe_eur` | En euros |
 | `importe_usd` | En dólares, solo donde la cifra es en dólares (si no, vacío) |
 | `completo` | `si` o `no`: `no` si la cifra es incompleta o supuesta (abajo) |
@@ -81,8 +81,8 @@ la suma exacta de sus filas.
 
 ## País
 
-Opcional: lo apuntas en 🚀 Puesta en marcha → «🌍 País de cada inmueble»
-(dos letras, ES, US…), también para los ya vendidos. La app no lo deduce ni
+Opcional: lo eliges en 🚀 Puesta en marcha → «🌍 País de cada inmueble»
+(una lista con buscador; se guarda en dos letras, ES, US…), también para los ya vendidos. La app no lo deduce ni
 lo usa en ningún cálculo: solo sale como dato, en la columna `pais` y junto
 al nombre del inmueble en 🧾, el informe y el Excel («Casa (US)»). Va en tu
 archivo y en la copia.
