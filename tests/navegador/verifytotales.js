@@ -80,14 +80,13 @@ function espiar() {
   const s1 = await page.evaluate(() => {
     const caja = document.getElementById("arrPaises");
     return { visible: !caja.hidden, titulo: caja.querySelector("summary").textContent,
-      campos: [...caja.querySelectorAll("input.arr-pais")].map(i => [i.labels[0].textContent, i.value, i.getAttribute("list")]),
-      opciones: document.getElementById("arrPaisesOpciones").options.length };
+      campos: [...caja.querySelectorAll("input.arr-pais")].map(i => [i.labels[0].textContent, i.value, i.getAttribute("aria-controls"), i.readOnly]) };
   });
   assert("S1 -> sin datos, sin el apartado del país", sinDatos);
-  assert("S1 -> con datos, «🌍 País del token (opcional)» con cada inmueble y su desplegable de 249 países",
-    s1.visible && /País del token/.test(s1.titulo) && /opcional/.test(s1.titulo) && s1.opciones === 249 &&
-    JSON.stringify(s1.campos) === JSON.stringify([["Prueba Cáceres 8", "", "arrPaisesOpciones"], ["Prueba Fondo 1", "", "arrPaisesOpciones"],
-      ["Prueba Sevilla 2", "", "arrPaisesOpciones"]]), s1);
+  assert("S1 -> con datos, «🌍 País del token (opcional)» con cada inmueble y su desplegable, que se puede escribir",
+    s1.visible && /País del token/.test(s1.titulo) && /opcional/.test(s1.titulo) &&
+    JSON.stringify(s1.campos) === JSON.stringify([["Prueba Cáceres 8", "", "arrPaisesOpciones", false], ["Prueba Fondo 1", "", "arrPaisesOpciones", false],
+      ["Prueba Sevilla 2", "", "arrPaisesOpciones", false]]), s1);
 
   /* ============ S2) escribir el país ============ */
   const escribir = async (i, texto) => {
@@ -106,26 +105,72 @@ function espiar() {
   assert("S2 -> «Narnia» no es un país: aviso y el campo vuelve a lo de antes", s2.campo === "" && !("Prueba Fondo 1" in s2.guardado) &&
     s2.toasts.some(([t, m]) => t === "warn" && /Elige un país de la lista/.test(m)), s2);
   s2 = await escribir(2, "españa");
-  const arriba = await page.evaluate(() => [...document.getElementById("arrPaisesOpciones").options].slice(0, 3).map(o => o.value));
-  assert("S2 -> «españa» por su nombre: «España» y «ES»; en la lista, los usados arriba", s2.campo === "España" && s2.guardado["Prueba Sevilla 2"] === "ES" &&
-    JSON.stringify(arriba) === JSON.stringify(["España", "Estados Unidos", "Afganistán"]), [s2.campo, arriba]);
+  assert("S2 -> «españa» por su nombre: «España» y «ES»", s2.campo === "España" && s2.guardado["Prueba Sevilla 2"] === "ES", s2);
+  await page.evaluate(() => { document.getElementById("arrPaises").open = true; });
+  const fijo = await page.evaluate(() => { const i = document.getElementById("arrPais0"), b = i.nextElementSibling;
+    return { soloLectura: i.readOnly, lapiz: !b.hidden && b.textContent === "" && !!b.querySelector("svg"), nombre: b.getAttribute("aria-label") }; });
+  assert("S2 -> con país: el campo queda fijo y al lado el lápiz (un dibujo, no un emoji)",
+    fijo.soloLectura && fijo.lapiz && fijo.nombre === "Cambiar el país de Prueba Cáceres 8", fijo);
+  await page.focus("#arrPais0");
+  const cerrada = await page.evaluate(() => document.getElementById("arrPaisesOpciones").hidden);
+  assert("S2 -> fijo: al entrar no se abre la lista", cerrada);
+  // La lista propia: al entrar, los usados arriba y una línea; unas 6 filas a la vista.
+  await page.focus("#arrPais1");
+  const lista = () => page.evaluate(() => {
+    const ul = document.getElementById("arrPaisesOpciones"), li = ul.querySelector("li");
+    return { abierta: !ul.hidden && ul.parentElement.contains(document.activeElement), n: ul.querySelectorAll("li").length,
+      primeros: [...ul.querySelectorAll("li")].slice(0, 3).map(l => l.textContent), linea: (ul.querySelector(".arr-pais-linea") || {}).textContent,
+      filas: li ? Math.round(ul.clientHeight / li.offsetHeight) : 0, marcado: (ul.querySelector('[aria-selected="true"]') || {}).textContent,
+      expandido: document.activeElement.getAttribute("aria-expanded") };
+  });
+  let l = await lista();
+  assert("S2 -> al entrar: 249 países, «España» y «Estados Unidos» arriba, la línea antes de «Afganistán», 6 filas a la vista",
+    l.abierta && l.n === 249 && JSON.stringify(l.primeros) === JSON.stringify(["España", "Estados Unidos", "Afganistán"]) &&
+    l.linea === "Afganistán" && l.filas === 6 && l.expandido === "true" && !l.marcado, l);
+  await page.keyboard.type("Es");
+  l = await lista();
+  assert("S2 -> «Es»: solo los que empiezan así, los usados primero y España marcada", l.abierta && l.n > 2 && l.n < 10 &&
+    JSON.stringify(l.primeros.slice(0, 2)) === JSON.stringify(["España", "Estados Unidos"]) && l.marcado === "España", l);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await esperar(200);
+  const campo1 = () => page.evaluate(() => ({ campo: document.getElementById("arrPais1").value, guardado: state.cache.paises_inmuebles["Prueba Fondo 1"],
+    cerrada: document.getElementById("arrPaisesOpciones").hidden, fijo: document.getElementById("arrPais1").readOnly, foco: document.activeElement.id }));
+  let elegido = await campo1();
+  assert("S2 -> flecha abajo e Intro: «Estados Unidos» elegido, guardado y fijo; la lista cerrada",
+    elegido.campo === "Estados Unidos" && elegido.guardado === "US" && elegido.cerrada && elegido.fijo, elegido);
+  // El lápiz: se puede escribir otra vez, con lo de antes seleccionado.
+  await page.click("#arrPais1 + .arr-pais-editar");
+  await page.keyboard.type("Alem");
+  await page.click("#arrPaisesOpciones li[data-pais='DE']");
+  await esperar(200);
+  elegido = await campo1();
+  assert("S2 -> lápiz, «Alem» y clic en «Alemania»: elegida, guardada, fija y el foco sigue en el campo",
+    elegido.campo === "Alemania" && elegido.guardado === "DE" && elegido.fijo && elegido.foco === "arrPais1", elegido);
+  await page.click("#arrPais1 + .arr-pais-editar");
+  await page.keyboard.press("Tab");
+  await esperar(200);
+  elegido = await campo1();
+  assert("S2 -> lápiz y salir sin cambiar nada: sigue «Alemania» y vuelve a quedar fija", elegido.campo === "Alemania" && elegido.fijo, elegido);
+  await page.evaluate(() => { totPonerPais(state.cache, "Prueba Fondo 1", ""); document.activeElement.blur(); arrPintar(); });
   s2 = await escribir(2, "");
   assert("S2 -> vacío lo borra", !("Prueba Sevilla 2" in s2.guardado) && s2.guardado["Prueba Cáceres 8"] === "US", s2);
-  await page.evaluate(() => { document.getElementById("arrPaises").open = true; });
   // Con el teclado de verdad: escribir y pasar al siguiente con Tab no
   // pierde el foco (la lista no se rehace) y lo de los dos se guarda.
   await page.focus("#arrPais1");
   await page.keyboard.type("Francia");
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");   // elige Francia; el foco pasa a su lápiz
   await esperar(300);
+  const enLapiz = await page.evaluate(() => document.activeElement.matches("#arrPais1 + .arr-pais-editar"));
+  await page.keyboard.press("Tab");
+  await esperar(100);
   await page.keyboard.type("pt");   // también por su código
   await page.keyboard.press("Tab");
   await esperar(300);
-  const tab = await page.evaluate(() => ({ foco: document.activeElement && document.activeElement.id,
+  const tab = await page.evaluate(() => ({ enLapiz: document.activeElement.matches("#arrPais2 + .arr-pais-editar"),
     guardado: JSON.parse(JSON.stringify(state.cache.paises_inmuebles || {})) }));
-  assert("S2 -> con el teclado: «Francia», Tab, «pt», Tab: los dos guardados y el foco no se pierde",
-    tab.guardado["Prueba Fondo 1"] === "FR" && tab.guardado["Prueba Sevilla 2"] === "PT" && tab.foco !== null && tab.foco !== "" &&
-    !/^arrPais[01]$/.test(tab.foco), tab);
+  assert("S2 -> con el teclado: «Francia», Tab (al lápiz), Tab, «pt», Tab: los dos guardados y el foco en el lápiz de cada uno",
+    tab.guardado["Prueba Fondo 1"] === "FR" && tab.guardado["Prueba Sevilla 2"] === "PT" && enLapiz && tab.enLapiz, [enLapiz, tab]);
   await page.evaluate(() => { for (const n of ["Prueba Fondo 1", "Prueba Sevilla 2"]) totPonerPais(state.cache, n, ""); arrPintar(); });
   const caja = await page.$("#arrPaises");
   await caja.screenshot({ path: path.join(OUT, "cap_totales_paises.png") });

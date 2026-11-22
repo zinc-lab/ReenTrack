@@ -478,6 +478,18 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
   #cfgEthKey,#cfgNombre,#cfgNif{visibility:hidden!important}
 }
 
+/* El país del token en 🚀 (js/30): elegido, queda fijo y se cambia con el lápiz;
+   su lista, unas 6 filas, los que usas arriba y una línea */
+#arrPaisesLista .field{position:relative}
+.arr-pais-fila{display:flex;gap:8px;align-items:center}
+.arr-pais-fila input{flex:1;min-width:0}
+.arr-pais-fila input[readonly]{background:var(--panel2);cursor:default}
+.arr-pais-editar{padding:0;width:38px;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.arr-pais-lista{position:absolute;top:100%;left:0;right:0;z-index:30;margin:4px 0 0;padding:4px 0;list-style:none;
+  max-height:calc(6 * 2.3em + 8px);overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:var(--rs);box-shadow:var(--shadow)}
+.arr-pais-lista li{padding:0 12px;line-height:2.3em;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arr-pais-lista li:hover,.arr-pais-lista li[aria-selected="true"]{background:var(--panel2);color:var(--accent2)}
+.arr-pais-lista li.arr-pais-linea{border-top:1px solid var(--border2)}
 </style>
 </head>
 <body>
@@ -743,7 +755,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <summary>🌍 País del token <span class="arr-opcional">(opcional)</span></summary>
       <p class="help mt">Donde se emite el token, no donde está el inmueble. Sale junto al inmueble en 🧾, el informe, el Excel y «Solo totales» de 📤.</p>
       <div class="grid2 mt" id="arrPaisesLista"></div>
-      <datalist id="arrPaisesOpciones"></datalist>
+      <ul id="arrPaisesOpciones" class="arr-pais-lista" role="listbox" aria-label="Países" hidden></ul>
     </details>
 
     <div class="arr-reental">

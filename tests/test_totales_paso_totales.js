@@ -198,6 +198,9 @@ assert("la lista: 249 países sin repetir, con su nombre en español", vm.runInC
 const opciones = vm.runInContext("totOpcionesPaises(new Set(['US', 'ES']))", sb);
 assert("el desplegable: primero los que ya usas (por nombre) y luego todos los demás por nombre", opciones.length === 249 &&
   JSON.stringify(opciones.slice(0, 2)) === '["ES","US"]' && opciones[2] === "AF" && !opciones.slice(2).includes("ES"), opciones.slice(0, 4));
+assert("al escribir, el código exacto o una palabra del nombre que empiece así", JSON.stringify(vm.runInContext(
+  "[['ES','Es'], ['US','es'], ['FR','es'], ['PT','pt'], ['AF',''], ['DO','domin'], ['GB','unido'], ['ES','españ'], ['ES','pa']].map(([c, t]) => totPaisCoincide(c, t))", sb)) ===
+  '[true,true,false,true,true,true,true,true,false]');
 assert("mal escrito a mano en tu archivo: no vale", vm.runInContext(`[paisInmueble("A", { paises_inmuebles: { A: "usa" } }), paisInmueble("A", { paises_inmuebles: "US" }),
   paisInmueble("toString", { paises_inmuebles: {} }), paisInmueble("A", null)].join("|")`, sb) === "|||");
 const C = vm.runInContext(`(() => {
