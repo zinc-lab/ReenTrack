@@ -185,10 +185,12 @@ function espiar() {
   await esperar(400);
   const s4 = await page.evaluate(() => {
     const b = document.getElementById("btnTotales"), e = document.getElementById("btnExcel");
-    return { boton: b && b.textContent, junto: !!b && b.parentElement === e.parentElement,
+    return { boton: b && b.textContent, junto: !!b && b.parentElement === e.parentElement && !b.parentElement.querySelector("select") &&
+        b.parentElement.previousElementSibling.textContent === "Todos los años" &&
+        document.getElementById("btnInforme").parentElement.previousElementSibling.textContent === "Un año",
       ayuda: document.querySelector('section[aria-labelledby="exTitInformes"] .help').textContent };
   });
-  assert("S4 -> «📄 Solo totales (CSV)» junto al Excel, con su línea de ayuda", s4.boton === "📄 Solo totales (CSV)" && s4.junto && /Solo totales/.test(s4.ayuda), s4);
+  assert("S4 -> «📄 Solo totales (CSV)» junto al Excel en «Todos los años» (el año va en «Un año», con el informe), con su línea de ayuda", s4.boton === "📄 Solo totales (CSV)" && s4.junto && /Solo totales/.test(s4.ayuda), s4);
   const wallet = await page.evaluate(() => state.config.wallet);
   await page.evaluate(() => { window.__vistos.toasts = []; document.getElementById("cfgWallet").value = "0x" + "22".repeat(20); });
   await page.evaluate(() => document.getElementById("btnTotales").click());

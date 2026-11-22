@@ -210,10 +210,13 @@ function exRender() {
     "</section>" +
     '<section class="ex-bloque" aria-labelledby="exTitInformes">' +
       '<h3 id="exTitInformes">📊 Excel y PDF</h3>' +
-      '<p class="help">El Excel, con todos los años. El informe, del año que elijas: al imprimir, «Guardar como PDF». Solo totales: a cada 31/12 y al último día de tus datos, para llevarlos a otra hoja o app.</p>' +
-      '<div class="row mt"><button type="button" id="btnExcel"' + (exEstado.guardando ? " disabled" : "") + ">📊 Excel</button>" +
-        '<button type="button" id="btnTotales"' + (exEstado.guardando ? " disabled" : "") + ">📄 Solo totales (CSV)</button>" +
-        '<span class="ex-informe">' + informe.select + '<button type="button" id="btnInforme">📄 Informe fiscal</button></span></div>' +
+      '<p class="help">Solo totales: a cada 31/12 y al último día de tus datos, para llevarlos a otra hoja o app. El informe: al imprimir, «Guardar como PDF».</p>' +
+      // Dos filas: lo que sale con todos los años y lo que sale de uno (el año, solo con el informe).
+      '<div class="ex-filas mt"><span class="ex-etiqueta" id="exTodos">Todos los años</span>' +
+        '<div class="ex-botones" role="group" aria-labelledby="exTodos"><button type="button" id="btnExcel"' + (exEstado.guardando ? " disabled" : "") + ">📊 Excel</button>" +
+        '<button type="button" id="btnTotales"' + (exEstado.guardando ? " disabled" : "") + ">📄 Solo totales (CSV)</button></div>" +
+        '<span class="ex-etiqueta" id="exUnAnio">Un año</span>' +
+        '<div class="ex-botones" role="group" aria-labelledby="exUnAnio">' + informe.select + '<button type="button" id="btnInforme">📄 Informe fiscal</button></div></div>' +
       informe.aviso +
     "</section>";
 }
@@ -428,8 +431,10 @@ function exInyectarEstilos() {
     ".ex-bloque h3{font-size:15px;margin-bottom:6px}",
     ".ex-casilla{display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:13.5px;cursor:pointer}",
     ".ex-casilla input{width:18px;height:18px;padding:0;margin:0;accent-color:var(--accent);cursor:pointer}",
-    ".ex-informe{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px}",
-    ".ex-informe select{width:auto}",
+    ".ex-filas{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px 16px}",
+    ".ex-etiqueta{font-size:13.5px;font-weight:600;color:var(--muted)}",
+    ".ex-botones{display:flex;flex-wrap:wrap;align-items:center;gap:8px}",
+    ".ex-botones select{width:auto}",
     ".ex-aviso{color:var(--warn);font-weight:600;font-size:13.5px}",
     ".ex-ultima{font-size:13.5px;overflow-wrap:anywhere}",
   ].join("\n");
