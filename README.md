@@ -94,7 +94,7 @@ inicio), 14 clasificación, 15 🔍 Revisión, 16 📊 Dashboard, 17 💰 Rendim
 fiscal, 22 informe para la Renta, 23 🧾 Fiscal, 24 📤 Exportar, 25 escritor de
 .xlsx, 26 hojas del Excel, 27 informe imprimible, 28 cuadre con la blockchain,
 29 el ejemplo (recorrido con datos inventados), 30 solo totales (CSV) y el
-país de cada inmueble.
+país del token de cada inmueble.
 
 ### Ejecutar y probar
 

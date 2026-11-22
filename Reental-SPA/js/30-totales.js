@@ -8,7 +8,7 @@
        nominal (la moneda de cada proyecto, como 📊: dashMonedaProyecto de
        js/16) y el valor del RNT (precios_rnt del día del corte, que pide
        js/09 con fechasCortePrecioRnt de js/08).
-   (2) «🌍 País de cada inmueble» en 🚀: lo elige quien usa la app de una
+   (2) «🌍 País del token» en 🚀 (donde se emite, no donde está el edificio): lo elige quien usa la app de una
        lista con buscador, se guarda (su código de dos letras) en tu archivo (paises_inmuebles, por nombre) y
        solo es un dato: sale en el CSV y junto al nombre en 🧾, el informe
        y el Excel (nombreConPais de js/22). No cambia ninguna cifra.
@@ -204,7 +204,7 @@ function totNombresInmuebles(registros, cache) {
     .sort(totOrden);
 }
 
-/* ----------------------------- 🚀 País de cada inmueble ----------------------------- */
+/* ----------------------------- 🚀 País del token ----------------------------- */
 
 function totPintarPaises() {
   const caja = $("arrPaises"), lista = $("arrPaisesLista"), opciones = $("arrPaisesOpciones");

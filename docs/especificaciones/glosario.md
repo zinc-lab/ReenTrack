@@ -30,7 +30,7 @@ La columna «Fuera» son las que ya no se usan.
 | Mes al que corresponde un rendimiento | **Periodo** (sin tilde) | período |
 | Lo pagado por los tokens que tienes (📊) / esos tokens a 100 € o 100 $ cada uno, según el proyecto (el «Invertido» de la web de Reental) | **Dinero invertido** («coste real» en su detalle) / **Valor nominal** | — |
 | El archivo de 📤 con los totales a cada 31/12 y al último día de tus datos / cada uno de esos días | **Solo totales (CSV)** / **Fecha de corte** | CSV de totales |
-| Dónde está un inmueble, si lo eliges en 🚀 (de una lista; se guarda en dos letras: ES, US…) | **País** | — |
+| Dónde se emite el token de un inmueble (no dónde está el edificio), si lo eliges en 🚀 (de una lista; se guarda en dos letras: ES, US…) | **País** (del token) | país del inmueble |
 | Lo que costó algo | **Coste de compra**; en las tablas de ventas, «valor de adquisición», que es la palabra de Renta Web | coste FIFO, coste base |
 | Resultado de una venta | **Ganancia o pérdida** («G/P» solo como título de columna) | plusvalía (queda en el glosario del informe, como palabra de Reental) |
 | Lo que se paga a la red | **Comisiones de red (gas)** | comisión, gas a secas |

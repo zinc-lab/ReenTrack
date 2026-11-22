@@ -22,8 +22,8 @@
 - **Comprobación antes de cada commit** de que nada de `privado/` va a Git.
 - **Solo totales (CSV)** (22/11/2026): en 📤, los totales a cada 31/12 y al
   último día de tus datos para llevarlos a otra hoja o app
-  ([formato](especificaciones/totales-csv.md)); y el país de cada inmueble,
-  opcional, apuntado en 🚀.
+  ([formato](especificaciones/totales-csv.md)); y el país del token de
+  cada inmueble, opcional, apuntado en 🚀.
 - **El ejemplo** (24/10/2026): un recorrido guiado con datos inventados, la
   primera vez y desde 📖 Ayuda, sin tocar lo tuyo (driver.js).
 - **Historial de cada activo** en 🧾 (20/10/2026): cada inmueble, RNT, POL,

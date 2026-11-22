@@ -3,8 +3,8 @@
  * SINTÉTICOS: los de verifyfiscal1 (fiscal1_comun.js). Capturas
  * cap_totales_paises.png y cap_totales_exportar.png.
  *
- *  S1) 🚀: sin datos, sin el apartado del país; con ellos, «🌍 País de cada
- *      inmueble» con cada inmueble y su campo.
+ *  S1) 🚀: sin datos, sin el apartado del país; con ellos, «🌍 País del token»
+ *      con cada inmueble y su campo.
  *  S2) el desplegable con buscador: «us» o «españa» valen (en el campo,
  *      el nombre; en tu archivo, el código); «Narnia» no (aviso y vuelve
  *      a lo de antes); vacío lo borra; los usados, arriba de la lista.
@@ -84,8 +84,8 @@ function espiar() {
       opciones: document.getElementById("arrPaisesOpciones").options.length };
   });
   assert("S1 -> sin datos, sin el apartado del país", sinDatos);
-  assert("S1 -> con datos, «🌍 País de cada inmueble (opcional)» con cada inmueble y su desplegable de 249 países",
-    s1.visible && /País de cada inmueble/.test(s1.titulo) && /opcional/.test(s1.titulo) && s1.opciones === 249 &&
+  assert("S1 -> con datos, «🌍 País del token (opcional)» con cada inmueble y su desplegable de 249 países",
+    s1.visible && /País del token/.test(s1.titulo) && /opcional/.test(s1.titulo) && s1.opciones === 249 &&
     JSON.stringify(s1.campos) === JSON.stringify([["Prueba Cáceres 8", "", "arrPaisesOpciones"], ["Prueba Fondo 1", "", "arrPaisesOpciones"],
       ["Prueba Sevilla 2", "", "arrPaisesOpciones"]]), s1);
 

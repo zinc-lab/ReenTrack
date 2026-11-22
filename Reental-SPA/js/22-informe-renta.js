@@ -950,7 +950,7 @@ function informeRentaAnio(anio, registrosAnio, bloqueResumen, config, opciones =
   };
 }
 
-/* El pais de un inmueble, el que apuntaste en 🚀 (js/30): dos letras
+/* El pais del token de un inmueble (donde se emite), el que apuntaste en 🚀 (js/30): dos letras
    o "". Solo un dato: no cambia ninguna cifra, aviso ni «A declarar en».
    Lo mal escrito a mano en la cache no vale. */
 function paisInmueble(nombre, cache = typeof state !== "undefined" ? state.cache : null) {

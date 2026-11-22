@@ -738,10 +738,10 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <label class="ex-casilla"><input type="checkbox" id="cfgDatosEnArchivo" checked> Incluir API keys, nombre y NIF en tus copias</label>
     </details>
 
-    <!-- El país de cada inmueble lo pinta y lo guarda js/30; solo un dato, no cambia ninguna cifra -->
+    <!-- El país del token de cada inmueble (donde se emite, no donde está el edificio) lo pinta y lo guarda js/30; solo un dato, no cambia ninguna cifra -->
     <details id="arrPaises" class="arr-datos" hidden>
-      <summary>🌍 País de cada inmueble <span class="arr-opcional">(opcional)</span></summary>
-      <p class="help mt">Escribe y elige de la lista. Sale junto al inmueble en 🧾, el informe, el Excel y «Solo totales» de 📤.</p>
+      <summary>🌍 País del token <span class="arr-opcional">(opcional)</span></summary>
+      <p class="help mt">Donde se emite el token, no donde está el inmueble. Sale junto al inmueble en 🧾, el informe, el Excel y «Solo totales» de 📤.</p>
       <div class="grid2 mt" id="arrPaisesLista"></div>
       <datalist id="arrPaisesOpciones"></datalist>
     </details>
