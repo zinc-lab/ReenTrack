@@ -80,6 +80,8 @@ async function pasoBce() {
   log("Tipos BCE: " + nuevos + " nuevos (" + Object.keys(state.cache.tipos_bce).length + " en cache) para " + fechas.length + " fechas.");
 }
 async function pasoRnt() {
+  const hoy = hoyEspana(new Date(coingeckoRitmo.ahora()));
+  podarPrecioCorteRnt(state.cache, hoy);
   const fechasRnt = fechasConMovimientoRnt(state.cache);
   const noDisp = state.cache.precios_rnt_no_disponibles || {};
   const sinPedir = f => !precioValido(state.cache.precios_rnt[f]) && !(f in noDisp);
@@ -94,6 +96,15 @@ async function pasoRnt() {
     marcarCacheDirty();
     await autoGuardarCache();
   }
+  // El de cada fecha de corte del CSV de totales (js/30). Sin marcarla
+  // para 🔍: si no hay precio, esa fila sale vacía y con «no».
+  const dias = diasConMovimientoRnt(state.cache);
+  const cortes = fechasCortePrecioRnt([...dias.keys()], coingeckoRitmo.ahora());
+  for (const fecha of cortes.filter(sinPedir)) {
+    await precioRntHistorico(fecha, state.cache, 4, 30000, false);
+    marcarCacheDirty();
+  }
+  if (cortes.includes(hoy) && !dias.has(hoy) && !hoy.endsWith("-12-31")) state.cache.precio_rnt_dia_corte = hoy;
   log("Precios RNT: " + Object.keys(state.cache.precios_rnt).length + " en cache para " + fechasRnt.length + " fechas con movimiento de RNT.");
   const faltan = [...new Set([...sinPrecio, ...Object.keys(noDisp)])].filter(f => fechasRnt.includes(f)).sort();
   state.sync.fechasSinPrecio = faltan.length;

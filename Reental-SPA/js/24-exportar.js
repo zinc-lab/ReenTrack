@@ -15,9 +15,9 @@
    (3) Imprimir: un botón por pestaña. Al imprimir (con el botón o con
        Ctrl+P en cualquier pestaña) sale solo la pestaña abierta, en claro y
        con sus desplegables abiertos; al terminar todo vuelve a como estaba.
-   (4) Excel y PDF: el Excel con todos los años (js/26) y el informe para
-       la Renta del año del desplegable (js/27, sin pasar por 🧾 Fiscal).
-       Los dos con el cálculo de 🧾 (fiResultado de js/23) y solo si 🧾 lo
+   (4) Excel, PDF y CSV: el Excel con todos los años (js/26), el informe
+       para la Renta del año del desplegable (js/27, sin pasar por 🧾
+       Fiscal) y «Solo totales» (js/30). Los tres con el cálculo de 🧾 (fiResultado de js/23) y solo si 🧾 lo
        enseñaría; si no, dicen por qué.
 
    El archivo de rendimientos y tus datos van dentro de tu archivo.
@@ -210,8 +210,9 @@ function exRender() {
     "</section>" +
     '<section class="ex-bloque" aria-labelledby="exTitInformes">' +
       '<h3 id="exTitInformes">📊 Excel y PDF</h3>' +
-      '<p class="help">El Excel, con todos los años. El informe, del año que elijas: al imprimir, «Guardar como PDF».</p>' +
+      '<p class="help">El Excel, con todos los años. El informe, del año que elijas: al imprimir, «Guardar como PDF». Solo totales: a cada 31/12 y al último día de tus datos, para llevarlos a otra hoja o app.</p>' +
       '<div class="row mt"><button type="button" id="btnExcel"' + (exEstado.guardando ? " disabled" : "") + ">📊 Excel</button>" +
+        '<button type="button" id="btnTotales"' + (exEstado.guardando ? " disabled" : "") + ">📄 Solo totales (CSV)</button>" +
         '<span class="ex-informe">' + informe.select + '<button type="button" id="btnInforme">📄 Informe fiscal</button></span></div>' +
       informe.aviso +
     "</section>";
@@ -298,19 +299,30 @@ function exCalculoFiscal() {
    copia: excelLibro solo lee). Como la copia: la guarda va lo primero
    (doble clic) y sin el diálogo de guardar se dice «descargado». */
 async function exExcel() {
+  await exGuardarCalculo("Excel", { [XLSX_TIPO]: [".xlsx"] }, (r, ahora) => [exNombreExcel(ahora),
+    xlsxBlob(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes, ahora, r.hasta, r.cuadre, r), ahora)]);
+}
+
+/* «📄 Solo totales (CSV)»: los totales de cada fecha de corte (js/30). */
+async function exTotales() {
+  await exGuardarCalculo("CSV", { "text/csv": [".csv"] }, (r, ahora) => [totNombreArchivo(ahora),
+    new Blob([totCsv(totFilas(r, state.registros, state.cache))], { type: "text/csv" })]);
+}
+
+/* Un archivo hecho con el cálculo de 🧾: hacer(r, ahora) da [nombre,
+   blob]. Sin el diálogo de guardar, se descarga y se dice. */
+async function exGuardarCalculo(que, accept, hacer) {
   if (exEstado.guardando) return;
   exEstado.guardando = true;
   try {
     const r = exCalculoFiscal();
     if (!r) return;
-    const ahora = new Date();
-    const blob = xlsxBlob(excelLibro(r.registros, r.colas, r.resumen, state.cache, state.config, r.informes, ahora, r.hasta, r.cuadre, r), ahora);
-    const nombre = exNombreExcel(ahora);
+    const [nombre, blob] = hacer(r, new Date());
     exRenderSeguro();
     let archivo = nombre, descargado = !soportaFSA;
     if (!descargado) {
       try {
-        const handle = await guardarBlobComo(nombre, blob, { description: "Excel", accept: { [XLSX_TIPO]: [".xlsx"] } });
+        const handle = await guardarBlobComo(nombre, blob, { description: que, accept });
         if (handle && handle.name) archivo = handle.name;
       } catch (e) {
         if (!exClicCaducado(e)) throw e;
@@ -318,9 +330,9 @@ async function exExcel() {
       }
     }
     if (descargado) descargarBlob(nombre, blob);
-    toast(descargado ? "Excel descargado: " + nombre + ". Mira tu carpeta de descargas." : "Excel guardado en " + archivo + " ✔", "ok");
+    toast(descargado ? que + " descargado: " + nombre + ". Mira tu carpeta de descargas." : que + " guardado en " + archivo + " ✔", "ok");
   } catch (e) {
-    if (!e || e.name !== "AbortError") toast("No se pudo hacer el Excel: " + (e && e.message), "error");
+    if (!e || e.name !== "AbortError") toast("No se pudo hacer el " + que + ": " + (e && e.message), "error");
   } finally {
     exEstado.guardando = false;
     exRenderSeguro();
@@ -437,6 +449,7 @@ function exInyectarEstilos() {
 
   cuerpo.addEventListener("click", ev => {
     if (ev.target.closest("#btnExcel")) { exExcel(); return; }
+    if (ev.target.closest("#btnTotales")) { exTotales(); return; }
     if (ev.target.closest("#btnInforme")) { exInforme(); return; }
     const imp = ev.target.closest(".ex-imprimir");
     if (imp) exImprimirVista(imp.dataset.vista);

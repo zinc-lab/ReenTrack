@@ -370,7 +370,7 @@ function excelHojaHistorial(libro, calculo, cache) {
   for (const [nombre, as] of grupos) {
     linea(nombre, null, fiCosteQueda(as), fiGpDesdeElPrincipio(as), { negrita: true, relleno: EXCEL_COLOR.GRUPO });
     for (const a of as) {
-      linea(a.nombre, a.quedan, a.costeQueda, a.gp, {},
+      linea(a.moneda ? a.nombre : nombreConPais(a.nombre), a.quedan, a.costeQueda, a.gp, {},
         [a.avisos ? EXCEL_A_REVISAR + " (" + a.avisos + ")" : "", a.abierto ? "" : "Ya no lo tienes"].filter(Boolean).join(". "));
     }
   }
@@ -385,7 +385,7 @@ function excelHojaHistorial(libro, calculo, cache) {
   // Debajo, la tabla de cada activo.
   for (const [, as] of grupos) {
     for (const a of as) {
-      excelCelda(hoja, fila++, 1, a.nombre, { negrita: true, relleno: EXCEL_COLOR.SECCION });
+      excelCelda(hoja, fila++, 1, a.moneda ? a.nombre : nombreConPais(a.nombre), { negrita: true, relleno: EXCEL_COLOR.SECCION });
       excelCabecera(hoja, fila++, EXCEL_HISTORIAL_COLUMNAS);
       let supuesto = false;
       for (const { f, c: x, nota, operacion, tokens, sinLote, lotes, precioUsd, precioEur, sinUsd } of fiFilasHistorial(a, calculo.nombres)) {
@@ -551,7 +551,7 @@ function excelRentaInversiones(hoja, fila, informe) {
   const subtotal = (texto, importe) => {
     fila = excelFilaRenta(hoja, fila, [texto, null, null, importe], [null, null, null, EXCEL_FMT.NUM], { negrita: true });
   };
-  bloque("Tokens de inmuebles (a coste de compra)", inv.inmuebles.filas);
+  bloque("Tokens de inmuebles (a coste de compra)", conPaisInmueble(inv.inmuebles.filas));
   subtotal("Subtotal tokens de inmuebles", inv.inmuebles.subtotal_eur);
 
   const vault = inv.vault;

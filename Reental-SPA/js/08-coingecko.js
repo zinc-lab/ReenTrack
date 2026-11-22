@@ -112,6 +112,33 @@ function diasDesdeFechaRnt(fecha, ahoraMs) {
    01:00, o 02:00 en verano, españolas): CoinGecko todavía no lo tiene
    (responde el error 10014). No se pide ni se avisa: lo coge la siguiente
    sincronización. */
+/* Las fechas de corte del CSV de totales (js/30) que necesitan precio de
+   RNT: el 31/12 de cada año desde el primero con RNT y hoy en España,
+   solo las del último año (el plan gratuito de CoinGecko no da más) y ya
+   empezadas en UTC. Sin RNT nunca, ninguna. */
+function fechasCortePrecioRnt(fechasRnt, ahoraMs) {
+  if (!fechasRnt.length) return [];
+  const hoy = hoyEspana(new Date(ahoraMs));
+  const fechas = [];
+  for (let a = Math.min(...fechasRnt.map(f => parseInt(f.slice(0, 4), 10))); a < parseInt(hoy.slice(0, 4), 10); a++) fechas.push(a + "-12-31");
+  fechas.push(hoy);
+  return fechas.filter(f => diasDesdeFechaRnt(f, ahoraMs) <= CG_DIAS_MAX_PLAN_GRATUITO && !diaUtcSinEmpezar(f, ahoraMs));
+}
+/* Un precio de RNT pedido solo para el CSV: un 31/12 o el día de tus
+   datos (precio_rnt_dia_corte, lo apunta js/09) sin movimiento de RNT. Al
+   borrarlo en 🔍 no pasa a «Fechas sin precio»: se vuelve a pedir. */
+function precioRntSoloCorte(cache, fecha) {
+  return !diasConMovimientoRnt(cache).has(fecha) && (fecha.endsWith("-12-31") || fecha === cache.precio_rnt_dia_corte);
+}
+/* El del día de tus datos de una sincronización anterior ya no hace falta
+   (el corte es ahora otro día): se borra, para no guardar uno por
+   sincronización. hoy: el de esta sincronización. */
+function podarPrecioCorteRnt(cache, hoy) {
+  const viejo = cache.precio_rnt_dia_corte;
+  delete cache.precio_rnt_dia_corte;
+  if (typeof viejo === "string" && viejo !== hoy && !viejo.endsWith("-12-31") && !diasConMovimientoRnt(cache).has(viejo) &&
+      pdEsObjeto(cache.precios_rnt)) delete cache.precios_rnt[viejo];
+}
 function diaUtcSinEmpezar(fecha, ahoraMs) {
   return fecha > new Date(ahoraMs).toISOString().slice(0, 10);
 }
@@ -163,8 +190,10 @@ async function serieDiaria(m) {
   R[m.serie] = { hasta: R.ahora() + R.serieMs, precios };
   return precios;
 }
-async function precioRntHistorico(fecha, cache, reintentos = 4, espera429 = 30000) {
-  return precioHistorico(CG_RNT, fecha, cache, reintentos, espera429);
+async function precioRntHistorico(fecha, cache, reintentos = 4, espera429 = 30000, marcar = true) {
+  // marcar = false (las fechas del CSV): una fecha sin precio no pasa a
+  // «Fechas sin precio» de 🔍; sale vacía en el CSV.
+  return precioHistorico(marcar ? CG_RNT : Object.assign({}, CG_RNT, { marcarFuera: null, soloCsv: true }), fecha, cache, reintentos, espera429);
 }
 /* El de POL, en precios_pol. */
 async function precioPolHistorico(fecha, cache, reintentos = 4, espera429 = 30000) {
@@ -236,7 +265,7 @@ async function precioHistorico(m, fecha, cache, reintentos, espera429) {
     }
     const precio = (((data.market_data || {}).current_price) || {}).usd;
     if (!precioValido(precio)) {
-      log("Sin precio histórico de " + m.nombre + " para " + fechaEs(fecha) + ": quedará a revisar.", "warn");
+      log("Sin precio histórico de " + m.nombre + " para " + fechaEs(fecha) + (m.soloCsv ? ": sale vacío en «Solo totales»." : ": quedará a revisar."), "warn");
       return null;
     }
     if (precioValido(precios[fecha])) return precios[fecha]; // el puesto a mano manda

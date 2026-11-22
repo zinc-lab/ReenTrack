@@ -95,7 +95,8 @@ const esperar = ms => new Promise(s => setTimeout(s, ms));
       lotes: [...document.querySelectorAll("#fiHistorial details.fi-h-activo")].map(d => d.querySelectorAll(".fi-h-linea>span"))
         .filter(s => s[0].textContent.startsWith("Prueba")).map(s => [s[0].textContent, s[1].textContent,
           s[0].closest("details").querySelectorAll("tbody tr.fi-h-entra").length]),
-      texto: document.querySelector("#fiCuerpo").textContent,
+      // Sin el aviso de los tokens de inmuebles (la excepción del 27/10: nombra una LLC).
+      texto: document.querySelector("#fiCuerpo").textContent.replace(NOTA_TOKENS_INMUEBLE, ""),
     };
   });
   let d = await leer();

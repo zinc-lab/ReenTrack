@@ -46,7 +46,15 @@ calculan? ¿Lo comprueba una paridad con un caso que la ejercite?
   compra de RNT quedaba como movimiento neutro. Un mismo protocolo con dos
   direcciones (el recibo SLP y la del pool).
 - Un texto de los datos metido en un formato con marcas: un «<» en el
-  motivo de «Mandar a revisar» paraba el PDF del informe.
+  motivo de «Mandar a revisar» paraba el PDF del informe. En un CSV, un
+  nombre que empieza por «=», «+», «-» o «@» lo abre una hoja de cálculo
+  como fórmula.
+- Una fecha mal escrita en el futuro crea un ejercicio más con el mismo
+  día de corte que el año en curso: una exportación por fecha repetía sus
+  filas.
+- Un dato pedido solo para una exportación guardado junto a los que la app
+  necesita: crecía uno por sincronización y, al borrarlo, pasaba a la
+  lista de pendientes del usuario.
 - Un archivo que el motor no entiende se lee como vacío o 0 en vez de
   pararse: separado por «;», cabecera en mayúsculas, una columna que
   falta. Y un dato que se guarda y no se mira nunca: la wallet de cada fila

@@ -842,7 +842,7 @@ function fiHtmlHistorial(resultado, anio, informe, ultimo) {
           (a.gpAnio === null ? "" : ", de " + anio + " " + fiEur(a.gpAnio, true));
         return '<details class="fi-h-activo' + (a.abierto ? "" : " fi-h-cerrado") + '" data-abierto="historial:' + ccEsc(a.nombre) + '">' +
           '<summary aria-label="' + ccEsc(etiqueta) + '">' +
-          fiLineaHistorial("", [ccEsc(a.nombre) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
+          fiLineaHistorial("", [ccEsc(a.moneda ? a.nombre : nombreConPais(a.nombre)) + (a.avisos ? ' <span class="fi-h-avisos">⚠️ ' + a.avisos + "</span>" : ""),
             fiCant(a.quedan), fiCeldaEur(a.costeQueda), fiCeldaEur(a.gp, true), fiCeldaEur(a.gpAnio, true)]) +
           "</summary>" + fiTablaHistorial(a, fiEstado.desgloses, resultado.nombres, anio) + "</details>";
       }).join("") + "</div>";

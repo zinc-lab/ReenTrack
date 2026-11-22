@@ -738,6 +738,13 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
       <label class="ex-casilla"><input type="checkbox" id="cfgDatosEnArchivo" checked> Incluir API keys, nombre y NIF en tus copias</label>
     </details>
 
+    <!-- El país de cada inmueble lo pinta y lo guarda js/30; solo un dato, no cambia ninguna cifra -->
+    <details id="arrPaises" class="arr-datos" hidden>
+      <summary>🌍 País de cada inmueble <span class="arr-opcional">(opcional)</span></summary>
+      <p class="help mt">Dos letras (ES, US…). Sale junto al inmueble en 🧾, el informe, el Excel y «Solo totales» de 📤.</p>
+      <div class="grid2 mt" id="arrPaisesLista"></div>
+    </details>
+
     <div class="arr-reental">
       <div class="dropzone arr-dz" id="dzCsv">
         <div class="arr-dz-t">📄 Archivo de rendimientos de Reental</div>
@@ -900,6 +907,7 @@ html.sin-animaciones.sin-animaciones *,html.sin-animaciones.sin-animaciones *::b
 <script src="js/27-informe-pdf.js"></script>
 <script src="js/28-cuadre.js"></script>
 <script src="js/29-tour.js"></script>
+<script src="js/30-totales.js"></script>
 <script src="js/13-inicio.js"></script>
 </body>
 </html>

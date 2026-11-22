@@ -511,19 +511,23 @@ async function borrarPrecioPolConConfirmacion(fecha) {
 async function borrarPrecioRntConConfirmacion(fecha) {
   if (!state.cache) return;
   const precio = state.cache.precios_rnt[fecha];
+  // Uno pedido solo para el CSV de totales: se vuelve a pedir al sincronizar.
+  const soloCorte = precioRntSoloCorte(state.cache, fecha);
   const seguro = confirm(
     "¿Borrar el precio de RNT del " + fechaEs(fecha) + " (" + numEs(precio, 6, false, true) + " USD)?\n\n" +
-    "La fecha pasará a «Fechas sin precio»."
+    (soloCorte ? "Se volverá a pedir al sincronizar." : "La fecha pasará a «Fechas sin precio».")
   );
   if (!seguro) return;
   delete state.cache.precios_rnt[fecha];
-  state.cache.precios_rnt_no_disponibles = state.cache.precios_rnt_no_disponibles || {};
-  state.cache.precios_rnt_no_disponibles[fecha] = "borrado por ti";
+  if (!soloCorte) {
+    state.cache.precios_rnt_no_disponibles = state.cache.precios_rnt_no_disponibles || {};
+    state.cache.precios_rnt_no_disponibles[fecha] = "borrado por ti";
+  }
   marcarCacheDirty();
   await autoGuardarCache();
   renderPanel();
   actualizarChipEstado();
-  log("Precio RNT borrado (" + fechaEs(fecha) + "); la fecha vuelve a la lista de fechas sin precio.", "warn");
+  log("Precio RNT borrado (" + fechaEs(fecha) + ")" + (soloCorte ? "." : "; la fecha vuelve a la lista de fechas sin precio."), "warn");
   toast("Precio borrado: " + fechaEs(fecha) + ".", "warn");
 }
 

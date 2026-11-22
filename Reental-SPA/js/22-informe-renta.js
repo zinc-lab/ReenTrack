@@ -549,11 +549,7 @@ function rentaInversionesActivas(cierre, corte, anioCerrado, nombres, cache,
     // Solo fechas bien escritas: una clave rota en la cache (escrita a
     // mano) pararia el informe y con el el Excel, los PDF y el JSON. El
     // motor tambien las filtra.
-    const fechasBce = Object.keys(pyO(cache.tipos_bce, {}))
-      .filter(f => fiscFechaValida(f) && f.length === 10 && f <= corte);
-    let fechaBce = fechasBce.length ? fechasBce.reduce(pyMax) : null;
-    const tope = diasMaxSinTipoBce(corte, cache);
-    if (fechaBce && rentaDiasEntre(fechaBce, corte) > tope) fechaBce = null;
+    const fechaBce = rentaFechaTipoBce(cache, corte);
     const eur = fechaBce ? usdAEur(saldo, cache.tipos_bce[fechaBce])
       : Math.abs(saldo) <= 0.005 ? 0 : null;
     vault = { configurado: true, saldo_usd: rentaEur2(saldo),
@@ -565,7 +561,7 @@ function rentaInversionesActivas(cierre, corte, anioCerrado, nombres, cache,
       // siempre hay saldo).
       aviso: eur !== null ? null
         : "Sin tipo de cambio del BCE del " + rentaFechaEs(corte) + " ni de los " +
-          tope + " días antes: el saldo no pasa a euros y el total queda sin dar." };
+          diasMaxSinTipoBce(corte, cache) + " días antes: el saldo no pasa a euros y el total queda sin dar." };
   }
   bloque.vault = vault;
 
@@ -953,6 +949,30 @@ function informeRentaAnio(anio, registrosAnio, bloqueResumen, config, opciones =
     nota_centimos: NOTA_CENTIMOS,
   };
 }
+
+/* El pais de un inmueble, el que apuntaste en 🚀 (js/30): dos letras
+   o "". Solo un dato: no cambia ninguna cifra, aviso ni «A declarar en».
+   Lo mal escrito a mano en la cache no vale. */
+function paisInmueble(nombre, cache = typeof state !== "undefined" ? state.cache : null) {
+  const paises = pyO(cache, {}).paises_inmuebles;
+  const p = pdEsObjeto(paises) && Object.prototype.hasOwnProperty.call(paises, nombre) ? paises[nombre] : "";
+  return typeof p === "string" && /^[A-Z]{2}$/.test(p) ? p : "";
+}
+/* La fecha del tipo del BCE de un corte (la regla del vault, arriba): la
+   del día o la última anterior, como mucho diasMaxSinTipoBce días antes;
+   null si no hay. También la usa el CSV de totales (js/30). */
+function rentaFechaTipoBce(cache, corte) {
+  const fechas = Object.keys(pyO(pyO(cache, {}).tipos_bce, {})).filter(f => fiscFechaValida(f) && f.length === 10 && f <= corte);
+  const fecha = fechas.length ? fechas.reduce(pyMax) : null;
+  return fecha && rentaDiasEntre(fecha, corte) <= diasMaxSinTipoBce(corte, cache) ? fecha : null;
+}
+/* «Dania Beach (US)»; sin pais, el nombre tal cual. */
+function nombreConPais(nombre, cache) {
+  const p = paisInmueble(nombre, cache);
+  return p ? nombre + " (" + p + ")" : nombre;
+}
+/* Las filas de inmuebles del informe, con el país junto al nombre (para el PDF y el Excel). */
+const conPaisInmueble = filas => filas.map(f => Object.assign({}, f, { nombre: nombreConPais(f.nombre) }));
 
 /* {contrato: nombre} de los inmuebles (Map): los del catalogo que cuentan
    como inmueble (sin los «Sin decidir» ni los descartados, como en el

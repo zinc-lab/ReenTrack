@@ -20,6 +20,10 @@
   app está abierta en otra pestaña; igual abierta con doble clic como archivo
   único (comprobado en Chrome, Edge y Firefox).
 - **Comprobación antes de cada commit** de que nada de `privado/` va a Git.
+- **Solo totales (CSV)** (22/11/2026): en 📤, los totales a cada 31/12 y al
+  último día de tus datos para llevarlos a otra hoja o app
+  ([formato](especificaciones/totales-csv.md)); y el país de cada inmueble,
+  opcional, apuntado en 🚀.
 - **El ejemplo** (24/10/2026): un recorrido guiado con datos inventados, la
   primera vez y desde 📖 Ayuda, sin tocar lo tuyo (driver.js).
 - **Historial de cada activo** en 🧾 (20/10/2026): cada inmueble, RNT, POL,
@@ -51,6 +55,11 @@
   «🔗 Vincular pago…» en la compra, como el vínculo venta ↔ cobro, para que
   quede igual que una compra pagada en la blockchain (coste, fecha y permuta
   del USDT). Toca la clasificación, el motor y 🔍.
+
+- **Precio del RNT de un 31/12 de hace más de un año** en «Solo totales»: el
+  plan gratuito de CoinGecko solo da el último año, así que esa fila sale
+  vacía y con `no`. Si hace falta: pedirlo a mano en 🔍 como las fechas sin
+  precio (hoy no, porque sumaría pendientes a quien no usa el CSV).
 
 ## Descartado
 

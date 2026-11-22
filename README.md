@@ -35,7 +35,7 @@ precios) y añade el último archivo de rendimientos de Reental.
 | 📒 Transacciones | Todos tus movimientos, con filtros y notas |
 | 💰 Rendimientos | Cada reparto de Reental: lo cobrado, lo retenido y lo pendiente |
 | 🧾 Fiscal | Lo que va en tu declaración de la Renta, por ejercicio |
-| 📤 Exportar | El Excel con todos tus años, el informe fiscal en PDF e imprimir |
+| 📤 Exportar | El Excel con todos tus años, el informe fiscal en PDF, solo totales (CSV) e imprimir |
 | 🚀 Puesta en marcha | Tus datos, el archivo de Reental y tus copias |
 | 🔍 Revisión | Lo que la app no puede decidir sola |
 
@@ -70,7 +70,7 @@ ReenTrack/
 ├── CLAUDE.md               ← para Claude Code: «lee el README»
 ├── Reental-SPA/            ← la app
 │   ├── index.html              estructura y estilos
-│   └── js/                     módulos 00–29, cargados en orden (ver abajo)
+│   └── js/                     módulos 00–30, cargados en orden (ver abajo)
 ├── tests/                  ← pruebas
 │   ├── test_*.js / *.py        pruebas puras
 │   ├── paridad_*.js            comparan las cifras de la app con las aprobadas
@@ -79,7 +79,7 @@ ReenTrack/
 ├── docs/
 │   ├── ROADMAP.md              estado y siguiente paso
 │   ├── CHANGELOG.md            lo que cambia en cada versión
-│   └── especificaciones/       glosario, archivo de Reental, forma del informe
+│   └── especificaciones/       glosario, archivo de Reental, forma del informe, solo totales
 ├── .claude/skills/         ← /auditar-paso, /orden, /simplificar-textos (Claude Code)
 ├── .claude/launch.json     ← servidor local en el puerto 8765
 ├── .githooks/pre-commit    ← la prueba de orden antes de cada commit
@@ -87,13 +87,14 @@ ReenTrack/
 └── privado/                🔒 fuera de Git: tus datos de prueba, planes y notas
 ```
 
-Módulos 00–29 de `js/`: 00 driver.js (copiado tal cual), 01–13 base (constantes, utilidades, configuración, cache,
+Módulos 00–30 de `js/`: 00 driver.js (copiado tal cual), 01–13 base (constantes, utilidades, configuración, cache,
 Etherscan, BCE, CoinGecko, sincronización, archivo de Reental, panel, carga,
 inicio), 14 clasificación, 15 🔍 Revisión, 16 📊 Dashboard, 17 💰 Rendimientos,
 18 📒 Transacciones, 19 🚀 Puesta en marcha, 20 coste de las compras, 21 motor
 fiscal, 22 informe para la Renta, 23 🧾 Fiscal, 24 📤 Exportar, 25 escritor de
 .xlsx, 26 hojas del Excel, 27 informe imprimible, 28 cuadre con la blockchain,
-29 el ejemplo (recorrido con datos inventados).
+29 el ejemplo (recorrido con datos inventados), 30 solo totales (CSV) y el
+país de cada inmueble.
 
 ### Ejecutar y probar
 

@@ -2,6 +2,19 @@
 
 Lo más reciente, arriba. Una fila por versión o paso.
 
+## Solo totales (22/11/2026)
+
+- **📤 Exportar:** «📄 Solo totales (CSV)», junto al Excel. Los totales a
+  cada 31/12 y al último día de tus datos (coste de compra, valor nominal,
+  vault, wallet, RNT y las cifras de cada ejercicio), con `completo` = `no`
+  donde la cifra es incompleta o supuesta. Para llevarlos a otra hoja o
+  app; el formato, en [`totales-csv.md`](especificaciones/totales-csv.md).
+- **País de cada inmueble:** opcional, en 🚀 Puesta en marcha (dos letras).
+  Sale junto al nombre en 🧾, el informe, el Excel y el CSV; no cambia
+  ninguna cifra ni bloquea nada.
+- **Precio del RNT:** la sincronización pide también el del último 31/12 y
+  el del día.
+
 ## El ejemplo (24/10/2026)
 
 - **Primera vez:** con la app vacía, «¿Es tu primera vez?» ofrece «Ver un

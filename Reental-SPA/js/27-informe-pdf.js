@@ -118,7 +118,7 @@ function pdfInversiones(informe) {
     if (!lista.length) filas.push(pdfFila(["Ninguno", "", "", ""]));
   };
   bloque("Tokens de inmuebles (a coste de compra)");
-  activos(inv.inmuebles.filas);
+  activos(conPaisInmueble(inv.inmuebles.filas));
   subtotal("Subtotal tokens de inmuebles", inv.inmuebles.subtotal_eur);
 
   const vault = inv.vault;

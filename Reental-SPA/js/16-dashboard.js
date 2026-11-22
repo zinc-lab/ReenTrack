@@ -343,18 +343,27 @@ const dashCent = x => Math.round(x * 100) / 100;
    o null) y fuera (lo pagado de inmuebles que no están en «🧱 Tu
    cartera»: { n, costeEur, costeUsd }, o null) }; las filas y fuera suman
    lo pagado de la tarjeta. */
+/* La moneda de un proyecto ("EUR", "USD" o null) por sus lotes (los de
+   colas), los sin cantidad y la compra que quedó fuera de lo pagado (de
+   sinCalcular): la regla de dashValorNominal. También la usa el CSV de
+   totales (js/30). */
+function dashMonedaProyecto(lotes, sinPrecio, omitida) {
+  const todos = lotes.concat(sinPrecio);
+  const votos = { EUR: 0, USD: 0 };
+  for (const l of lotes) if (l.moneda) votos[l.moneda] += l.cant;
+  return !todos.length ? (omitida ? omitida.moneda : null)
+    : votos.EUR || votos.USD ? (votos.EUR >= votos.USD ? "EUR" : "USD")
+    : todos.some(l => l.eur !== null) ? "EUR" : "USD";
+}
+
 function dashValorNominal(invertido, cartera, bce) {
   if (!invertido || !invertido.colas || !cartera || !Array.isArray(cartera.items)) return null;
   const filas = cartera.items.map(it => {
     const lotes = invertido.colas.get(it.contrato) || [];
     const sinPrecio = invertido.sinCantidad.filter(l => l.contrato === it.contrato);
     const todos = lotes.concat(sinPrecio);
-    const votos = { EUR: 0, USD: 0 };
-    for (const l of lotes) if (l.moneda) votos[l.moneda] += l.cant;
     const omitida = invertido.sinCalcular && invertido.sinCalcular.get(it.contrato);
-    const moneda = !todos.length ? (omitida ? omitida.moneda : null)
-      : votos.EUR || votos.USD ? (votos.EUR >= votos.USD ? "EUR" : "USD")
-      : todos.some(l => l.eur !== null) ? "EUR" : "USD";
+    const moneda = dashMonedaProyecto(lotes, sinPrecio, omitida);
     const dif = red6(it.n - lotes.reduce((t, l) => t + l.cant, 0));
     // Lo que no llega a 0,01 tokens no se marca (se ve con 2 decimales).
     const cuenta = x => x >= DASH_TOKENS_MIN ? x : 0;

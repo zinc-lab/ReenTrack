@@ -442,6 +442,8 @@ function arrPintar() {
   // Tus datos: abiertos de entrada (no se pliegan solos); si los pliegas y falta algo, se vuelven a abrir.
   const datos = $("arrDatos");
   if (datos && (!hayDatos || ev.faltaConfig)) datos.open = true;
+  // El país de cada inmueble (js/30), con tus datos.
+  if (typeof totPintarPaises === "function") totPintarPaises();
   // El archivo de Reental: cargado, cuántos repartos y hasta cuándo; si no,
   // el texto de la página (que se guarda la primera vez).
   const dz = $("dzCsv"), dzTexto = $("dzTexto");
