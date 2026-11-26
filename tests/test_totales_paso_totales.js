@@ -41,7 +41,7 @@ function reg(clave, fecha, categoria, subcategoria, contrato, cantidad, campos =
     via_compra: null, origen: OTRO, destino: WALLET, fuente: "PRUEBA", nota: "", revisar: false }, campos);
 }
 const porClave = filas => new Map(filas.map(f => [f.fecha_corte + "|" + f.concepto + "|" + f.inmueble, f]));
-const CONCEPTOS = ["coste_compra", "valor_nominal", "saldo_vault", "saldo_wallet", "rnt_valor", "rnt_coste_compra",
+const CONCEPTOS = ["coste_compra", "valor_nominal", "saldo_vault", "saldo_wallet", "rnt_valor", "rnt_unidades", "rnt_coste_compra",
   "rendimientos_integros", "retenciones", "recompensas_defi", "ganancias_ventas", "perdidas_ventas", "ganancias_base_general"];
 
 /* ---------------------------------------------------------------- A */
@@ -75,7 +75,7 @@ const A = vm.runInContext(`state.config = { wallet: "${WALLET}", vault: "" }; st
   })()`, sb);
 const filas = A.filas, k = porClave(filas);
 const lineas = A.csv.split("\n");
-assert("cabecera exacta y una línea por fila, acabado en salto", lineas[0] === "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo" &&
+assert("cabecera exacta y una línea por fila, acabado en salto", lineas[0] === "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo,cantidad" &&
   lineas.length === filas.length + 2 && lineas.at(-1) === "", lineas.slice(0, 2));
 const fechas = [...new Set(filas.map(f => f.fecha_corte))];
 assert("fechas de corte: cada 31/12 y el día de los datos", JSON.stringify(fechas) === JSON.stringify(["2024-12-31", "2025-12-31", "2026-11-21"]), fechas);
@@ -122,6 +122,11 @@ assert("2024 (todo «si»): las filas de inmueble suman coste y valor nominal", 
 const rnt24 = v("2024-12-31", "rnt_valor"), rnt25 = v("2025-12-31", "rnt_valor");
 assert("RNT a 31/12/2024: 500 × 0,04 $ = 20 $, 16 € (BCE 1,25), «si»", r2(rnt24.usd) === 20 && r2(rnt24.eur) === 16 && rnt24.completo, rnt24);
 assert("RNT a 31/12/2025 sin precio de ese día: vacío y «no»", rnt25.eur === null && rnt25.usd === null && !rnt25.completo, rnt25);
+const uds24 = v("2024-12-31", "rnt_unidades"), uds25 = v("2025-12-31", "rnt_unidades");
+assert("rnt_unidades: 500 RNT en «cantidad», sin importes y «si» aunque falte el precio", uds24.cantidad === 500 && uds24.eur === null && uds24.usd === null &&
+  uds24.completo && uds25.cantidad === 500 && uds25.completo, [uds24, uds25]);
+assert("rnt_unidades justo después de rnt_valor", filas.findIndex(f => f.concepto === "rnt_unidades") === filas.findIndex(f => f.concepto === "rnt_valor") + 1);
+assert("«cantidad», solo en rnt_unidades", filas.every(f => (f.concepto === "rnt_unidades") === (f.cantidad !== null)));
 // Sin vault configurado: no se sabe.
 assert("sin vault configurado: saldo_vault vacío y «no»", v("2024-12-31", "saldo_vault").eur === null && !v("2024-12-31", "saldo_vault").completo);
 // «A revisar» en 2026: todas las filas de esa fecha con «no»; las de antes, no.
@@ -130,7 +135,9 @@ assert("y las de 2024 (antes de esa compra), con «si» las que se saben", v("20
 // El país.
 assert("país: «US» en las filas de Casa, vacío en las demás y en los totales", filas.every(f => f.pais === (f.inmueble === "Casa" ? "US" : "")));
 assert("el nombre con coma va entre comillas en el texto", A.csv.includes('2024-12-31,inmueble_coste_compra,"Calle Mayor, 1",,300.00,,si'));
-assert("un 0 va como 0.00", A.csv.includes("2024-12-31,recompensas_defi,,,0.00,,si"));
+assert("un 0 va como 0.00", A.csv.includes("2024-12-31,recompensas_defi,,,0.00,,si,\n"));
+assert("rnt_unidades en el texto: importes vacíos y la cantidad al final", A.csv.includes("\n2024-12-31,rnt_unidades,,,,,si,500.00\n") &&
+  A.csv.includes("\n2026-11-21,rnt_unidades,,,,,no,500.00\n"));
 
 /* ---------------------------------------------------------------- B */
 console.log("== B. Con un cálculo escrito a mano ==");
@@ -178,7 +185,8 @@ assert("coste en $ parcial: el coste en $ vacío", B2.get("2025-12-31|inmueble_c
 assert("vault negativo: «no»", !B2.get("2025-12-31|saldo_vault|").completo);
 const B3 = calculo({ filasInm: [], vault: vaultOk, otros: [fila("USDT", "USDT (wallet)", 60, 50)], tiposB: { "2025-12-31": 1.2 } });
 assert("sin inmuebles ni RNT: totales a 0 con «si»", B3.get("2025-12-31|coste_compra|").eur === 0 && B3.get("2025-12-31|coste_compra|").completo &&
-  B3.get("2025-12-31|rnt_valor|").eur === 0 && B3.get("2025-12-31|rnt_valor|").completo);
+  B3.get("2025-12-31|rnt_valor|").eur === 0 && B3.get("2025-12-31|rnt_valor|").completo &&
+  B3.get("2025-12-31|rnt_unidades|").cantidad === 0 && B3.get("2025-12-31|rnt_unidades|").completo);
 const B4 = calculo({ filasInm: [], vault: { ...vaultOk, usdt_sin_coste: 4 }, otros: [fila("USDT", "USDT (wallet)", 60, 50)], tiposB: { "2025-12-31": 1.2 } });
 assert("USDT del vault sin coste (vault.usdt_sin_coste): saldo_wallet con «no»", !B4.get("2025-12-31|saldo_wallet|").completo && B4.get("2025-12-31|saldo_vault|").completo);
 const B5 = calculo({ filasInm: [], vault: vaultOk, otros: [], tiposB: { "2025-12-31": 1.2 }, revisar: true });
@@ -363,6 +371,7 @@ assert("ganancias_base_general y ganancias_ventas, cada una de su campo", raros.
   raros.get("2025-12-31|ganancias_ventas|").eur === 1);
 sb.__r = { informes: { 2025: { avisos: [], inversiones_activas: { fecha_corte: "2025-12-31", inmuebles: null, vault: null, otros: null } } }, registros: [], resumen: {}, nombres: new Map() };
 const sinCierre = porClave(vm.runInContext("totFilas(__r, [], { tipos_bce: { '2025-12-31': 1.2 } })", sb));
+assert("sin el apartado II: rnt_unidades vacío y «no»", sinCierre.get("2025-12-31|rnt_unidades|").cantidad === null && !sinCierre.get("2025-12-31|rnt_unidades|").completo);
 assert("sin el apartado II del informe: coste, valor nominal, vault, wallet y RNT vacíos y «no»",
   ["coste_compra", "valor_nominal", "saldo_wallet", "rnt_valor", "rnt_coste_compra", "saldo_vault"].every(c => sinCierre.get("2025-12-31|" + c + "|").eur === null &&
     !sinCierre.get("2025-12-31|" + c + "|").completo));

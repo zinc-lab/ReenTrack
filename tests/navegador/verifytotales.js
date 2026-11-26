@@ -214,7 +214,7 @@ function espiar() {
   const nombre = "reentrack-totales_" + hoy.getFullYear() + "-" + p(hoy.getMonth() + 1) + "-" + p(hoy.getDate()) + ".csv";
   assert("S5 -> el diálogo con su nombre y su tipo (CSV)", s5.g && s5.g.nombre === nombre && JSON.stringify(s5.g.tipos).includes("text/csv"), s5.g);
   assert("S5 -> UTF-8 sin BOM, con la cabecera exacta", s5.bytes && s5.bytes[0] !== 0xEF &&
-    texto.split("\n")[0] === "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo");
+    texto.split("\n")[0] === "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo,cantidad");
   assert("S5 -> el mismo texto que totCsv(totFilas(…)), con el país apuntado", texto === s5.receta && /,Prueba Cáceres 8,US,/.test(texto), texto.slice(0, 300));
   assert("S5 -> dice dónde se guardó", s5.toasts.some(([t, m]) => t === "ok" && m.includes("CSV guardado en " + nombre)), s5.toasts);
   await page.evaluate(() => { window.__picker = "caducado"; window.__vistos.descargas = []; });

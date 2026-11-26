@@ -15,9 +15,10 @@
   hoja de cálculo lo tomaría por una fórmula).
 - Nombre: `reentrack-totales_AAAA-MM-DD.csv`, con el día en que se saca.
 - Cabecera:
-  `fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo`.
-- Fechas `AAAA-MM-DD`; importes con punto decimal, dos decimales y sin
-  separador de miles. Un importe que no se sabe va **vacío**, nunca 0.
+  `fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo,cantidad`
+  (hasta el 26/11/2026 sin `cantidad`).
+- Fechas `AAAA-MM-DD`; importes y cantidades con punto decimal, dos
+  decimales y sin separador de miles. Lo que no se sabe va **vacío**, nunca 0.
 - Una sola fila por (`fecha_corte`, `concepto`, `inmueble`).
 
 | Columna | Qué |
@@ -29,6 +30,7 @@
 | `importe_eur` | En euros |
 | `importe_usd` | En dólares, solo donde la cifra es en dólares (si no, vacío) |
 | `completo` | `si` o `no`: `no` si la cifra es incompleta o supuesta (abajo) |
+| `cantidad` | Unidades, solo en `rnt_unidades` (en las demás filas, vacío) |
 
 ## Conceptos
 
@@ -44,6 +46,7 @@ antes (el mismo que el del vault en el informe); si no hay, vacío y `no`.
 | `saldo_vault` | El saldo del vault (sin vault, vacío) |
 | `saldo_wallet` | USDT y USDC en tu wallet |
 | `rnt_valor` | Tus RNT × su precio ese día (CoinGecko) |
+| `rnt_unidades` | Cuántos RNT tienes, en `cantidad` (los importes, vacíos; sin RNT, 0) |
 | `rnt_coste_compra` | Lo pagado por tus RNT |
 | `inmueble_coste_compra` | Lo pagado por cada inmueble (una fila por inmueble) |
 | `inmueble_valor_nominal` | Sus tokens × 100 en la moneda de su proyecto |
@@ -73,7 +76,8 @@ la suma exacta de sus filas.
 - Sin tipo del BCE en 4 días: las cifras que pasan de $ a €, vacías.
 - Sin precio del RNT ese día: `rnt_valor` vacío. La sincronización pide el
   de cada 31/12 y el del día; el plan gratuito de CoinGecko solo da el
-  último año, así que un 31/12 más viejo se queda vacío. El del día no
+  último año, así que un 31/12 más viejo se queda vacío si no se bajó
+  antes (el de un 31/12, una vez bajado, se guarda). El del día no
   existe hasta que empieza en UTC (la 01:00 o las 02:00 en España): si
   sincronizas antes, sale vacío hasta la siguiente sincronización.
 - USDT en el vault sin su coste: `saldo_wallet`.
@@ -90,21 +94,22 @@ archivo y en la copia.
 ## Ejemplo
 
 ```csv
-fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo
-2025-12-31,coste_compra,,,800.00,,si
-2025-12-31,valor_nominal,,,716.67,,si
-2025-12-31,saldo_vault,,,,,no
-2025-12-31,saldo_wallet,,,12.50,15.00,si
-2025-12-31,rnt_valor,,,8.33,10.00,si
-2025-12-31,rnt_coste_compra,,,9.00,,si
-2025-12-31,inmueble_coste_compra,"Calle Mayor, 1",ES,300.00,,si
-2025-12-31,inmueble_valor_nominal,"Calle Mayor, 1",ES,300.00,,si
-2025-12-31,inmueble_coste_compra,Casa,US,500.00,600.00,si
-2025-12-31,inmueble_valor_nominal,Casa,US,416.67,500.00,si
-2025-12-31,rendimientos_integros,,,40.00,,si
-2025-12-31,retenciones,,,0.00,,si
-2025-12-31,recompensas_defi,,,0.00,,si
-2025-12-31,ganancias_ventas,,,10.00,,si
-2025-12-31,perdidas_ventas,,,0.00,,si
-2025-12-31,ganancias_base_general,,,0.00,,si
+fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo,cantidad
+2025-12-31,coste_compra,,,800.00,,si,
+2025-12-31,valor_nominal,,,716.67,,si,
+2025-12-31,saldo_vault,,,,,no,
+2025-12-31,saldo_wallet,,,12.50,15.00,si,
+2025-12-31,rnt_valor,,,8.33,10.00,si,
+2025-12-31,rnt_unidades,,,,,si,100.00
+2025-12-31,rnt_coste_compra,,,9.00,,si,
+2025-12-31,inmueble_coste_compra,"Calle Mayor, 1",ES,300.00,,si,
+2025-12-31,inmueble_valor_nominal,"Calle Mayor, 1",ES,300.00,,si,
+2025-12-31,inmueble_coste_compra,Casa,US,500.00,600.00,si,
+2025-12-31,inmueble_valor_nominal,Casa,US,416.67,500.00,si,
+2025-12-31,rendimientos_integros,,,40.00,,si,
+2025-12-31,retenciones,,,0.00,,si,
+2025-12-31,recompensas_defi,,,0.00,,si,
+2025-12-31,ganancias_ventas,,,10.00,,si,
+2025-12-31,perdidas_ventas,,,0.00,,si,
+2025-12-31,ganancias_base_general,,,0.00,,si,
 ```

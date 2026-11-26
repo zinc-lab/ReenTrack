@@ -14,7 +14,7 @@
        y el Excel (nombreConPais de js/22). No cambia ninguna cifra.
    ===================================================================== */
 
-const TOT_CABECERA = "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo";
+const TOT_CABECERA = "fecha_corte,concepto,inmueble,pais,importe_eur,importe_usd,completo,cantidad";
 
 /* ----------------------------- Funciones puras ----------------------------- */
 
@@ -63,8 +63,9 @@ function totFilas(resultado, registros, cache) {
     const revisar = resultado.registros.some(r => pyVerdad(r.revisar) &&
       (!fiscFechaValida(r.fecha) || r.fecha.slice(0, 10) <= corte)) ||
       (informe.avisos || []).some(a => a && a.tipo === "revisar");
-    const fila = (concepto, eur, usd, completo, inmueble = "") => filas.push({ fecha_corte: corte, concepto, inmueble,
-      pais: inmueble ? paisInmueble(inmueble, c) : "", eur, usd, completo: completo && eur !== null && !revisar });
+    // cantidad: solo en rnt_unidades (sin importes; se sabe si se sabe la cantidad).
+    const fila = (concepto, eur, usd, completo, inmueble = "", cantidad = null) => filas.push({ fecha_corte: corte, concepto, inmueble,
+      pais: inmueble ? paisInmueble(inmueble, c) : "", eur, usd, cantidad, completo: completo && (eur !== null || cantidad !== null) && !revisar });
     const aEur = usd => (Math.abs(usd) <= 0.005 ? 0 : usdAEur(usd, tipo));
 
     // Los inmuebles del apartado II, por nombre.
@@ -114,6 +115,7 @@ function totFilas(resultado, registros, cache) {
     const precio = precioValido(precios[corte]) ? precios[corte] : null;
     const usdRnt = tokensRnt === null ? null : tokensRnt <= 1e-9 ? 0 : precio === null ? null : tokensRnt * precio;
     fila("rnt_valor", usdRnt === null ? null : aEur(usdRnt), usdRnt, true);
+    fila("rnt_unidades", null, null, true, "", tokensRnt);
     fila("rnt_coste_compra", otros === null ? null : rnt ? rnt.coste_eur : 0, null, true);
 
     for (const i of deInmueble) {
@@ -149,7 +151,7 @@ function totCelda(texto) {
 /* El texto del archivo (UTF-8 sin BOM, una línea por fila). */
 function totCsv(filas) {
   return [TOT_CABECERA, ...filas.map(f => [f.fecha_corte, f.concepto, totCelda(f.inmueble), f.pais,
-    totImporte(f.eur), totImporte(f.usd), f.completo ? "si" : "no"].join(","))].join("\n") + "\n";
+    totImporte(f.eur), totImporte(f.usd), f.completo ? "si" : "no", totImporte(f.cantidad)].join(","))].join("\n") + "\n";
 }
 
 const totNombreArchivo = ahora => "reentrack-totales_" + exFechaLocal(ahora).dia + ".csv";
